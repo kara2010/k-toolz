@@ -415,7 +415,8 @@ wv2ok:
         ExecWait '"$TEMP\vc_redist.x64.exe" /install /quiet /norestart'
         Delete "$TEMP\vc_redist.x64.exe"
       ${Else}
-        MessageBox MB_OK|MB_ICONEXCLAMATION "$(S_VcMissing)"
+        ; /SD: im stillen Modus (Auto-Update) nicht blockieren - sonst haengt das Update unsichtbar an dieser Box
+        MessageBox MB_OK|MB_ICONEXCLAMATION "$(S_VcMissing)" /SD IDOK
       ${EndIf}
     ${EndIf}
   ${EndIf}
