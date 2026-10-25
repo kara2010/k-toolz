@@ -346,8 +346,13 @@ Section "K-Toolz"
 
   ; Alte geplante Aufgaben (OSD-Broker) IMMER entfernen: sie zeigen sonst nach dem
   ; exe-Wechsel auf den alten Pfad; die App registriert sie beim naechsten OSD-Einschalten neu.
+  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-FPS'
+  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Sensors'
+  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Analyze'
+  ; Namen aus Lumora-Zeiten (Bestandsinstallationen)
   nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-FPS'
   nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-Sensors'
+  nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-Analyze'
 
   ; --- Electron-Altinstallation (Lumora.exe) sauber abloesen ---
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\lumora\Uninstall Lumora.exe"
@@ -537,6 +542,9 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\Classes\lumora"
   DeleteRegKey HKCU "Software\K-Toolz"
   ; von der App angelegte geplante Aufgaben (Broker) entfernen
+  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-FPS'
+  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Sensors'
+  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Analyze'
   nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-FPS'
   nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-Sensors'
   nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-Analyze'

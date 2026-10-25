@@ -225,7 +225,7 @@ static std::string shellVersion() {
 // Fuenf Module, ein Binary. 'activeModules' (app-settings.json) bestimmt Reiter und
 // Hintergrundarbeit (Schritt 2 des Umbaus) sowie den ANZEIGENAMEN: genau ein aktives
 // Modul -> Produktname + Produkt-Icon (Fenster, Tray, Titel, Ballons); sonst "K-Toolz".
-// Interne Bezeichner (Fensterklassen Lumora*, Aufgaben LumoraOSD-*, app.lumora,
+// Interne Bezeichner (Fensterklassen Lumora*, app.lumora,
 // lumora://, Datenordner %APPDATA%\lumora) bleiben bewusst: nie sichtbar, und eine
 // Umbenennung hiesse Datenpfad-Migration ohne Nutzen (Design-Doc §5).
 struct ModuleDef { const char* key; const wchar_t* name; const wchar_t* iconRes; const char* iconPng; };
@@ -309,7 +309,14 @@ static void adoptInstallModules() {
         else s["ktoolzWelcomePending"] = true;
         changed = true;
     }
-    if (!inst.empty() && !s.contains("activeModules")) { s["activeModules"] = split(inst); changed = true; }
+    if (!inst.empty() && !s.contains("activeModules")) {
+        s["activeModules"] = split(inst); changed = true;
+        // Einzelprodukt: nichts zu konfigurieren - PlainOSD schaltet das OSD ein (Einrichtung des
+        // FPS-Dienstes folgt beim ersten OSD-Start), StutterHunter richtet den Mess-Dienst nach dem
+        // ersten Bild ein (TIMER_FIRSTSETUP), damit die erste Messung ohne UAC-Unterbrechung laeuft.
+        if (inst == "osd") s["osdEnabled"] = true;
+        if (inst == "stutter") s["analyzeSetupPending"] = true;
+    }
     if (!add.empty()) {
         std::vector<std::string> cur = activeModules(s);
         for (auto& k : split(add)) { bool have = false; for (auto& c : cur) if (c == k) have = true; if (!have) cur.push_back(k); }
@@ -2885,7 +2892,7 @@ static json readCpuNative() {
              {"temp", temp}, {"clock", clock}, {"power", power} };
 }
 // --- FPS-/Sensor-Broker-Anbindung (Shared Memory, Layout 1:1 aus main.js) ---
-// Die elevated Broker (geplante Aufgaben LumoraOSD-FPS / LumoraOSD-Sensors)
+// Die elevated Broker (geplante Aufgaben K-Toolz-FPS / K-Toolz-Sensors)
 // existieren bereits (Electron-Infrastruktur); die Shell liest dieselben Sections
 // und sendet denselben Heartbeat (appTick@24, wanted@28). Eigene Broker-Modi der
 // Shell folgen mit Phase 4 - bis dahin teilen sich beide Apps die Datenquelle.
@@ -3030,7 +3037,7 @@ static void netStatTick() {
     if (g_netGamePath != path) { g_netGamePath = path; g_netNullIn = g_netNullOut = 0; }
     if (!fpsBrokerAlive() && GetTickCount64() - g_netSpawnAt > 8000) {
         g_netSpawnAt = GetTickCount64();
-        std::thread([]() { runTask(L"LumoraOSD-FPS"); }).detach();
+        std::thread([]() { runTask(L"K-Toolz-FPS"); }).detach();
     }
 }
 static void netSessionFinish(const std::string& gamePath) {
@@ -3121,7 +3128,7 @@ static void brokersEnsure() {   // beide Aufgaben anstossen (idempotent, 4s-Spaw
     shmOpen(g_senseShm, "Local\\LumoraOSDSense"); shmWriteApp(g_senseShm, 1);
     if (GetTickCount64() - g_brokerSpawnAt < 4000) return;   // nur der Task-Start ist gedrosselt
     g_brokerSpawnAt = GetTickCount64();
-    std::thread([]() { runTask(L"LumoraOSD-FPS"); runTask(L"LumoraOSD-Sensors"); }).detach();
+    std::thread([]() { runTask(L"K-Toolz-FPS"); runTask(L"K-Toolz-Sensors"); }).detach();
 }
 
 // --- OSD-Ersteinrichtung (EIN Erklaer-Dialog, EIN UAC) ------------------------
@@ -3183,8 +3190,21 @@ static bool schtaskPresentUi(const wchar_t* task) {
     std::thread([t]() { schtaskPresent(t.c_str()); }).detach();
     return false;
 }
-static bool fpsTaskPresent()   { return schtaskPresent(L"LumoraOSD-FPS"); }
-static bool senseTaskPresent() { return schtaskPresent(L"LumoraOSD-Sensors"); }
+static bool fpsTaskPresent()   { return schtaskPresent(L"K-Toolz-FPS"); }
+// Aufgaben aus Lumora-Zeiten: hiessen LumoraOSD-FPS/-Sensors/-Analyze und stehen so in der
+// Aufgabenplanung. Werden beim Start im Hintergrund geloescht (schtasks /Delete geht ohne
+// Erhoehung fuer eigene Aufgaben - der Installer tut dasselbe); die neuen Namen entstehen
+// beim naechsten Einschalten von OSD/Messung mit einer UAC-Abfrage - wie nach jedem Update.
+static void migrateLegacyTasks() {
+    std::thread([]() {
+        for (const wchar_t* alt : { L"LumoraOSD-FPS", L"LumoraOSD-Sensors", L"LumoraOSD-Analyze" }) {
+            if (!schtaskPresent(alt)) continue;
+            runCaptureOutput(std::wstring(L"schtasks /Delete /F /TN ") + alt, 8000);
+            bcLogStream("aufgaben: alte Aufgabe entfernt: " + narrow(alt));
+        }
+    }).detach();
+}
+static bool senseTaskPresent() { return schtaskPresent(L"K-Toolz-Sensors"); }
 static bool fpsNeedsSetup() {
     std::string src = loadSettings().value("osdFpsSource", std::string("auto"));
     bool useRtss = (src == "rtss");   // RTSS-Weg (Task #24) braucht keinen FPS-Task
@@ -3220,7 +3240,7 @@ static void netEnsureTask() {
             L"$a=New-ScheduledTaskAction -Execute '" + q(exeW) + L"' -Argument '--fps-broker'; "
             L"$p=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
             L"$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
-            L"Register-ScheduledTask -TaskName 'LumoraOSD-FPS' -Action $a -Principal $p -Settings $s -Force";
+            L"Register-ScheduledTask -TaskName 'K-Toolz-FPS' -Description 'K-Toolz (PlainOSD / Netzwerk-Statistik): FPS- und Netzwerk-Messung ueber Windows-ETW. Startet nur auf Anforderung der App, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);
         std::wstring b64w = widen(b64);
         std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
@@ -3251,7 +3271,7 @@ static void ensureOsdSetup() {
         auto q = [](std::wstring s) { size_t p = 0; while ((p = s.find(L'\'', p)) != std::wstring::npos) { s.insert(p, 1, L'\''); p += 2; } return s; };
         // 0) Erklaer-Dialog - listet nur, was wirklich fehlt.
         std::wstring parts;
-        if (needFps)        parts += L"• FPS-Messung: kleiner Hintergrunddienst (PresentMon, liegt " + appDisplayName() + L" bei)\n";
+        if (needFps)        parts += L"• FPS-Messung: kleiner Hintergrunddienst von " + appDisplayName() + L" (liest Windows-Leistungsdaten, kein Treiber)\n";
         if (needPawnio)     parts += L"• CPU-Temperatur & -Verbrauch: signierter Open-Source-Treiber PawnIO (wird von der offiziellen Quelle geladen)\n";
         else if (needSense) parts += L"• CPU-Temperatur & -Verbrauch: Hintergrunddienst fuer den PawnIO-Treiber\n";
         std::wstring dlg = L"Damit das OSD alle Werte anzeigen kann, richtet " + appDisplayName() + L" einmalig ein:\n\n" + parts +
@@ -3283,16 +3303,20 @@ static void ensureOsdSetup() {
         // 2) EIN elevated Aufruf: [PawnIO-Silent-Install] + [FPS-Task] + [Sensor-Task].
         wchar_t exeW[MAX_PATH]; GetModuleFileNameW(nullptr, exeW, MAX_PATH);
         std::wstring exe = q(exeW);
+        // Beschreibung je Aufgabe: die Aufgabenplanung zeigt sie - der Nutzer soll sehen, was das ist
         auto taskPs = [&](const std::wstring& task, const std::wstring& arg, const std::wstring& v) -> std::wstring {
+            std::wstring desc = (arg == L"--fps-broker")
+                ? L"K-Toolz (PlainOSD): FPS-Messung ueber Windows-ETW. Startet nur auf Anforderung der App, kein Autostart."
+                : L"K-Toolz (PlainOSD): CPU-Sensoren (Temperatur, Verbrauch) ueber den PawnIO-Treiber. Startet nur mit dem OSD, kein Autostart.";
             return L"$a" + v + L"=New-ScheduledTaskAction -Execute '" + exe + L"' -Argument '" + arg + L"'; "
                    L"$p" + v + L"=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
                    L"$s" + v + L"=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
-                   L"Register-ScheduledTask -TaskName '" + task + L"' -Action $a" + v + L" -Principal $p" + v + L" -Settings $s" + v + L" -Force";
+                   L"Register-ScheduledTask -TaskName '" + task + L"' -Description '" + desc + L"' -Action $a" + v + L" -Principal $p" + v + L" -Settings $s" + v + L" -Force";
         };
         std::vector<std::wstring> ps;
         if (needPawnio) ps.push_back(L"Start-Process -FilePath '" + q(setupExe) + L"' -ArgumentList '-install','-silent' -Wait");
-        if (needFps)    ps.push_back(taskPs(L"LumoraOSD-FPS", L"--fps-broker", L""));
-        if (needSense || needPawnio) ps.push_back(taskPs(L"LumoraOSD-Sensors", L"--sensor-broker", L"2"));
+        if (needFps)    ps.push_back(taskPs(L"K-Toolz-FPS", L"--fps-broker", L""));
+        if (needSense || needPawnio) ps.push_back(taskPs(L"K-Toolz-Sensors", L"--sensor-broker", L"2"));
         std::wstring inner; for (size_t i = 0; i < ps.size(); ++i) { if (i) inner += L"; "; inner += ps[i]; }
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);   // UTF-16LE wie PowerShell -EncodedCommand
         std::wstring b64w = widen(b64);
@@ -3323,7 +3347,7 @@ static void ensureOsdSetup() {
 
 // === Ruckler-Blackbox: Shell-Seite (Mess-Session steuern, Befunde einsammeln) =========
 // Design: capture-cpp/BOTTLENECK-PLAN.md. Der eigentliche Messer ist der elevated
-// Analyze-Broker (--analyze-broker, geplante Aufgabe LumoraOSD-Analyze, LAZY beim
+// Analyze-Broker (--analyze-broker, geplante Aufgabe K-Toolz-Analyze, LAZY beim
 // ersten Start registriert - ensureOsdSetup bleibt unangetastet, Bestandsnutzer sehen
 // nur dann einen UAC-Dialog, wenn sie das Feature wirklich benutzen). Die Shell:
 // schreibt context.json (Spiel/Aufloesung/HDR/Streaming/Build), setzt wanted=1 im
@@ -3364,7 +3388,7 @@ static bool anShmRead(uint32_t out[64]) {
     memcpy(out, p, 256); UnmapViewOfFile(p);
     return true;
 }
-static bool analyzeTaskPresent() { return schtaskPresent(L"LumoraOSD-Analyze"); }
+static bool analyzeTaskPresent() { return schtaskPresent(L"K-Toolz-Analyze"); }
 // Kontext-Metadaten fuer den Bericht (User-Kernanforderung "Laeufe vergleichen"):
 // ohne Spiel/Aufloesung/HDR/Streaming/Buildstand sind zwei Laeufe nicht vergleichbar.
 static void analyzeWriteContext() {
@@ -3469,7 +3493,7 @@ static void analyzeStartMeasurement() {
     showAnalyzeOsd(true);   // eigenes Analyse-Overlay einblenden (nur waehrend der Messung)
     applyAnalyzeOsdConfig();   // Groesse/Deckkraft/Ecke aus den Settings anwenden
     SetTimer(g_hwnd, TIMER_ANALYZE, 100, nullptr);   // 100ms = Takt des Broker-SHM-Schriebs; 200ms liess jeden 2. Schrieb aus -> ruckelige Kurve
-    std::thread([]() { runTask(L"LumoraOSD-Analyze"); }).detach();
+    std::thread([]() { runTask(L"K-Toolz-Analyze"); }).detach();
     bcLogStream("analyze: Messung gestartet");
     analyzePushStatus();
 }
@@ -3506,7 +3530,7 @@ static void ensureAnalyzeSetup() {
             L"$a=New-ScheduledTaskAction -Execute '" + q(exeW) + L"' -Argument '--analyze-broker'; "
             L"$p=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
             L"$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
-            L"Register-ScheduledTask -TaskName 'LumoraOSD-Analyze' -Action $a -Principal $p -Settings $s -Force";
+            L"Register-ScheduledTask -TaskName 'K-Toolz-Analyze' -Description 'K-Toolz (StutterHunter): Mess-Broker der Ruckler-Analyse (Frametimes, Treiber-Latenzen, Prozesslast ueber Windows-ETW). Startet nur fuer eine Messung, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);
         std::wstring b64w = widen(b64);
         std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
@@ -5501,15 +5525,15 @@ static json handleChannel(const std::string& channel, const json& args) {
             : mGpu ? "MSI Afterburner" : "keine erkannt";
         std::string cpu = mCpu ? "MSI Afterburner"
             : senseBrokerAlive() ? "PawnIO-Treiber"
-            : (lubroker::cpuSensorModule() && pawnioInstalled() && schtaskPresentUi(L"LumoraOSD-Sensors")) ? "PawnIO-Treiber (startet mit dem OSD)"
+            : (lubroker::cpuSensorModule() && pawnioInstalled() && schtaskPresentUi(L"K-Toolz-Sensors")) ? "PawnIO-Treiber (startet mit dem OSD)"
             : declined ? "nicht eingerichtet (nur Last/RAM/Takt)"
             : "Einrichtung folgt beim OSD-Start (bis dahin Last/RAM/Takt)";
         std::string src = s.value("osdFpsSource", std::string("auto"));
         bool useRtss = (src == "rtss") ? true : (src == "presentmon") ? false : lurtss::available();
         std::string fps = useRtss ? "RTSS/Afterburner"
-            : schtaskPresentUi(L"LumoraOSD-FPS") ? "PresentMon"
+            : schtaskPresentUi(L"K-Toolz-FPS") ? "K-Toolz FPS-Dienst (ETW)"
             : declined ? "nicht eingerichtet"
-            : "PresentMon (Einrichtung folgt beim OSD-Start)";
+            : "K-Toolz FPS-Dienst (Einrichtung folgt beim OSD-Start)";
         return { {"gpu", gpu}, {"cpu", cpu}, {"fps", fps} };
     }
     // ---- Eingabe-Bruecke (HID -> virtuelles Xbox-Pad; input_bridge.h) ----
@@ -5690,6 +5714,7 @@ static void saveWindowState(HWND h, const char* grund) {
 // einem tagealten Stand und der Vollbild-Zustand ging beim naechsten Start verloren.
 // So wie Electron es hielt: die Datei traegt immer den letzten wirklichen Zustand.
 #define TIMER_WINSTATE 121
+#define TIMER_FIRSTSETUP 122   // one-shot nach dem Start: Ersteinrichtung des Einzelprodukts (Mess-Dienst)
 static void queueWindowStateSave() { SetTimer(g_hwnd, TIMER_WINSTATE, 800, nullptr); }
 static void placeWebView(HWND h) {
     if (!g_controller) return;
@@ -5812,7 +5837,13 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         if (w == TIMER_ADAPT) { bcAdaptTick(); return 0; }
         if (w == TIMER_IPWATCH) { bcIpWatchTick(); return 0; }
         if (w == TIMER_COLDLINK) { KillTimer(h, TIMER_COLDLINK); if (!g_coldDeepLink.empty()) { handleDeepLink(g_coldDeepLink); g_coldDeepLink.clear(); } return 0; }
-        if (w == TIMER_OSDPRELOAD) { KillTimer(h, TIMER_OSDPRELOAD); if (moduleActive(loadSettings(), "osd")) { createOsdWindow(); sensorsInit(); } return 0; }   // WebView2 + PDH-Sensoren vorwaermen (Fenster bleibt versteckt) -> erster OSD-Show ist sofort
+        if (w == TIMER_OSDPRELOAD) { KillTimer(h, TIMER_OSDPRELOAD); if (moduleActive(loadSettings(), "osd")) { createOsdWindow(); sensorsInit(); } return 0; }
+        if (w == TIMER_FIRSTSETUP) {   // StutterHunter-Erstinstallation: Mess-Dienst jetzt einrichten (Dialog + eine UAC-Abfrage)
+            KillTimer(h, TIMER_FIRSTSETUP);
+            json s = loadSettings();
+            if (s.value("analyzeSetupPending", false)) { s.erase("analyzeSetupPending"); writeFile(settingsPath(), s.dump(2)); if (moduleActive(s, "stutter")) ensureAnalyzeSetup(); }
+            return 0;
+        }   // WebView2 + PDH-Sensoren vorwaermen (Fenster bleibt versteckt) -> erster OSD-Show ist sofort
         if (w == TIMER_OSDHIDE) { KillTimer(h, TIMER_OSDHIDE); if (g_osdHwnd) ShowWindow(g_osdHwnd, SW_HIDE); return 0; }   // nach dem DComp-Ausblenden verstecken
         if (w == TIMER_SRCWATCH) { srcWatchTick(); return 0; }
         if (w == TIMER_ANALYZE) { analyzeTick(); return 0; }   // Ruckler-Blackbox: Heartbeat/Tail/Status
@@ -5955,7 +5986,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             // Prototyp-/Diagnosemodus der Ruckler-Blackbox: 5 s Kernel-ETW mitschneiden und
             // Aggregate ausgeben (Konsole + %TEMP%\lumora-analyze-dump.txt). Elevated noetig.
             if (wcscmp(av[i], L"--analyze-dump") == 0) return lubroker::runAnalyzeDump();
-            // Mess-Broker der Ruckler-Blackbox (geplante Aufgabe LumoraOSD-Analyze, elevated)
+            // Mess-Broker der Ruckler-Blackbox (geplante Aufgabe K-Toolz-Analyze, elevated)
             if (wcscmp(av[i], L"--analyze-broker") == 0) return lubroker::runAnalyzeBroker();
         }
     }
@@ -6282,7 +6313,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
                       "netstat-Selbsttest: NICHT MOEGLICH\n"
                       "ETW-System-Logger liess sich nicht starten - der Test braucht\n"
                       "Administratorrechte (im Betrieb laeuft die Zaehlung im elevated\n"
-                      "Broker LumoraOSD-FPS, dort ist das gegeben).\n");
+                      "Broker K-Toolz-FPS, dort ist das gegeben).\n");
             return 2;
         }
         net.setTarget(GetCurrentProcessId());
@@ -6644,11 +6675,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     SetTimer(hwnd, TIMER_EXTWATCH, 2000, nullptr);   // Fremdstart-Watcher (HDR-Automatik + Spielzeit fuer nicht-Lumora-Starts)
     SetTimer(hwnd, TIMER_NETSTAT, 1000, nullptr);    // Netzwerk-Statistik: Ziel-PID melden + Broker-Heartbeat (1 Hz, billig ohne Spiel)
     SetTimer(hwnd, TIMER_OSDPRELOAD, 3000, nullptr); // OSD-WebView2 ~3s nach Start vorwaermen (Browser-Prozess laeuft dann schon) -> Oeffnen sofort
+    SetTimer(hwnd, TIMER_FIRSTSETUP, 3500, nullptr); // Einzelprodukt-Ersteinrichtung nach dem ersten Bild (tut nichts, wenn nichts ansteht)
+    migrateLegacyTasks();                             // Aufgaben aus Lumora-Zeiten (LumoraOSD-*) entfernen; neue Namen entstehen bei Bedarf
     // schtask-Cache im Hintergrund vorwaermen: die Einstellungs-Seite (osd-sources)
     // liest ihn nur noch - ohne Vorwaermung zeigte der allererste Blick "nicht
     // eingerichtet", bis die Hintergrund-Messung durch ist. Drei PowerShell-Laeufe,
     // seriell, unkritisch - aber NIE auf dem UI-Thread (realer Fall: Eingaben tot).
-    std::thread([]() { fpsTaskPresent(); senseTaskPresent(); schtaskPresent(L"LumoraOSD-Analyze"); }).detach();
+    std::thread([]() { fpsTaskPresent(); senseTaskPresent(); schtaskPresent(L"K-Toolz-Analyze"); }).detach();
     timeBeginPeriod(1);                              // praeziser Hintergrund-Poll (wie Electron/RTSS)
     startHotkeyPollThread();   // Gamepad-/Tastatur-Hotkey-Poll im EIGENEN Thread (125 Hz), entkoppelt vom
                                // UI-Thread: schnelles Toggeln + 2-Tasten-Kombis gehen nicht mehr verloren,
