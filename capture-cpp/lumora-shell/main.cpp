@@ -3227,9 +3227,9 @@ static void netEnsureTask() {
     if (laeuft.exchange(true)) return;
     std::thread([]() {
         if (fpsTaskPresent()) { laeuft = false; return; }
-        std::wstring dlg = L"Fuer die Netzwerk-Statistik richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
+        std::wstring dlg = L"Für die Netzwerk-Statistik richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
             L"(Windows-Leistungsdaten lesen: Netzwerk-Bytes des Spielprozesses).\n\n"
-            L"Gleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte).\n"
+            L"Gleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte).\n"
             L"Es wird KEIN Treiber installiert.";
         if (MessageBoxW(g_hwnd, dlg.c_str(), L"Netzwerk-Statistik einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             // Schalter zuruecknehmen - sonst fragt jeder Spielstart erneut
@@ -3243,7 +3243,7 @@ static void netEnsureTask() {
             L"$a=New-ScheduledTaskAction -Execute '" + q(exeW) + L"' -Argument '--fps-broker'; "
             L"$p=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
             L"$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
-            L"Register-ScheduledTask -TaskName 'K-Toolz-FPS' -Description 'K-Toolz (PlainOSD / Netzwerk-Statistik): FPS- und Netzwerk-Messung ueber Windows-ETW. Startet nur auf Anforderung der App, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
+            L"Register-ScheduledTask -TaskName 'K-Toolz-FPS' -Description 'K-Toolz (PlainOSD / Netzwerk-Statistik): FPS- und Netzwerk-Messung über Windows-ETW. Startet nur auf Anforderung der App, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);
         std::wstring b64w = widen(b64);
         std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
@@ -3276,9 +3276,9 @@ static void ensureOsdSetup() {
         std::wstring parts;
         if (needFps)        parts += L"• FPS-Messung: kleiner Hintergrunddienst von " + appDisplayName() + L" (liest Windows-Leistungsdaten, kein Treiber)\n";
         if (needPawnio)     parts += L"• CPU-Temperatur & -Verbrauch: signierter Open-Source-Treiber PawnIO (wird von der offiziellen Quelle geladen)\n";
-        else if (needSense) parts += L"• CPU-Temperatur & -Verbrauch: Hintergrunddienst fuer den PawnIO-Treiber\n";
+        else if (needSense) parts += L"• CPU-Temperatur & -Verbrauch: Hintergrunddienst für den PawnIO-Treiber\n";
         std::wstring dlg = L"Damit das OSD alle Werte anzeigen kann, richtet " + appDisplayName() + L" einmalig ein:\n\n" + parts +
-            L"\nGleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte). Danach laeuft alles automatisch – ohne weitere Nachfragen.";
+            L"\nGleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte). Danach läuft alles automatisch – ohne weitere Nachfragen.";
         if (MessageBoxW(g_hwnd, dlg.c_str(), L"OSD einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             json s = loadSettings(); s["osdSetupDeclined"] = true; writeFile(settingsPath(), s.dump(2));
             sendToUi("osd-fps-off", nullptr);   // Schalter zurueck auf "aus", nicht staendig neu fragen
@@ -3298,7 +3298,7 @@ static void ensureOsdSetup() {
             std::string out = runCaptureOutput(L"powershell -NoProfile -Command \"" + dl + L"\"", 180000);
             if (out.find("Valid") == std::string::npos) {
                 statusOff();
-                MessageBoxW(g_hwnd, L"Der PawnIO-Treiber konnte nicht geladen oder verifiziert werden.\nBitte Internetverbindung pruefen - die Einrichtung wird beim naechsten Einschalten des OSD erneut angeboten.",
+                MessageBoxW(g_hwnd, L"Der PawnIO-Treiber konnte nicht geladen oder verifiziert werden.\nBitte Internetverbindung prüfen - die Einrichtung wird beim nächsten Einschalten des OSD erneut angeboten.",
                     L"PawnIO-Download fehlgeschlagen", MB_OK | MB_ICONERROR);
                 g_osdSetupRunning = false; return;
             }
@@ -3309,8 +3309,8 @@ static void ensureOsdSetup() {
         // Beschreibung je Aufgabe: die Aufgabenplanung zeigt sie - der Nutzer soll sehen, was das ist
         auto taskPs = [&](const std::wstring& task, const std::wstring& arg, const std::wstring& v) -> std::wstring {
             std::wstring desc = (arg == L"--fps-broker")
-                ? L"K-Toolz (PlainOSD): FPS-Messung ueber Windows-ETW. Startet nur auf Anforderung der App, kein Autostart."
-                : L"K-Toolz (PlainOSD): CPU-Sensoren (Temperatur, Verbrauch) ueber den PawnIO-Treiber. Startet nur mit dem OSD, kein Autostart.";
+                ? L"K-Toolz (PlainOSD): FPS-Messung über Windows-ETW. Startet nur auf Anforderung der App, kein Autostart."
+                : L"K-Toolz (PlainOSD): CPU-Sensoren (Temperatur, Verbrauch) über den PawnIO-Treiber. Startet nur mit dem OSD, kein Autostart.";
             return std::wstring(v.empty() ? kUnregisterLegacy : L"") + L"$a" + v + L"=New-ScheduledTaskAction -Execute '" + exe + L"' -Argument '" + arg + L"'; "
                    L"$p" + v + L"=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
                    L"$s" + v + L"=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
@@ -3520,9 +3520,9 @@ static void ensureAnalyzeSetup() {
         if (analyzeTaskPresent()) {
             g_anReady = 1; g_anSetupRunning = false; analyzePushStatus(); return;
         }
-        std::wstring dlg = L"Fuer die Ruckler-Analyse richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
+        std::wstring dlg = L"Für die Ruckler-Analyse richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
             L"(Windows-Leistungsdaten lesen: Frametimes, Treiber-Latenzen, Prozess-Last).\n\n"
-            L"Gleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte).\n"
+            L"Gleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte).\n"
             L"Es wird KEIN Treiber installiert.";
         if (MessageBoxW(g_hwnd, dlg.c_str(), L"Ruckler-Analyse einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             g_anSetupRunning = false; analyzePushStatus(); return;
@@ -3533,7 +3533,7 @@ static void ensureAnalyzeSetup() {
             L"$a=New-ScheduledTaskAction -Execute '" + q(exeW) + L"' -Argument '--analyze-broker'; "
             L"$p=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
             L"$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
-            L"Register-ScheduledTask -TaskName 'K-Toolz-Analyze' -Description 'K-Toolz (StutterHunter): Mess-Broker der Ruckler-Analyse (Frametimes, Treiber-Latenzen, Prozesslast ueber Windows-ETW). Startet nur fuer eine Messung, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
+            L"Register-ScheduledTask -TaskName 'K-Toolz-Analyze' -Description 'K-Toolz (StutterHunter): Mess-Broker der Ruckler-Analyse (Frametimes, Treiber-Latenzen, Prozesslast über Windows-ETW). Startet nur für eine Messung, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);
         std::wstring b64w = widen(b64);
         std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
@@ -3548,9 +3548,9 @@ static void ensureAnalyzeSetup() {
         analyzePushStatus();
         // KEIN Auto-Messstart: bewusst getrennter Schritt, damit der erste echte Lauf
         // ohne Setup-/UAC-Stoergeraeusche ablaeuft (am besten VOR dem Spielstart einrichten).
-        if (ok) MessageBoxW(g_hwnd, L"Einrichtung abgeschlossen. ✓\n\nDie Ruckler-Analyse ist jetzt bereit - starte eine Messung am besten,\nBEVOR du das Spiel startest bzw. waehrend das Spiel bereits ruhig laeuft.",
+        if (ok) MessageBoxW(g_hwnd, L"Einrichtung abgeschlossen. ✓\n\nDie Ruckler-Analyse ist jetzt bereit - starte eine Messung am besten,\nBEVOR du das Spiel startest bzw. während das Spiel bereits ruhig läuft.",
                             L"Ruckler-Analyse", MB_OK | MB_ICONINFORMATION);
-        else MessageBoxW(g_hwnd, L"Die Einrichtung wurde nicht abgeschlossen (Windows-Sicherheitsabfrage abgelehnt?).\nEinfach erneut starten, wenn du die Analyse nutzen moechtest.", L"Ruckler-Analyse", MB_OK | MB_ICONWARNING);
+        else MessageBoxW(g_hwnd, L"Die Einrichtung wurde nicht abgeschlossen (Windows-Sicherheitsabfrage abgelehnt?).\nEinfach erneut starten, wenn du die Analyse nutzen möchtest.", L"Ruckler-Analyse", MB_OK | MB_ICONWARNING);
     }).detach();
 }
 static void analyzeStop() {
@@ -3628,10 +3628,10 @@ static void ensureVigemSetup() {
         auto statusDone = [](const std::string& m) { sendToUiMulti("input-bridge-setup-status", json::array({ m, true })); };
         auto statusOff  = []()                      { sendToUiMulti("input-bridge-setup-status", json::array({ nullptr, false })); };
         if (MessageBoxW(g_hwnd,
-            (L"Fuer die Eingabe-Bruecke (Joystick/Lenkrad als virtuelles Xbox-Gamepad) richtet " + appDisplayName() + L" einmalig ein:\n\n"
+            (L"Für die Eingabe-Brücke (Joystick/Lenkrad als virtuelles Xbox-Gamepad) richtet " + appDisplayName() + L" einmalig ein:\n\n"
             L"• Virtueller-Gamepad-Treiber ViGEmBus (signierter Open-Source-Treiber, wird von der offiziellen Quelle geladen)\n\n"
-            L"Gleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte). Der Treiber laesst sich jederzeit ueber Apps & Features wieder deinstallieren.").c_str(),
-            L"Eingabe-Bruecke einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
+            L"Gleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte). Der Treiber lässt sich jederzeit über Apps & Features wieder deinstallieren.").c_str(),
+            L"Eingabe-Brücke einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             json s = loadSettings(); s["inputBridgeSetupDeclined"] = true; writeFile(settingsPath(), s.dump(2));
             statusOff();   // Schalter zurueck, nicht staendig neu fragen
             g_vigemSetupRunning = false; return;
@@ -3645,7 +3645,7 @@ static void ensureVigemSetup() {
         std::string out = runCaptureOutput(L"powershell -NoProfile -Command \"" + dl + L"\"", 180000);
         if (out.find("Valid") == std::string::npos) {
             statusOff();
-            MessageBoxW(g_hwnd, L"Der ViGEmBus-Treiber konnte nicht geladen oder verifiziert werden.\nBitte Internetverbindung pruefen - die Einrichtung wird beim naechsten Aktivieren erneut angeboten.",
+            MessageBoxW(g_hwnd, L"Der ViGEmBus-Treiber konnte nicht geladen oder verifiziert werden.\nBitte Internetverbindung prüfen - die Einrichtung wird beim nächsten Aktivieren erneut angeboten.",
                 L"ViGEmBus-Download fehlgeschlagen", MB_OK | MB_ICONERROR);
             g_vigemSetupRunning = false; return;
         }
@@ -5265,8 +5265,8 @@ static json handleChannel(const std::string& channel, const json& args) {
         if (h != INVALID_HANDLE_VALUE) { do { DeleteFileW((mdir + L"\\" + fd.cFileName).c_str()); } while (FindNextFileW(h, &fd)); FindClose(h); }
         return true;
     }
-    if (channel == "browse-game")        return pickPathDialog(L"Spiel auswaehlen", false, L"Spiele", L"*.exe;*.lnk");
-    if (channel == "browse-icon")        return pickPathDialog(L"Icon auswaehlen (.exe oder .ico)", false, L"Icon-Dateien", L"*.ico;*.exe");
+    if (channel == "browse-game")        return pickPathDialog(L"Spiel auswählen", false, L"Spiele", L"*.exe;*.lnk");
+    if (channel == "browse-icon")        return pickPathDialog(L"Icon auswählen (.exe oder .ico)", false, L"Icon-Dateien", L"*.ico;*.exe");
     if (channel == "browse-scan-folder") return pickPathDialog(L"Ordner scannen", true, nullptr, nullptr);
     if (channel == "get-file-icon" && args.size() >= 1 && args[0].is_string()) {
         std::wstring p = widen(args[0].get<std::string>());
@@ -6704,7 +6704,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [hwnd](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
-                if (FAILED(res) || !env) { MessageBoxW(hwnd, L"WebView2-Runtime nicht verfuegbar.\n(Installer bringt den Bootstrapper mit.)", L"K-Toolz", MB_ICONERROR); PostQuitMessage(2); return res; }
+                if (FAILED(res) || !env) { MessageBoxW(hwnd, L"WebView2-Runtime nicht verfügbar.\n(Installer bringt den Bootstrapper mit.)", L"K-Toolz", MB_ICONERROR); PostQuitMessage(2); return res; }
                 env->CreateCoreWebView2Controller(hwnd,
                     Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
                         [hwnd](HRESULT res2, ICoreWebView2Controller* ctrl) -> HRESULT {
