@@ -3,7 +3,9 @@ project(lumora_shell CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # WIN32 = GUI-Subsystem (kein Konsolenfenster)
-add_executable(lumora_shell WIN32 main.cpp app.rc
+# app.manifest: Common-Controls v6 (sonst klassische Win95-Dialoge) + DPI PerMonitorV2; CMake bettet
+# .manifest-Quellen beim MSVC-Link automatisch per mt.exe ein.
+add_executable(lumora_shell WIN32 main.cpp app.rc app.manifest
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/ViGEmClient/src/ViGEmClient.cpp")
 target_compile_definitions(lumora_shell PRIVATE UNICODE _UNICODE)
 # Quelle + narrow-Literale als UTF-8 (nur CXX, nicht die .rc). Ohne das interpretiert
