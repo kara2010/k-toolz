@@ -3195,13 +3195,16 @@ static bool fpsTaskPresent()   { return schtaskPresent(L"K-Toolz-FPS"); }
 // Aufgabenplanung. Werden beim Start im Hintergrund geloescht (schtasks /Delete geht ohne
 // Erhoehung fuer eigene Aufgaben - der Installer tut dasselbe); die neuen Namen entstehen
 // beim naechsten Einschalten von OSD/Messung mit einer UAC-Abfrage - wie nach jedem Update.
+// GEMESSEN (2026-10-25): schtasks /Delete ohne Erhoehung liefert "Zugriff verweigert" - die Aufgaben-
+// datei gibt dem Nutzer nur Leserechte, Loeschen nur Administratoren. Darum loescht jeder erhoehte
+// Registrierungslauf (OSD, Netzwerk-Statistik, Analyse) die alten Namen gleich mit (kUnregisterLegacy);
+// hier wird nur festgehalten, dass noch alte Aufgaben vorhanden sind.
+static const wchar_t* const kUnregisterLegacy =
+    L"Get-ScheduledTask -TaskName 'LumoraOSD-FPS','LumoraOSD-Sensors','LumoraOSD-Analyze' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue; ";
 static void migrateLegacyTasks() {
     std::thread([]() {
-        for (const wchar_t* alt : { L"LumoraOSD-FPS", L"LumoraOSD-Sensors", L"LumoraOSD-Analyze" }) {
-            if (!schtaskPresent(alt)) continue;
-            runCaptureOutput(std::wstring(L"schtasks /Delete /F /TN ") + alt, 8000);
-            bcLogStream("aufgaben: alte Aufgabe entfernt: " + narrow(alt));
-        }
+        for (const wchar_t* alt : { L"LumoraOSD-FPS", L"LumoraOSD-Sensors", L"LumoraOSD-Analyze" })
+            if (schtaskPresent(alt)) bcLogStream("aufgaben: alte Aufgabe " + narrow(alt) + " vorhanden - wird bei der naechsten Einrichtung (erhoeht) ersetzt");
     }).detach();
 }
 static bool senseTaskPresent() { return schtaskPresent(L"K-Toolz-Sensors"); }
@@ -3236,7 +3239,7 @@ static void netEnsureTask() {
         }
         auto q = [](std::wstring s) { size_t p = 0; while ((p = s.find(L'\'', p)) != std::wstring::npos) { s.insert(p, 1, L'\''); p += 2; } return s; };
         wchar_t exeW[MAX_PATH]; GetModuleFileNameW(nullptr, exeW, MAX_PATH);
-        std::wstring inner =
+        std::wstring inner = std::wstring(kUnregisterLegacy) +
             L"$a=New-ScheduledTaskAction -Execute '" + q(exeW) + L"' -Argument '--fps-broker'; "
             L"$p=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
             L"$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
@@ -3308,7 +3311,7 @@ static void ensureOsdSetup() {
             std::wstring desc = (arg == L"--fps-broker")
                 ? L"K-Toolz (PlainOSD): FPS-Messung ueber Windows-ETW. Startet nur auf Anforderung der App, kein Autostart."
                 : L"K-Toolz (PlainOSD): CPU-Sensoren (Temperatur, Verbrauch) ueber den PawnIO-Treiber. Startet nur mit dem OSD, kein Autostart.";
-            return L"$a" + v + L"=New-ScheduledTaskAction -Execute '" + exe + L"' -Argument '" + arg + L"'; "
+            return std::wstring(v.empty() ? kUnregisterLegacy : L"") + L"$a" + v + L"=New-ScheduledTaskAction -Execute '" + exe + L"' -Argument '" + arg + L"'; "
                    L"$p" + v + L"=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
                    L"$s" + v + L"=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
                    L"Register-ScheduledTask -TaskName '" + task + L"' -Description '" + desc + L"' -Action $a" + v + L" -Principal $p" + v + L" -Settings $s" + v + L" -Force";
@@ -3526,7 +3529,7 @@ static void ensureAnalyzeSetup() {
         }
         auto q = [](std::wstring s) { size_t p = 0; while ((p = s.find(L'\'', p)) != std::wstring::npos) { s.insert(p, 1, L'\''); p += 2; } return s; };
         wchar_t exeW[MAX_PATH]; GetModuleFileNameW(nullptr, exeW, MAX_PATH);
-        std::wstring inner =
+        std::wstring inner = std::wstring(kUnregisterLegacy) +
             L"$a=New-ScheduledTaskAction -Execute '" + q(exeW) + L"' -Argument '--analyze-broker'; "
             L"$p=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
             L"$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "

@@ -344,8 +344,9 @@ Section "K-Toolz"
   nsExec::Exec 'taskkill /F /IM lumora-media-relay.exe'
   Sleep 400
 
-  ; Alte geplante Aufgaben (OSD-Broker) IMMER entfernen: sie zeigen sonst nach dem
-  ; exe-Wechsel auf den alten Pfad; die App registriert sie beim naechsten OSD-Einschalten neu.
+  ; Geplante Aufgaben (Broker) entfernen - GEMESSEN: ohne Erhoehung "Zugriff verweigert", die Zeilen
+  ; wirken also nur, wenn jemand den Installer als Administrator startet. Der verlaessliche Weg ist
+  ; die App: jede erhoehte Registrierung loescht die alten Namen mit (kUnregisterLegacy in main.cpp).
   nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-FPS'
   nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Sensors'
   nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Analyze'
@@ -542,12 +543,9 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\Classes\lumora"
   DeleteRegKey HKCU "Software\K-Toolz"
   ; von der App angelegte geplante Aufgaben (Broker) entfernen
-  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-FPS'
-  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Sensors'
-  nsExec::Exec 'schtasks /Delete /F /TN K-Toolz-Analyze'
-  nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-FPS'
-  nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-Sensors'
-  nsExec::Exec 'schtasks /Delete /F /TN LumoraOSD-Analyze'
+  ; Erhoeht (eine UAC-Abfrage): die von der App angelegten Aufgaben lassen sich nur so entfernen.
+  ; Lehnt der Nutzer ab, bleiben sie liegen - sie starten nichts von selbst (kein Ausloeser).
+  nsExec::Exec 'powershell -NoProfile -WindowStyle Hidden -Command "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList @(\"-NoProfile\",\"-Command\",\"Get-ScheduledTask -TaskName K-Toolz-FPS,K-Toolz-Sensors,K-Toolz-Analyze,LumoraOSD-FPS,LumoraOSD-Sensors,LumoraOSD-Analyze -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:0\")"'
   RMDir /r "$INSTDIR"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\lumora"
