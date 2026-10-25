@@ -2679,3 +2679,17 @@ body.nav-mode .grid-card.nav-focus .grid-cover::after {
 .module-tile .switch { margin-left: auto; flex: none; }
 .layout.module-off { grid-template-columns: 1fr; }
 .layout.module-off .sidebar { display: none; }
+
+/* ===== Umstiegsseite Lumora -> K-Toolz ===== */
+.welcome-dialog { max-width: 560px; }
+.welcome-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+.welcome-head img { width: 52px; height: 52px; border-radius: 13px; flex: none; margin-top: 2px; }
+.welcome-head h2 { margin: 0 0 6px; }
+.welcome-head .about-text { margin: 0; }
+.welcome-map { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 14px; }
+.welcome-row { display: grid; grid-template-columns: 92px 18px 32px 1fr; align-items: center; gap: 10px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: 7px 12px; }
+.welcome-old { color: var(--text-dim, #8b96a5); font-size: 12.5px; text-decoration: line-through; }
+.welcome-arrow { color: var(--text-dim, #8b96a5); }
+.welcome-row img { width: 32px; height: 32px; border-radius: 8px; }
+.welcome-row b { display: block; font-size: 13px; color: #fff; }
+.welcome-row small { display: block; font-size: 11.5px; color: var(--text-dim, #8b96a5); }

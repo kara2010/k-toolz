@@ -44,6 +44,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}.0"
 
 Var Migrate          ; "1" = alter Electron-Namensraum (Ordner lumora, Uninstall-Key lumora)
 Var IsUpdate         ; "1" = Installation war schon da (Update-Lauf)
+Var WasLumora        ; "1" = Bestandsinstallation aus Lumora-Zeiten (Ordner lumora-native/lumora)
 Var Mode             ; Produktschluessel aus dem Dateinamen: osd/stream/stutter/wheel - oder "all"
 Var ProdName         ; Anzeigename fuer Willkommen/Finish: Produktname oder "K-Toolz"
 Var RunArgs          ; Startargumente fuer "jetzt starten" (--mode=<modul> im Produktmodus)
@@ -196,6 +197,7 @@ Function .onInit
   ; --- 1) UPDATE-Erkennung: Installation schon da? (lumora-shell.exe = Marker) ---
   StrCpy $IsUpdate "0"
   StrCpy $Migrate "0"
+  StrCpy $WasLumora "0"
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\k-toolz\lumora-shell.exe"
     StrCpy $IsUpdate "1"
     StrCpy $INSTDIR "$LOCALAPPDATA\Programs\k-toolz"
@@ -203,12 +205,14 @@ Function .onInit
   ${EndIf}
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\lumora-native\lumora-shell.exe"
     StrCpy $IsUpdate "1"
+    StrCpy $WasLumora "1"
     StrCpy $INSTDIR "$LOCALAPPDATA\Programs\lumora-native"
     Goto lbl_done
   ${EndIf}
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\lumora\lumora-shell.exe"
     StrCpy $IsUpdate "1"
     StrCpy $Migrate "1"
+    StrCpy $WasLumora "1"
     StrCpy $INSTDIR "$LOCALAPPDATA\Programs\lumora"
     Goto lbl_done
   ${EndIf}
@@ -465,10 +469,26 @@ wv2ok:
     ${EndIf}
   ${EndIf}
 
+  ; --- Umsteiger von Lumora: alte Verknuepfungen weg, EINE Uebergangs-Verknuepfung im Startmenue
+  ;     ("Lumora (jetzt K-Toolz)", nur dieses Release - der naechste Installer loescht sie wieder),
+  ;     Desktop "Lumora" wird zu "K-Toolz". Apps & Features sagt "(frueher Lumora)". ---
+  ${If} $WasLumora == "1"
+    Delete "$SMPROGRAMS\Lumora.lnk"
+    CreateShortCut "$SMPROGRAMS\Lumora (jetzt K-Toolz).lnk" "$INSTDIR\lumora-shell.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
+    ${If} ${FileExists} "$DESKTOP\Lumora.lnk"
+      Delete "$DESKTOP\Lumora.lnk"
+      CreateShortCut "$DESKTOP\K-Toolz.lnk" "$INSTDIR\lumora-shell.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
+    ${EndIf}
+  ${EndIf}
+
   ; Apps & Features: EIN Eintrag "K-Toolz". Alte Schluessel der Lumora-Zeit entfernen.
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\lumora"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\lumora-native"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayName" "K-Toolz"
+  ${If} $WasLumora == "1"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayName" "K-Toolz (früher Lumora)"
+  ${Else}
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayName" "K-Toolz"
+  ${EndIf}
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "Publisher" "Karsten Radermacher"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayIcon" "$INSTDIR\lumora-shell.exe"
@@ -508,6 +528,7 @@ Section "Uninstall"
   Delete "$DESKTOP\WheelToPad.lnk"
   Delete "$SMPROGRAMS\Lumora.lnk"
   Delete "$DESKTOP\Lumora.lnk"
+  Delete "$SMPROGRAMS\Lumora (jetzt K-Toolz).lnk"
   Delete "$SMPROGRAMS\Lumora Native (Beta).lnk"
   Delete "$DESKTOP\Lumora Native (Beta).lnk"
   ; Autostart (neuer und alter Name), lumora://-Protokoll, Uebergabe-Schluessel

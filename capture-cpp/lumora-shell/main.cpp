@@ -274,11 +274,13 @@ static std::wstring uiLang() {
 // Startmodus (--mode=<modul>, Startmenue-Verknuepfung je Werkzeug): die UI oeffnet beim
 // Laden direkt den passenden Reiter. Nur gueltige Modul-Schluessel, sonst leer.
 static std::string g_startMode;
+static bool g_forceWelcome = false;   // --welcome: Umstiegsseite erzwingen (Test)
 static json appIdentityJson() {
     json s = loadSettings(); const ModuleDef* d = soleModule(s);
     return { {"name", narrow(appDisplayName(s))}, {"suite", narrow(kSuiteName)}, {"modules", activeModules(s)},
              {"sole", d ? d->key : ""}, {"icon", d ? d->iconPng : "k-toolz"}, {"version", shellVersion()},
-             {"startMode", g_startMode} };
+             {"startMode", g_startMode},
+             {"welcome", s.value("ktoolzWelcomePending", false) && !s.value("ktoolzWelcomeShown", false)} };
 }
 // Installer -> Shell: Modulwahl aus HKCU\Software\K-Toolz uebernehmen. "InstallModules"
 // (Erstinstallation; greift nur, solange activeModules noch fehlt) und "AddModules"
@@ -297,15 +299,23 @@ static void adoptInstallModules() {
         return out;
     };
     std::string inst = readDel(L"InstallModules"), add = readDel(L"AddModules");
-    if (inst.empty() && add.empty()) return;
     json s = loadSettings(); bool changed = false;
+    // Umstiegsseite "Lumora heisst jetzt K-Toolz": genau einmal, und nur fuer Bestandsnutzer.
+    // Bestand = es gibt schon Einstellungen, aber keinen Installer-Erstlauf (InstallModules).
+    // Frische Installation oder leere Einstellungen -> als gezeigt markieren, nie zeigen.
+    if (g_forceWelcome) { s.erase("ktoolzWelcomeShown"); s["ktoolzWelcomePending"] = true; changed = true; }
+    else if (!s.contains("ktoolzWelcomeShown")) {
+        if (!inst.empty() || s.empty()) s["ktoolzWelcomeShown"] = true;
+        else s["ktoolzWelcomePending"] = true;
+        changed = true;
+    }
     if (!inst.empty() && !s.contains("activeModules")) { s["activeModules"] = split(inst); changed = true; }
     if (!add.empty()) {
         std::vector<std::string> cur = activeModules(s);
         for (auto& k : split(add)) { bool have = false; for (auto& c : cur) if (c == k) have = true; if (!have) cur.push_back(k); }
         s["activeModules"] = cur; changed = true;
     }
-    if (changed) { writeFile(settingsPath(), s.dump(2)); bcLogStream("module: Installer-Vorgabe uebernommen install=" + inst + " add=" + add); }
+    if (changed) { writeFile(settingsPath(), s.dump(2)); if (!inst.empty() || !add.empty()) bcLogStream("module: Installer-Vorgabe uebernommen install=" + inst + " add=" + add); }
 }
 // Startmenue-Eintraege je aktivem Werkzeug (Name + eigenes Icon + --mode=), dazu "K-Toolz"
 // ab zwei Werkzeugen. Laeuft nur aus einer INSTALLATION (Pfad unter ...\Programs\), nie
@@ -6552,7 +6562,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         }
     }
 
-    for (int i = 1; i < argc; ++i) if (wcsncmp(argv[i], L"--mode=", 7) == 0) { std::string m = narrow(argv[i] + 7); if (moduleDef(m)) g_startMode = m; }
+    for (int i = 1; i < argc; ++i) {
+        if (wcsncmp(argv[i], L"--mode=", 7) == 0) { std::string m = narrow(argv[i] + 7); if (moduleDef(m)) g_startMode = m; }
+        if (wcscmp(argv[i], L"--welcome") == 0) g_forceWelcome = true;
+    }
     adoptInstallModules();   // Modulwahl des Installers (einmalig) - vor Titel/Icon/Reitern
     WNDCLASSW wc{}; wc.lpfnWndProc = wndProc; wc.hInstance = hInst; wc.lpszClassName = L"LumoraShell";
     wc.hIcon = appIcon(loadSettings(), GetSystemMetrics(SM_CXICON)); wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);   // Anzeigename-Regel

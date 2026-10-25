@@ -1044,6 +1044,27 @@
     </div>
   </div>
 
+  <!-- Umstiegsseite: einmalig nach dem Update von Lumora auf K-Toolz (Shell: ktoolzWelcomePending).
+       Alte Reiter -> neue Werkzeuge mit Icon, damit niemand ein unbekanntes Programm auf dem PC hat. -->
+  <div class="overlay" id="welcomeOverlay" style="display:none">
+    <div class="dialog welcome-dialog">
+      <div class="welcome-head"><img src="icons/k-toolz.png" alt=""><div><h2>Lumora heißt jetzt K-Toolz</h2>
+        <p class="about-text">Alles bleibt, wie es war: deine Spiele, Einstellungen, Hotkeys und Profile. Neu ist der Name – und dass jedes Werkzeug einzeln ein- und ausschaltbar ist.</p></div></div>
+      <div class="welcome-map">
+        <div class="welcome-row"><span class="welcome-old">Bibliothek</span><span class="welcome-arrow">→</span><img src="icons/k-toolz.png" alt=""><div><b>Launcher</b><small>Alle deine Spiele in einer Bibliothek</small></div></div>
+        <div class="welcome-row"><span class="welcome-old">Overlay</span><span class="welcome-arrow">→</span><img src="icons/plainosd.png" alt=""><div><b>PlainOSD</b><small>Das Gaming-OSD</small></div></div>
+        <div class="welcome-row"><span class="welcome-old">Stream</span><span class="welcome-arrow">→</span><img src="icons/streamtofriend.png" alt=""><div><b>StreamToFriend</b><small>Streamen an Freunde</small></div></div>
+        <div class="welcome-row"><span class="welcome-old">Analyse</span><span class="welcome-arrow">→</span><img src="icons/stutterhunter.png" alt=""><div><b>StutterHunter</b><small>Die Ruckler-Analyse</small></div></div>
+        <div class="welcome-row"><span class="welcome-old">Eingabe</span><span class="welcome-arrow">→</span><img src="icons/wheeltopad.png" alt=""><div><b>WheelToPad</b><small>Die Eingabe-Brücke</small></div></div>
+      </div>
+      <p class="about-text">Unter <strong>Allgemein → Werkzeuge</strong> schaltest du ab, was du nicht brauchst. Ein Werkzeug allein heißt dann wie das Werkzeug, mehrere heißen K-Toolz. Die Website ist umgezogen: <span class="about-link" onclick="openExternal('https://k-toolz.de')">k-toolz.de</span></p>
+      <div class="dialog-actions">
+        <button class="btn-browse" onclick="welcomeDone(true)">Werkzeuge ansehen</button>
+        <button class="btn-primary" onclick="welcomeDone(false)">Verstanden</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Gruppenbeitritt: Quelle + Qualitaet VOR dem automatischen Stream-Start
        waehlen. Ohne diesen Dialog ging beim Beitritt (Grid-Button, LAN-Hinweis,
        Code) ungefragt die Bildschirm-Freigabe live - das darf nicht passieren. -->
@@ -1655,6 +1676,19 @@ const I18N_EN = {
   'Mit dem Beitritt geht dein eigener Stream für die Gruppe live. Wähle vorher, was übertragen wird:': 'Joining takes your own stream live for the group. Choose what to share first:',
   'Über K-Toolz': 'About K-Toolz',
   'enthält': 'includes',
+  'Lumora heißt jetzt K-Toolz': 'Lumora is now K-Toolz',
+  'Alles bleibt, wie es war: deine Spiele, Einstellungen, Hotkeys und Profile. Neu ist der Name – und dass jedes Werkzeug einzeln ein- und ausschaltbar ist.': 'Everything stays as it was: your games, settings, hotkeys and profiles. What is new is the name – and that every tool can be switched on and off individually.',
+  'Bibliothek': 'Library',
+  'Alle deine Spiele in einer Bibliothek': 'All your games in one library',
+  'Das Gaming-OSD': 'The gaming OSD',
+  'Streamen an Freunde': 'Streaming to friends',
+  'Die Ruckler-Analyse': 'The stutter analysis',
+  'Die Eingabe-Brücke': 'The input bridge',
+  'schaltest du ab, was du nicht brauchst. Ein Werkzeug allein heißt dann wie das Werkzeug, mehrere heißen K-Toolz. Die Website ist umgezogen:': 'you switch off what you do not need. A single tool is then named after that tool, several are called K-Toolz. The website has moved:',
+  'Unter': 'Under',
+  'Allgemein → Werkzeuge': 'General → Tools',
+  'Werkzeuge ansehen': 'Show tools',
+  'Verstanden': 'Got it',
   'Werkzeuge': 'Tools',
   'Ausgeschaltete Werkzeuge verschwinden aus den Reitern und starten nichts im Hintergrund. Der Fenstername folgt der Auswahl: ein Werkzeug allein heißt wie das Werkzeug, mehrere heißen K-Toolz.': 'Switched-off tools disappear from the tabs and start nothing in the background. The window name follows the selection: a single tool is named after that tool, several are called K-Toolz.',
   'FPS, Temperaturen und Auslastung als Overlay im Spiel.': 'FPS, temperatures and load as an in-game overlay.',
@@ -3751,6 +3785,13 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
 
     function showAbout() { document.getElementById('aboutOverlay').style.display = 'flex' }
     function hideAbout() { document.getElementById('aboutOverlay').style.display = 'none' }
+    // Umstiegsseite (einmalig): Schliessen merkt sich die Shell in den Einstellungen.
+    function showWelcome() { document.getElementById('welcomeOverlay').style.display = 'flex' }
+    async function welcomeDone(zeigen) {
+      document.getElementById('welcomeOverlay').style.display = 'none'
+      try { await ipcRenderer.invoke('set-app-settings', { ktoolzWelcomeShown: true, ktoolzWelcomePending: false }) } catch (e) {}
+      if (zeigen) { showSettings('allgemein'); const g = document.getElementById('modulesGroup'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+    }
     function openExternal(url) { require('electron').shell.openExternal(url) }
 
     // ---- Spielzeit-Rückblick --------------------------------------------
@@ -5452,6 +5493,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         if (!id || !id.name) return
         window.APP_NAME = id.name
         window.APP_MODULES = Array.isArray(id.modules) && id.modules.length ? id.modules : window.APP_MODULES
+        window.APP_WELCOME = !!id.welcome
         document.title = id.name
         const t = document.getElementById('titlebarTitle'); if (t) t.textContent = id.name
         const i = document.getElementById('titlebarIcon'); if (i) i.src = 'icons/' + (id.icon || 'k-toolz') + '.png'
@@ -6561,6 +6603,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
 
     // UI steht → Boot-Screen ausblenden
     document.getElementById('bootScreen').classList.add('hidden')
+    if (window.APP_WELCOME) setTimeout(showWelcome, 400)   // Umstiegsseite nach dem ersten Bild
   </script>
 <script>
 // Sofort anwenden (localStorage-Cache -> kein Flackern) und danach mit der
