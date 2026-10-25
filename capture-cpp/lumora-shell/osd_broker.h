@@ -586,7 +586,8 @@ inline int runFpsBroker(const std::wstring& binDir) {
                 PWSTR ad = nullptr; std::wstring dp;
                 if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &ad)) && ad) { dp = ad; CoTaskMemFree(ad); }
                 dp += L"\\lumora\\net-diagnose.txt";
-                FILE* f = nullptr; _wfopen_s(&f, dp.c_str(), L"a");
+                // Erste Zeile eines Laufs ueberschreibt die Datei: sie wuchs sonst mit jedem Start weiter (real 1,2 MB)
+                FILE* f = nullptr; _wfopen_s(&f, dp.c_str(), diagZeilen == 1 ? L"w" : L"a");
                 if (f) {
                     std::string fam; for (uint32_t p2 : netFam) { if (!fam.empty()) fam += ","; fam += std::to_string(p2); }
                     std::string line = "tick=" + std::to_string(now) + " ziel=" + std::to_string(netPid)
