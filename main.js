@@ -4576,7 +4576,7 @@ const GROUP_HEARTBEAT_MS = 8000     // Intervall fuer den Anwesenheits-Heartbeat
 // Seit dem Domain-Umzug (2026-07-17) ist lumora-streaming.de primaer; die alte
 // Subdomain bleibt dauerhaft als Bruecke fuer Bestandsclients (gleiches
 // Server-Verzeichnis), neue Builds betten die neue Domain ein.
-const GROUP_RELAY_DEFAULT = 'https://lumora-streaming.de/gruppe.php'
+const GROUP_RELAY_DEFAULT = 'https://k-toolz.de/gruppe.php'
 let bcGroup = null                  // null = nicht in einer Gruppe, sonst { code, members: [], relayFails }
 let bcGroupTimer = null
 

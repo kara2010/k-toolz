@@ -56,6 +56,8 @@ website/stream-neu.png
 website/stream-stats.png
 _testlab/mediamtx-src/
 capture-cpp/lumora-shell/stage/
+# manuelles Test-Staging fuer makensis ohne Release-Lauf
+capture-cpp/lumora-shell/stage-test/
 capture-cpp/lumora-shell/build/
 capture-cpp/lumora-shell/*.exe
 capture-cpp/lumora-shell/MicrosoftEdgeWebview2Setup.exe
@@ -88,3 +90,6 @@ SICHTBARKEIT.md
 # persoenliche Pfade/Domain/Hostname/Screenshots lagen darin oeffentlich). Bleibt
 # lokal fuer build-installer.ps1 erhalten, wird nie wieder getrackt.
 _testlab/
+
+# Lokale Vorschau der K-Toolz-Website (Generator: _privat/site-gen.js) - noch nicht live
+website-neu/

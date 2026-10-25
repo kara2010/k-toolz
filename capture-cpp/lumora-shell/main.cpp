@@ -93,6 +93,7 @@ static const wchar_t* SHIM_JS = LR"JS(
     sendSync: (channel) => {
       if (channel === 'load-games-sync') return syncGet('https://data.lumora/games.json');
       if (channel === 'load-prefs-sync') return syncGet('https://data.lumora/prefs.json');
+      if (channel === 'get-app-identity-sync') return syncGet('https://data.lumora/identity.json');   // Module + Anzeigename synchron: Reiter stehen vor dem ersten Bild
       if (channel === 'get-version-sync') return '%SHELL_VERSION%';
       return null;
     },
@@ -219,6 +220,117 @@ static std::string shellVersion() {
     VS_FIXEDFILEINFO* ffi = nullptr; UINT len = 0;
     if (!VerQueryValueW(buf.data(), L"\\", (void**)&ffi, &len) || !ffi) return "0.0.0";
     return std::to_string(HIWORD(ffi->dwProductVersionMS)) + "." + std::to_string(LOWORD(ffi->dwProductVersionMS)) + "." + std::to_string(HIWORD(ffi->dwProductVersionLS));
+}
+// ---- K-Toolz-Identitaet ----------------------------------------------------------
+// Fuenf Module, ein Binary. 'activeModules' (app-settings.json) bestimmt Reiter und
+// Hintergrundarbeit (Schritt 2 des Umbaus) sowie den ANZEIGENAMEN: genau ein aktives
+// Modul -> Produktname + Produkt-Icon (Fenster, Tray, Titel, Ballons); sonst "K-Toolz".
+// Interne Bezeichner (Fensterklassen Lumora*, Aufgaben LumoraOSD-*, app.lumora,
+// lumora://, Datenordner %APPDATA%\lumora) bleiben bewusst: nie sichtbar, und eine
+// Umbenennung hiesse Datenpfad-Migration ohne Nutzen (Design-Doc §5).
+struct ModuleDef { const char* key; const wchar_t* name; const wchar_t* iconRes; const char* iconPng; };
+static const ModuleDef kModules[] = {
+    { "osd",      L"PlainOSD",         L"IDI_MOD_OSD",     "plainosd" },
+    { "stream",   L"StreamToFriend",   L"IDI_MOD_STREAM",  "streamtofriend" },
+    { "stutter",  L"StutterHunter",    L"IDI_MOD_STUTTER", "stutterhunter" },
+    { "wheel",    L"WheelToPad",       L"IDI_MOD_WHEEL",   "wheeltopad" },
+    { "launcher", L"K-Toolz Launcher", L"IDI_ICON1",       "k-toolz" },
+};
+static const wchar_t* const kSuiteName = L"K-Toolz";
+static const ModuleDef* moduleDef(const std::string& key) {
+    for (auto& d : kModules) if (key == d.key) return &d;
+    return nullptr;
+}
+// Aktive Module aus den Settings (Reihenfolge wie kModules). Unbekannte Schluessel
+// fallen weg; fehlt der Eintrag (Bestandsnutzer aus Lumora-Zeiten) oder bleibt nichts
+// uebrig, gelten ALLE Module - ein leeres Werkzeug gibt es nicht.
+static std::vector<std::string> activeModules(const json& s) {
+    std::vector<std::string> out;
+    json a = s.contains("activeModules") ? s["activeModules"] : json();
+    if (a.is_array()) for (auto& d : kModules)
+        for (auto& m : a) if (m.is_string() && m.get<std::string>() == d.key) { out.push_back(d.key); break; }
+    if (out.empty()) for (auto& d : kModules) out.push_back(d.key);
+    return out;
+}
+static bool moduleActive(const json& s, const char* key) { for (auto& k : activeModules(s)) if (k == key) return true; return false; }
+// Das einzige aktive Modul - oder nullptr, wenn die Suite gemeint ist.
+static const ModuleDef* soleModule(const json& s) { auto a = activeModules(s); return a.size() == 1 ? moduleDef(a[0]) : nullptr; }
+static std::wstring appDisplayName(const json& s) { const ModuleDef* d = soleModule(s); return d ? d->name : kSuiteName; }
+static std::wstring appDisplayName() { return appDisplayName(loadSettings()); }
+// Icon zur Anzeigename-Regel. LR_SHARED: Ressourcen-Icons cacht Windows selbst, das
+// Handle wird nie freigegeben (und darf es nicht).
+static HICON appIcon(const json& s, int cx) {
+    const ModuleDef* d = soleModule(s);
+    return (HICON)LoadImageW(GetModuleHandleW(nullptr), d ? d->iconRes : L"IDI_ICON1", IMAGE_ICON, cx, cx, LR_DEFAULTCOLOR | LR_SHARED);
+}
+// Oberflaechensprache fuer Seiten ohne eigene Settings-Anbindung (Analyse-OSD): Setting
+// 'language' (de/en/auto); bei auto die Windows-Anzeigesprache - wie lumoraLangEffective()
+// in index.html, nur ohne localStorage.
+static std::wstring uiLang() {
+    std::string l = loadSettings().value("language", "auto");
+    if (l == "de" || l == "en") return widen(l);
+    return PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_GERMAN ? L"de" : L"en";
+}
+// Startmodus (--mode=<modul>, Startmenue-Verknuepfung je Werkzeug): die UI oeffnet beim
+// Laden direkt den passenden Reiter. Nur gueltige Modul-Schluessel, sonst leer.
+static std::string g_startMode;
+static json appIdentityJson() {
+    json s = loadSettings(); const ModuleDef* d = soleModule(s);
+    return { {"name", narrow(appDisplayName(s))}, {"suite", narrow(kSuiteName)}, {"modules", activeModules(s)},
+             {"sole", d ? d->key : ""}, {"icon", d ? d->iconPng : "k-toolz"}, {"version", shellVersion()},
+             {"startMode", g_startMode} };
+}
+// Installer -> Shell: Modulwahl aus HKCU\Software\K-Toolz uebernehmen. "InstallModules"
+// (Erstinstallation; greift nur, solange activeModules noch fehlt) und "AddModules"
+// (zweiter Installer auf bestehender Installation: Werkzeug hinzufuegen). Beide Werte
+// werden nach der Uebernahme geloescht - einmalige Uebergabe, keine Dauerkopplung.
+static void adoptInstallModules() {
+    auto readDel = [](const wchar_t* name) -> std::string {
+        wchar_t buf[256] = {}; DWORD sz = sizeof(buf);
+        if (RegGetValueW(HKEY_CURRENT_USER, L"Software\\K-Toolz", name, RRF_RT_REG_SZ, nullptr, buf, &sz) != ERROR_SUCCESS) return "";
+        RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\K-Toolz", name);
+        return narrow(buf);
+    };
+    auto split = [](const std::string& s) {
+        std::vector<std::string> out; size_t p = 0;
+        while (p <= s.size()) { size_t q = s.find(',', p); if (q == std::string::npos) q = s.size(); std::string k = s.substr(p, q - p); if (moduleDef(k)) out.push_back(k); p = q + 1; }
+        return out;
+    };
+    std::string inst = readDel(L"InstallModules"), add = readDel(L"AddModules");
+    if (inst.empty() && add.empty()) return;
+    json s = loadSettings(); bool changed = false;
+    if (!inst.empty() && !s.contains("activeModules")) { s["activeModules"] = split(inst); changed = true; }
+    if (!add.empty()) {
+        std::vector<std::string> cur = activeModules(s);
+        for (auto& k : split(add)) { bool have = false; for (auto& c : cur) if (c == k) have = true; if (!have) cur.push_back(k); }
+        s["activeModules"] = cur; changed = true;
+    }
+    if (changed) { writeFile(settingsPath(), s.dump(2)); bcLogStream("module: Installer-Vorgabe uebernommen install=" + inst + " add=" + add); }
+}
+// Startmenue-Eintraege je aktivem Werkzeug (Name + eigenes Icon + --mode=), dazu "K-Toolz"
+// ab zwei Werkzeugen. Laeuft nur aus einer INSTALLATION (Pfad unter ...\Programs\), nie
+// aus dem Entwicklungsbaum. Icons liegen als icons\<name>.ico neben der exe (Staging).
+static void syncStartMenuShortcuts() {
+    wchar_t exe[MAX_PATH] = {}; GetModuleFileNameW(nullptr, exe, MAX_PATH);
+    std::wstring exeS = exe, low = exeS; for (auto& c : low) c = towlower(c);
+    if (low.find(L"\\programs\\") == std::wstring::npos) return;
+    std::wstring dir = exeS.substr(0, exeS.find_last_of(L'\\'));
+    PWSTR pf = nullptr; if (FAILED(SHGetKnownFolderPath(FOLDERID_Programs, 0, nullptr, &pf)) || !pf) return;
+    std::wstring sm = pf; CoTaskMemFree(pf);
+    auto put = [&](const std::wstring& name, const std::wstring& args, const std::wstring& icon, bool want) {
+        std::wstring lnk = sm + L"\\" + name + L".lnk";
+        if (!want) { DeleteFileW(lnk.c_str()); return; }
+        ComPtr<IShellLinkW> sl; if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&sl)))) return;
+        sl->SetPath(exeS.c_str()); sl->SetArguments(args.c_str()); sl->SetWorkingDirectory(dir.c_str());
+        if (GetFileAttributesW(icon.c_str()) != INVALID_FILE_ATTRIBUTES) sl->SetIconLocation(icon.c_str(), 0);
+        ComPtr<IPersistFile> pf2; if (SUCCEEDED(sl.As(&pf2))) pf2->Save(lnk.c_str(), TRUE);
+    };
+    json s = loadSettings(); std::vector<std::string> act = activeModules(s);
+    for (auto& d : kModules) {
+        bool on = false; for (auto& k : act) if (k == d.key) on = true;
+        put(d.name, std::wstring(L"--mode=") + widen(d.key), dir + L"\\icons\\" + widen(d.iconPng) + L".ico", on);
+    }
+    put(kSuiteName, L"", dir + L"\\icons\\k-toolz.ico", act.size() >= 2);
 }
 // Push an das UI (der Shim verteilt {channel,payload} an ipcRenderer.on-Listener).
 // THREADSICHER: immer ueber PostMessage in den UI-Thread (WebView2 verlangt das) -
@@ -370,7 +482,7 @@ static json inputProfileForGame(const std::string& gamePath) {
 // Aufruf NUR wenn das Spiel WIRKLICH laeuft (probeRunning/extWatch) - "Launch heisst
 // nicht laeuft": ein Startaufruf ohne erkannten Prozess aktiviert hier nie etwas.
 static void inputBridgeOnRunning(const std::string& gamePath) {
-    if (!loadSettings().value("inputBridgeAutoActivate", true)) return;
+    { json s = loadSettings(); if (!moduleActive(s, "wheel") || !s.value("inputBridgeAutoActivate", true)) return; }   // Modul WheelToPad aus = nie automatisch
     if (lubridge::g_feeding.load()) return;        // manuell/anderes Spiel aktiv -> nicht anfassen
     if (!lubridge::busInstalled()) return;         // Setup nie automatisch anstossen (kein UAC ohne Klick)
     json prof = inputProfileForGame(gamePath);
@@ -806,10 +918,10 @@ static json runConnectivityTest() {
     if (nat.value("symmetric", false))
         steps.push_back({ {"key","nat"},{"state","warn"},{"label","NAT-Typ"},{"detail","Symmetrisches NAT \xE2\x80\x93 manche Zuschauer erreichen dich evtl. nur \xC3\xBC""ber eine feste Portfreigabe oder einen Relay."} });
     else steps.push_back({ {"key","nat"},{"state","ok"},{"label","NAT-Typ"},{"detail","Cone-NAT \xE2\x80\x93 direkte Verbindung m\xC3\xB6glich."} });
-    bool tcpOk = luupnp::mapPort(BROADCAST_PORT, "TCP", "Lumora Verbindungstest"); if (tcpOk) luupnp::unmapPort(BROADCAST_PORT, "TCP");
-    bool udpOk = luupnp::mapPort(MTX_ICE_UDP, "UDP", "Lumora Verbindungstest"); if (udpOk) luupnp::unmapPort(MTX_ICE_UDP, "UDP");
+    bool tcpOk = luupnp::mapPort(BROADCAST_PORT, "TCP", "StreamToFriend Verbindungstest"); if (tcpOk) luupnp::unmapPort(BROADCAST_PORT, "TCP");
+    bool udpOk = luupnp::mapPort(MTX_ICE_UDP, "UDP", "StreamToFriend Verbindungstest"); if (udpOk) luupnp::unmapPort(MTX_ICE_UDP, "UDP");
     if (tcpOk && udpOk)
-        steps.push_back({ {"key","upnp"},{"state","ok"},{"label","Router-Portfreigabe (UPnP)"},{"detail","Lumora kann die n\xC3\xB6tigen IPv4-Ports beim Streamstart automatisch \xC3\xB6""ffnen."} });
+        steps.push_back({ {"key","upnp"},{"state","ok"},{"label","Router-Portfreigabe (UPnP)"},{"detail","StreamToFriend kann die n\xC3\xB6tigen IPv4-Ports beim Streamstart automatisch \xC3\xB6""ffnen."} });
     else {
         std::string found = luupnp::routerName().empty() ? "" : ("Erkannter Router: " + luupnp::routerName() + ". ");
         std::string alt = v6Ok ? " (Zur Not l\xC3\xA4uft es aber \xC3\xBC""ber den IPv6-Direktweg \xE2\x80\x93 siehe unten.)" : "";
@@ -900,7 +1012,7 @@ static void createDoormanWindow() {
     UINT dpi = GetDpiForSystem(); if (!dpi) dpi = 96;
     int w = MulDiv(360, dpi, 96), hgt = MulDiv(220, dpi, 96);
     g_doorHwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-        L"LumoraDoor", L"Lumora", WS_POPUP, mi.rcWork.right - w - 16, mi.rcWork.top + 16, w, hgt, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+        L"LumoraDoor", L"StreamToFriend", WS_POPUP, mi.rcWork.right - w - 16, mi.rcWork.top + 16, w, hgt, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!g_doorHwnd) return;
     // Runde Ecken vom Fenstermanager - dadurch kann die Karte randlos sitzen (kein
     // sichtbarer Fensterhintergrund mehr) und der blaue Rahmen bildet die Kontur.
@@ -1700,7 +1812,7 @@ static json startBroadcast() {
     std::wstring cfgPath = bcWriteMtxConfig(hosts);
     if (!bcStartMtx(cfgPath)) {
         bcLogStream("start: FEHLGESCHLAGEN (Relay startet nicht - Port belegt? Electron-Lumora aktiv?)");
-        sendToUi("stream-error", "Stream-Start fehlgeschlagen: Relay startet nicht. Laeuft Lumora doppelt (Electron-Version streamt)?");
+        sendToUi("stream-error", "Stream-Start fehlgeschlagen: Relay startet nicht. Laeuft die App doppelt (alte Lumora-Version streamt)?");
         g_bcCopyPending.clear();   // Start fehlgeschlagen - nichts zu kopieren
         g_bcState = { {"active", false} }; bcPushState();
         { std::lock_guard<std::mutex> lk(g_launchMx); killChild(g_mtx); }
@@ -1758,8 +1870,8 @@ static json startBroadcast() {
             }
         }
         if (!v4Occupied && !forceV6) {
-            std::thread tudp([&]() { udpOk = luupnp::mapPort(MTX_ICE_UDP, "UDP", "Lumora Stream Medien"); });
-            tcpOk = luupnp::mapPort(BROADCAST_PORT, "TCP", "Lumora Stream");
+            std::thread tudp([&]() { udpOk = luupnp::mapPort(MTX_ICE_UDP, "UDP", "StreamToFriend Medien"); });
+            tcpOk = luupnp::mapPort(BROADCAST_PORT, "TCP", "StreamToFriend");
             tudp.join();
             if (tcpOk || udpOk) g_bcV4Mapped = true;
         }
@@ -1918,7 +2030,7 @@ static void srcWatchTick() {
 // --- Modul: Gruppe + Vermittlung + Teilen-URL (1:1 aus main.js) ------------------
 #define TIMER_GROUP 105   // 8s-Anwesenheits-Heartbeat
 #define TIMER_WATCH 106   // 20s-Refresh der Einzelstream-Registrierung
-static const char* GROUP_RELAY_DEFAULT = "https://lumora-streaming.de/gruppe.php";
+static const char* GROUP_RELAY_DEFAULT = "https://k-toolz.de/gruppe.php";   // seit K-Toolz: neue Domain (gleiche Docroot, alte bleibt als API-Bruecke)
 json g_group = nullptr;                              // {code, members, relayFails} oder null (extern-deklariert weiter oben)
 static std::string g_accessKey, g_watchCode, g_prevWatchCode;
 static ULONGLONG g_prevWatchAt = 0;
@@ -2479,7 +2591,7 @@ static void bcIpWatchTick() {
             bcPushIceConfig(hosts);    // nativer Relay: Push (Sessions bleiben verbunden)
             json s2 = loadSettings(); json arr = json::array(); for (auto& h : hosts) arr.push_back(h);
             s2["streamLastHosts"] = arr; writeFile(settingsPath(), s2.dump(2));
-            if (!forceV6 && !ip.empty()) { luupnp::mapPort(BROADCAST_PORT, "TCP", "Lumora Stream"); luupnp::mapPort(MTX_ICE_UDP, "UDP", "Lumora Stream Medien"); }
+            if (!forceV6 && !ip.empty()) { luupnp::mapPort(BROADCAST_PORT, "TCP", "StreamToFriend"); luupnp::mapPort(MTX_ICE_UDP, "UDP", "StreamToFriend Medien"); }
             std::string l4 = ip.empty() ? g_bcState.value("linkV4", "") : ("http://" + ip + ":" + std::to_string(BROADCAST_PORT) + "/");
             std::string l6 = ip6.empty() ? g_bcState.value("linkV6", "") : ("http://[" + ip6 + "]:" + std::to_string(BROADCAST_PORT) + "/");
             g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6;
@@ -2506,9 +2618,26 @@ static void createTray() {
     g_nid = {}; g_nid.cbSize = sizeof(g_nid); g_nid.hWnd = g_hwnd; g_nid.uID = 1;
     g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_SHELL_TRAY;
-    g_nid.hIcon = LoadIconW(GetModuleHandleW(nullptr), L"IDI_ICON1");
-    wcscpy_s(g_nid.szTip, L"Lumora");
+    { json s = loadSettings(); g_nid.hIcon = appIcon(s, GetSystemMetrics(SM_CXSMICON)); wcscpy_s(g_nid.szTip, appDisplayName(s).c_str()); }
     g_trayOn = Shell_NotifyIconW(NIM_ADD, &g_nid) != FALSE;
+}
+// Anzeigename + Icon auf Hauptfenster und Tray anwenden - beim Start und nach jedem
+// Wechsel der aktiven Module (set-app-settings mit activeModules).
+static void applyIdentity() {
+    json s = loadSettings();
+    writeFile(dataDir() + L"\\identity.json", appIdentityJson().dump(2));   // fuer get-app-identity-sync im Shim
+    syncStartMenuShortcuts();
+    std::wstring name = appDisplayName(s);
+    if (g_hwnd) {
+        SetWindowTextW(g_hwnd, name.c_str());
+        SendMessageW(g_hwnd, WM_SETICON, ICON_SMALL, (LPARAM)appIcon(s, GetSystemMetrics(SM_CXSMICON)));
+        SendMessageW(g_hwnd, WM_SETICON, ICON_BIG, (LPARAM)appIcon(s, GetSystemMetrics(SM_CXICON)));
+    }
+    if (g_trayOn) {
+        g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+        g_nid.hIcon = appIcon(s, GetSystemMetrics(SM_CXSMICON)); wcscpy_s(g_nid.szTip, name.c_str());
+        Shell_NotifyIconW(NIM_MODIFY, &g_nid);
+    }
 }
 static void destroyTray() {
     if (!g_trayOn) return;
@@ -2572,10 +2701,10 @@ static void notifyUpdateAvailable() {
     g_updateBalloonPending = true;
     NOTIFYICONDATAW n{}; n.cbSize = sizeof(n); n.hWnd = g_hwnd; n.uID = 1; n.uFlags = NIF_INFO;
     if (g_updBalloonRestart) {
-        wcscpy_s(n.szInfoTitle, (L"Lumora " + g_updBalloonVer + L" installiert").c_str());
+        wcscpy_s(n.szInfoTitle, (appDisplayName() + L" " + g_updBalloonVer + L" installiert").c_str());
         wcscpy_s(n.szInfo, L"Ein Neustart aktiviert das Update. Hier klicken für das Neustart-Angebot.");
     } else {
-        wcscpy_s(n.szInfoTitle, (L"Lumora " + g_updBalloonVer + L" verfügbar").c_str());
+        wcscpy_s(n.szInfoTitle, (appDisplayName() + L" " + g_updBalloonVer + L" verfügbar").c_str());
         wcscpy_s(n.szInfo, L"Ein Update steht bereit. Hier klicken, um es anzuzeigen.");
     }
     n.dwInfoFlags = NIIF_INFO;
@@ -2614,12 +2743,14 @@ static bool registerHotkeys() {
 // sonst wuerde die Shell den Electron-Key com.lumora.app loeschen und sich selbst
 // eintragen (beim User real autostart=true!). SCHARF erst mit dem Installer (Phase 4):
 // dann Legacy-Keys ('electron.app.HDR Launcher','electron.app.Lumora','com.lumora.app')
-// loeschen + eigenen Key "Lumora" -> "<exe>" [--minimized] setzen/entfernen.
+// loeschen + eigenen Key "K-Toolz" -> "<exe>" [--minimized] setzen/entfernen.
+// Seit dem K-Toolz-Umbau heisst der Key "K-Toolz" (sichtbar in Task-Manager > Autostart);
+// der alte Key "Lumora" wandert in die Aufraeum-Liste.
 static void applyAutostart() {
     // 1:1 aus main.js cleanupLegacyAutostart+applyAutostart. Umstiegs-scharf: entfernt die
     // Electron-/Rebrand-Autostart-Keys (Doppelstart-Bug) und setzt EINEN eigenen Key.
     const wchar_t* run = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-    for (const wchar_t* k : { L"electron.app.HDR Launcher", L"electron.app.Lumora", L"com.lumora.app" })
+    for (const wchar_t* k : { L"electron.app.HDR Launcher", L"electron.app.Lumora", L"com.lumora.app", L"Lumora" })
         RegDeleteKeyValueW(HKEY_CURRENT_USER, run, k);   // verwaiste/doppelte Eintraege raeumen
     json s = loadSettings();
     HKEY h;
@@ -2627,8 +2758,8 @@ static void applyAutostart() {
         if (s.value("autostart", false)) {
             wchar_t exe[MAX_PATH] = {}; GetModuleFileNameW(nullptr, exe, MAX_PATH);
             std::wstring cmd = std::wstring(L"\"") + exe + L"\"" + (s.value("startMinimized", true) ? L" --minimized" : L"");
-            RegSetValueExW(h, L"Lumora", 0, REG_SZ, (const BYTE*)cmd.c_str(), (DWORD)((cmd.size() + 1) * sizeof(wchar_t)));
-        } else RegDeleteValueW(h, L"Lumora");
+            RegSetValueExW(h, L"K-Toolz", 0, REG_SZ, (const BYTE*)cmd.c_str(), (DWORD)((cmd.size() + 1) * sizeof(wchar_t)));
+        } else RegDeleteValueW(h, L"K-Toolz");
         RegCloseKey(h);
     }
 }
@@ -2638,7 +2769,7 @@ static void registerProtocol() {
     wchar_t exe[MAX_PATH] = {}; GetModuleFileNameW(nullptr, exe, MAX_PATH);
     HKEY k;
     if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Classes\\lumora", 0, nullptr, 0, KEY_WRITE, nullptr, &k, nullptr) == ERROR_SUCCESS) {
-        const wchar_t* desc = L"URL:Lumora Protocol";
+        const wchar_t* desc = L"URL:K-Toolz Protocol";
         RegSetValueExW(k, nullptr, 0, REG_SZ, (const BYTE*)desc, (DWORD)((wcslen(desc) + 1) * sizeof(wchar_t)));
         RegSetValueExW(k, L"URL Protocol", 0, REG_SZ, (const BYTE*)L"", sizeof(wchar_t));
         RegCloseKey(k);
@@ -3063,7 +3194,7 @@ static void netEnsureTask() {
     if (laeuft.exchange(true)) return;
     std::thread([]() {
         if (fpsTaskPresent()) { laeuft = false; return; }
-        std::wstring dlg = L"Fuer die Netzwerk-Statistik richtet Lumora einmalig einen Hintergrunddienst ein\n"
+        std::wstring dlg = L"Fuer die Netzwerk-Statistik richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
             L"(Windows-Leistungsdaten lesen: Netzwerk-Bytes des Spielprozesses).\n\n"
             L"Gleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte).\n"
             L"Es wird KEIN Treiber installiert.";
@@ -3110,10 +3241,10 @@ static void ensureOsdSetup() {
         auto q = [](std::wstring s) { size_t p = 0; while ((p = s.find(L'\'', p)) != std::wstring::npos) { s.insert(p, 1, L'\''); p += 2; } return s; };
         // 0) Erklaer-Dialog - listet nur, was wirklich fehlt.
         std::wstring parts;
-        if (needFps)        parts += L"• FPS-Messung: kleiner Hintergrunddienst (PresentMon, liegt Lumora bei)\n";
+        if (needFps)        parts += L"• FPS-Messung: kleiner Hintergrunddienst (PresentMon, liegt " + appDisplayName() + L" bei)\n";
         if (needPawnio)     parts += L"• CPU-Temperatur & -Verbrauch: signierter Open-Source-Treiber PawnIO (wird von der offiziellen Quelle geladen)\n";
         else if (needSense) parts += L"• CPU-Temperatur & -Verbrauch: Hintergrunddienst fuer den PawnIO-Treiber\n";
-        std::wstring dlg = L"Damit das OSD alle Werte anzeigen kann, richtet Lumora einmalig ein:\n\n" + parts +
+        std::wstring dlg = L"Damit das OSD alle Werte anzeigen kann, richtet " + appDisplayName() + L" einmalig ein:\n\n" + parts +
             L"\nGleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte). Danach laeuft alles automatisch – ohne weitere Nachfragen.";
         if (MessageBoxW(g_hwnd, dlg.c_str(), L"OSD einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             json s = loadSettings(); s["osdSetupDeclined"] = true; writeFile(settingsPath(), s.dump(2));
@@ -3352,7 +3483,7 @@ static void ensureAnalyzeSetup() {
         if (analyzeTaskPresent()) {
             g_anReady = 1; g_anSetupRunning = false; analyzePushStatus(); return;
         }
-        std::wstring dlg = L"Fuer die Ruckler-Analyse richtet Lumora einmalig einen Hintergrunddienst ein\n"
+        std::wstring dlg = L"Fuer die Ruckler-Analyse richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
             L"(Windows-Leistungsdaten lesen: Frametimes, Treiber-Latenzen, Prozess-Last).\n\n"
             L"Gleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte).\n"
             L"Es wird KEIN Treiber installiert.";
@@ -3460,9 +3591,9 @@ static void ensureVigemSetup() {
         auto statusDone = [](const std::string& m) { sendToUiMulti("input-bridge-setup-status", json::array({ m, true })); };
         auto statusOff  = []()                      { sendToUiMulti("input-bridge-setup-status", json::array({ nullptr, false })); };
         if (MessageBoxW(g_hwnd,
-            L"Fuer die Eingabe-Bruecke (Joystick/Lenkrad als virtuelles Xbox-Gamepad) richtet Lumora einmalig ein:\n\n"
+            (L"Fuer die Eingabe-Bruecke (Joystick/Lenkrad als virtuelles Xbox-Gamepad) richtet " + appDisplayName() + L" einmalig ein:\n\n"
             L"• Virtueller-Gamepad-Treiber ViGEmBus (signierter Open-Source-Treiber, wird von der offiziellen Quelle geladen)\n\n"
-            L"Gleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte). Der Treiber laesst sich jederzeit ueber Apps & Features wieder deinstallieren.",
+            L"Gleich fragt Windows EINMAL nach deiner Bestaetigung (Administratorrechte). Der Treiber laesst sich jederzeit ueber Apps & Features wieder deinstallieren.").c_str(),
             L"Eingabe-Bruecke einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             json s = loadSettings(); s["inputBridgeSetupDeclined"] = true; writeFile(settingsPath(), s.dump(2));
             statusOff();   // Schalter zurueck, nicht staendig neu fragen
@@ -4071,7 +4202,7 @@ static void createAnalyzeOsdWindow() {
                                     if (g_anPreview.load()) sendToAnalyzeOsd("an-preview", true);   // Demo-Inhalt nachreichen
                                     anMakeChildrenClickThrough(); return S_OK;
                                 }).Get(), nullptr);
-                            g_anOsdWv->Navigate(L"https://app.lumora/analyze-osd.html");
+                            g_anOsdWv->Navigate((L"https://app.lumora/analyze-osd.html?lang=" + uiLang()).c_str());   // Sprache mitgeben (Seite hat keine Settings-Anbindung)
                             anMakeChildrenClickThrough();
                             return S_OK;
                         }).Get());
@@ -4273,7 +4404,7 @@ static void createOsdEditWindow() {
     captureDesktopBmp(dataDir() + L"\\osd-edit-bg.bmp");
     RECT mon = osdMonitorRect();
     g_osdEditHwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        L"LumoraOsdEdit", L"Lumora OSD", WS_POPUP | WS_VISIBLE,
+        L"LumoraOsdEdit", L"PlainOSD", WS_POPUP | WS_VISIBLE,
         mon.left, mon.top, mon.right - mon.left, mon.bottom - mon.top - 1,
         nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!g_osdEditHwnd) { bcLogStream("osd-edit: CreateWindowExW fehlgeschlagen err=" + std::to_string(GetLastError())); return; }
@@ -4402,7 +4533,7 @@ static void createWerkbankWindow(const std::string& file) {
     if (!reg) {
         WNDCLASSW wc{}; wc.lpfnWndProc = wbWndProc; wc.hInstance = GetModuleHandleW(nullptr);
         wc.lpszClassName = L"LumoraWerkbank"; wc.hbrBackground = CreateSolidBrush(RGB(8, 9, 14));
-        wc.hIcon = LoadIconW(GetModuleHandleW(nullptr), L"IDI_ICON1"); wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+        wc.hIcon = LoadIconW(GetModuleHandleW(nullptr), L"IDI_MOD_STUTTER");   // Werkbank gehoert zu StutterHunter wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
         RegisterClassW(&wc); reg = true;
     }
     // Mittig auf dem Monitor des Hauptfensters, 1280x800 (Minimum 1100x700 via MINMAXINFO)
@@ -4410,7 +4541,7 @@ static void createWerkbankWindow(const std::string& file) {
     { HMONITOR mon = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTOPRIMARY);
       MONITORINFO mi{ sizeof(mi) }; if (GetMonitorInfoW(mon, &mi)) wa = mi.rcWork; }
     int w = (std::min)(1280L, wa.right - wa.left), h = (std::min)(800L, wa.bottom - wa.top);
-    g_wbHwnd = CreateWindowExW(0, L"LumoraWerkbank", L"Lumora Analyse-Werkbank",
+    g_wbHwnd = CreateWindowExW(0, L"LumoraWerkbank", L"StutterHunter Analyse-Werkbank",
         WS_OVERLAPPEDWINDOW,
         wa.left + (wa.right - wa.left - w) / 2, wa.top + (wa.bottom - wa.top - h) / 2, w, h,
         nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
@@ -4525,7 +4656,7 @@ static void showOsd() {
     // Regler-Vorschau: ensureOsdSetup() kann einen Erklaer-Dialog samt Administrator-
     // Abfrage oeffnen - das darf ein blosser Regler-Zug bei ausgeschaltetem OSD nicht
     // ausloesen. brokersEnsure() ist dagegen dialogfrei und liefert echte Werte.
-    if (loadSettings().value("osdEnabled", false)) ensureOsdSetup();
+    { json s0 = loadSettings(); if (s0.value("osdEnabled", false) && moduleActive(s0, "osd")) ensureOsdSetup(); }
     brokersEnsure();
 }
 static void hideOsd() {
@@ -4536,7 +4667,8 @@ static void hideOsd() {
         SetTimer(g_hwnd, TIMER_OSDHIDE, 130, nullptr);   // Fenster kurz NACH dem schnellen Fade verstecken
     }
 }
-static void syncOsdVisibility() { if (loadSettings().value("osdEnabled", false) || g_osdPreview) showOsd(); else hideOsd(); }
+// Modul PlainOSD aus = kein Overlay, egal was osdEnabled sagt (Einstellung bleibt erhalten).
+static void syncOsdVisibility() { json s = loadSettings(); if (!moduleActive(s, "osd")) { hideOsd(); return; } if (s.value("osdEnabled", false) || g_osdPreview) showOsd(); else hideOsd(); }
 // Vorschau beim Ziehen der Overlay-Regler (Groesse/Deckkraft/Ecke): das OSD wird
 // kurz gezeigt, auch wenn es aus ist - beim Loslassen wieder versteckt, ausser es
 // war ohnehin eingeschaltet (dann bleibt es stehen).
@@ -4631,7 +4763,7 @@ static void doStreamHotkey(HWND fg) {
 // Setting updateChannel: "auto" (Standard: Komponenten + Installer-Fallback),
 // "installer" (nur voller Installer), "store"/"off" (kein Selbst-Update, fuer
 // eine MS-Store-Distribution - dort aktualisiert der Store).
-static const char* UPDATE_FEED_DEFAULT = "https://lumora-streaming.de/updates/native-update.json";
+static const char* UPDATE_FEED_DEFAULT = "https://k-toolz.de/updates/native-update.json";
 static std::atomic<bool> g_updBusy{ false };
 static std::string g_updUrl, g_updFile;
 static int cmpVer(const std::string& a, const std::string& b) {
@@ -4809,6 +4941,7 @@ static json handleChannel(const std::string& channel, const json& args) {
         sendToUi("hdr-status", now.enabled);
         return json{ {"capable", now.capable}, {"enabled", now.enabled} };
     }
+    if (channel == "get-app-identity") return appIdentityJson();   // Anzeigename-Regel fuer Titelleiste/Ueber-Dialog
     if (channel == "get-app-settings") return loadSettings();
     if (channel == "set-app-settings") {                      // Merge wie Object.assign in main.js
         if (args.size() >= 1 && args[0].is_object()) {
@@ -4829,6 +4962,12 @@ static json handleChannel(const std::string& channel, const json& args) {
             // Systemseitige Einstellungen sofort anwenden (wie der Electron-Handler)
             if (args[0].contains("autostart") || args[0].contains("startMinimized")) applyAutostart();
             if (args[0].contains("minimizeToTray")) { if (args[0].value("minimizeToTray", false)) createTray(); else destroyTray(); }
+            if (args[0].contains("activeModules")) {   // Name/Icon folgen der Modulwahl; abgeschaltete Module sofort stilllegen
+                applyIdentity(); syncOsdVisibility();
+                if (!moduleActive(s, "stutter")) analyzeStop();
+                if (!moduleActive(s, "wheel")) { g_bridgeAutoGame.clear(); lubridge::stop("modul-aus"); }
+                sendToUi("app-identity", appIdentityJson());
+            }
             // OSD-Einstellung dabei? Overlay-Sichtbarkeit + Konfiguration live nachziehen (wie Electron)
             for (auto& [k, v] : args[0].items()) if (k.rfind("osd", 0) == 0) { syncOsdVisibility(); applyOsdConfig(); break; }
             // Netzwerk-Statistik frisch eingeschaltet: Messdienst ggf. einmalig einrichten
@@ -5261,7 +5400,7 @@ static json handleChannel(const std::string& channel, const json& args) {
     if (channel == "analyze-share" && args.size() >= 1 && args[0].is_object()) {
         std::string body = args[0].dump();
         if (body.size() > 250000) return json{ {"ok", false}, {"error", "zu-gross"} };
-        luart::HttpResp r = luart::httpPost("https://lumora-streaming.de/bericht.php", body, 20000);
+        luart::HttpResp r = luart::httpPost("https://k-toolz.de/bericht.php", body, 20000);
         json a = json::parse(r.body, nullptr, false);
         if (r.status == 0) return json{ {"ok", false}, {"error", "kein-netz"} };
         if (!a.is_object()) return json{ {"ok", false}, {"error", "antwort-unlesbar"} };
@@ -5282,7 +5421,7 @@ static json handleChannel(const std::string& channel, const json& args) {
         if (!j.is_object() || !j.contains("share")) return false;
         std::string id = j["share"].value("id", ""), tok = j["share"].value("token", "");
         if (!id.empty() && !tok.empty())
-            luart::httpGet("https://lumora-streaming.de/bericht.php?a=del&id=" + id + "&token=" + tok, L"", 15000);
+            luart::httpGet("https://k-toolz.de/bericht.php?a=del&id=" + id + "&token=" + tok, L"", 15000);
         j.erase("share");                      // lokal in jedem Fall entfernen: der Nutzer
         writeFile(pfad, j.dump());             // hat zurueckgezogen, das darf nicht am Netz haengen
         return true;
@@ -5663,7 +5802,7 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         if (w == TIMER_ADAPT) { bcAdaptTick(); return 0; }
         if (w == TIMER_IPWATCH) { bcIpWatchTick(); return 0; }
         if (w == TIMER_COLDLINK) { KillTimer(h, TIMER_COLDLINK); if (!g_coldDeepLink.empty()) { handleDeepLink(g_coldDeepLink); g_coldDeepLink.clear(); } return 0; }
-        if (w == TIMER_OSDPRELOAD) { KillTimer(h, TIMER_OSDPRELOAD); createOsdWindow(); sensorsInit(); return 0; }   // WebView2 + PDH-Sensoren vorwaermen (Fenster bleibt versteckt) -> erster OSD-Show ist sofort
+        if (w == TIMER_OSDPRELOAD) { KillTimer(h, TIMER_OSDPRELOAD); if (moduleActive(loadSettings(), "osd")) { createOsdWindow(); sensorsInit(); } return 0; }   // WebView2 + PDH-Sensoren vorwaermen (Fenster bleibt versteckt) -> erster OSD-Show ist sofort
         if (w == TIMER_OSDHIDE) { KillTimer(h, TIMER_OSDHIDE); if (g_osdHwnd) ShowWindow(g_osdHwnd, SW_HIDE); return 0; }   // nach dem DComp-Ausblenden verstecken
         if (w == TIMER_SRCWATCH) { srcWatchTick(); return 0; }
         if (w == TIMER_ANALYZE) { analyzeTick(); return 0; }   // Ruckler-Blackbox: Heartbeat/Tail/Status
@@ -5702,7 +5841,7 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
             case HKC_OSDEDIT: setOsdEditMode(!g_osdEdit); break;
             case HKC_AB:      lurtss::toggleAbOsd(); break;
             case HKC_STREAM:  doStreamHotkey((HWND)l); break;
-            case HKC_ANALYZE: analyzeToggle(); break;
+            case HKC_ANALYZE: if (moduleActive(loadSettings(), "stutter")) analyzeToggle(); break;   // Modul aus = Hotkey wirkungslos
         }
         return 0;
     case WM_SHELL_TRAY:
@@ -5746,7 +5885,11 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         auto* cds = (COPYDATASTRUCT*)l;
         std::string arg = cds && cds->lpData ? std::string((const char*)cds->lpData, cds->cbData) : "";
         if (arg.find("lumora://") != std::string::npos) handleDeepLink(arg.substr(arg.find("lumora://")));
-        else if (arg.find("--minimized") == std::string::npos) showMainWindow();   // wie Electron: --minimized-Zweitstart holt NICHT nach vorne
+        else {
+            size_t mp = arg.find("--mode=");   // Startmenue-Eintrag eines Werkzeugs bei laufender App
+            if (mp != std::string::npos) { std::string m = arg.substr(mp + 7); m = m.substr(0, m.find(' ')); if (moduleDef(m)) sendToUi("start-mode", m); }
+            if (arg.find("--minimized") == std::string::npos) showMainWindow();   // wie Electron: --minimized-Zweitstart holt NICHT nach vorne
+        }
         return TRUE;
     }
     case WM_QUERYENDSESSION:
@@ -5919,7 +6062,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         s += "externalIp: " + (ip.empty() ? "FEHLT" : ip) + "\n";
         std::string v6 = luupnp::publicIPv6();
         s += "publicIPv6: " + (v6.empty() ? "FEHLT" : v6) + "\n";
-        bool m = luupnp::mapPort(48787, "TCP", "Lumora UPnP-Test");
+        bool m = luupnp::mapPort(48787, "TCP", "StreamToFriend UPnP-Test");
         s += "mapPort(48787): " + std::to_string(m) + "\n";
         if (m) { luupnp::unmapPort(48787, "TCP"); s += "unmap: ok\n"; }
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
@@ -6370,7 +6513,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         }
     }
     if (g_appDir.empty() || !hasIndex(g_appDir)) {
-        MessageBoxW(nullptr, L"index.html nicht gefunden.\nMit --appdir <Ordner> starten.", L"Lumora Shell", MB_ICONERROR); return 1;
+        MessageBoxW(nullptr, L"index.html nicht gefunden.\nMit --appdir <Ordner> starten.", L"K-Toolz", MB_ICONERROR); return 1;
     }
     // Datenordner JETZT anlegen, nicht erst beim ersten Schrieb: die WebView2-
     // Ordnerzuordnung (data.lumora -> dataDir) und das erste Lesen von games.json/
@@ -6409,8 +6552,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         }
     }
 
+    for (int i = 1; i < argc; ++i) if (wcsncmp(argv[i], L"--mode=", 7) == 0) { std::string m = narrow(argv[i] + 7); if (moduleDef(m)) g_startMode = m; }
+    adoptInstallModules();   // Modulwahl des Installers (einmalig) - vor Titel/Icon/Reitern
     WNDCLASSW wc{}; wc.lpfnWndProc = wndProc; wc.hInstance = hInst; wc.lpszClassName = L"LumoraShell";
-    wc.hIcon = LoadIconW(hInst, L"IDI_ICON1"); wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.hIcon = appIcon(loadSettings(), GetSystemMetrics(SM_CXICON)); wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);   // Anzeigename-Regel
     wc.hbrBackground = CreateSolidBrush(RGB(15, 15, 15));   // #0f0f0f wie Electron (auch Farbe der Resize-Randstreifen)
     RegisterClassW(&wc);
     // Fensterzustand wie Electron aus window-state.json (Position nur, wenn noch auf einem Monitor sichtbar)
@@ -6433,9 +6578,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         tr.right = tr.left + wwidth; tr.bottom = tr.top + wheight;
         if (MonitorFromRect(&tr, MONITOR_DEFAULTTONULL)) { wx = tr.left; wy = tr.top; }
     }
-    HWND hwnd = CreateWindowExW(0, L"LumoraShell", L"Lumora", WS_OVERLAPPEDWINDOW,
+    HWND hwnd = CreateWindowExW(0, L"LumoraShell", appDisplayName().c_str(), WS_OVERLAPPEDWINDOW,
         wx, wy, wwidth, wheight, nullptr, nullptr, hInst, nullptr);
     g_hwnd = hwnd;
+    applyIdentity();   // Titel + kleines/grosses Icon nach Anzeigename-Regel
     // Runde Fensterecken (Windows 11): unser eigener WM_NCCALCSIZE-Zuschnitt (Custom-
     // Titelleiste statt Systemrahmen) unterdrueckt DWMs automatische Rundung, die
     // Electron/Chromium-Fenster ohne Weiteres bekommen - seit dem Umstieg wirkten unsere
@@ -6509,7 +6655,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [hwnd](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
-                if (FAILED(res) || !env) { MessageBoxW(hwnd, L"WebView2-Runtime nicht verfuegbar.\n(Installer bringt den Bootstrapper mit.)", L"Lumora Shell", MB_ICONERROR); PostQuitMessage(2); return res; }
+                if (FAILED(res) || !env) { MessageBoxW(hwnd, L"WebView2-Runtime nicht verfuegbar.\n(Installer bringt den Bootstrapper mit.)", L"K-Toolz", MB_ICONERROR); PostQuitMessage(2); return res; }
                 env->CreateCoreWebView2Controller(hwnd,
                     Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
                         [hwnd](HRESULT res2, ICoreWebView2Controller* ctrl) -> HRESULT {
@@ -6578,7 +6724,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
                         }).Get());
                 return S_OK;
             }).Get());
-    if (FAILED(hr)) { MessageBoxW(hwnd, L"WebView2-Init fehlgeschlagen.", L"Lumora Shell", MB_ICONERROR); return 2; }
+    if (FAILED(hr)) { MessageBoxW(hwnd, L"WebView2-Init fehlgeschlagen.", L"K-Toolz", MB_ICONERROR); return 2; }
 
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) { TranslateMessage(&msg); DispatchMessageW(&msg); }

@@ -125,6 +125,46 @@
   let ipcRenderer = null;
   try { ipcRenderer = require('electron').ipcRenderer; } catch (e) {}
 
+  // ---- i18n: gleiche Mechanik wie index.html/Werkbank (deutscher Satz = Schluessel). ----
+  // Sprachquelle: ?lang= (setzt die Shell aus dem Setting 'language' bzw. die Website-
+  // Vorschau), sonst localStorage lumoraLang (gleicher WebView2-Datenordner wie
+  // index.html), sonst Browsersprache. Geprueft von _testlab/i18n-check.js (Bau-Schritt 0).
+  const I18N_EN = {
+    'Ruckler-Blackbox': 'Stutter Blackbox',
+    'FPS Ø': 'FPS avg',
+    'Frametime': 'Frametime',
+    'Ruckler': 'Stutters',
+    'Ruckler #': 'Stutter #',
+    'Median': 'Median',
+    'Messung laeuft – Alt+A beendet sie': 'Measuring – Alt+A stops it',
+    ' – Alt+A beendet die Messung': ' – Alt+A stops the measurement',
+    'Entlastet: Prozess-Detailmessung aus (Selbstlast)': 'Relieved: per-process details off (self-load)',
+    'Eingeschraenkt: Kernel-Messung nicht verfuegbar': 'Limited: kernel tracing unavailable',
+    'VORSCHAU – so sieht die Messung aus': 'PREVIEW – this is what a measurement looks like',
+    'DEMO – beispielspiel.exe': 'DEMO – examplegame.exe',
+    'GPU-Limit': 'GPU-bound',
+    'CPU-Limit': 'CPU-bound',
+    'Kern-Limit': 'Core-bound',
+    'FPS-Limit': 'FPS cap',
+    'GPU drosselt': 'GPU throttling',
+    'VRAM voll': 'VRAM full',
+    'Treiber': 'Driver',
+    'Programm': 'Program',
+    'GPU': 'GPU',
+    'Grafikspeicher': 'Video memory',
+    'Datentraeger': 'Disk',
+    'Programmstart': 'Program start',
+    'Spiel selbst': 'Game itself',
+    'DPC/ISR max 812us, Summe 1943us im Fenster (Basis max 40us)': 'DPC/ISR max 812us, total 1943us in window (baseline max 40us)',
+  };
+  let LANG = 'de';
+  try {
+    const q = new URLSearchParams(location.search).get('lang');
+    LANG = (q === 'en' || q === 'de') ? q : (localStorage.getItem('lumoraLang') || ((navigator.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en'));
+  } catch (e) {}
+  const tr = (t) => (LANG === 'en' && Object.prototype.hasOwnProperty.call(I18N_EN, t)) ? I18N_EN[t] : t;
+  document.querySelectorAll('.title, .stat .k, #hint').forEach((el) => { el.textContent = tr(el.textContent); });
+
   // ---- Panelgroesse an die Shell melden (Fenster = nur Panelflaeche, click-through) --
   const panel = $('panel');
   let _rb = 0;
@@ -170,7 +210,7 @@
     let mx = 0; for (const v of hist) if (v > mx) mx = v;
     const scale = Math.max(40, Math.ceil(mx * 1.3 / 10) * 10);
     $('axis').textContent = scale + ' ms';
-    $('axis2').textContent = median > 0 ? ('Median ' + median.toFixed(1) + ' ms') : '';
+    $('axis2').textContent = median > 0 ? (tr('Median') + ' ' + median.toFixed(1) + ' ms') : '';
     const Y = v => h - Math.min(1, v / scale) * (h - 10) - 4;
     // Raster: 60/30-fps-Linien gepunktet
     ctx.save();
@@ -269,8 +309,8 @@
     return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
   }
   // Flaschenhals-Badge: Klartext + Farbe je erkanntem Limit
-  const LIMIT_TXT = { gpu: 'GPU-Limit', cpu: 'CPU-Limit', 'cpu-core': 'Kern-Limit',
-                      framecap: 'FPS-Limit', throttle: 'GPU drosselt', vram: 'VRAM voll' };
+  const LIMIT_TXT = { gpu: tr('GPU-Limit'), cpu: tr('CPU-Limit'), 'cpu-core': tr('Kern-Limit'),
+                      framecap: tr('FPS-Limit'), throttle: tr('GPU drosselt'), vram: tr('VRAM voll') };
   function setLimit(k) {
     const el = document.getElementById('limit');
     if (!el) return;
@@ -302,20 +342,20 @@
       setLimit(d.limit);
       const perm = d.selfPermille | 0;
       $('hdot').className = 'dot' + (perm > 10 || d.err ? ' warn' : '');
-      let hint = 'Messung laeuft – Alt+A beendet sie';
-      if (d.err === 200) hint = 'Entlastet: Prozess-Detailmessung aus (Selbstlast)';
-      else if (d.err) hint = 'Eingeschraenkt: Kernel-Messung nicht verfuegbar';
-      else if (d.target) hint = d.target + ' – Alt+A beendet die Messung';
+      let hint = tr('Messung laeuft – Alt+A beendet sie');
+      if (d.err === 200) hint = tr('Entlastet: Prozess-Detailmessung aus (Selbstlast)');
+      else if (d.err) hint = tr('Eingeschraenkt: Kernel-Messung nicht verfuegbar');
+      else if (d.target) hint = d.target + tr(' – Alt+A beendet die Messung');
       $('hint').textContent = hint;
       scheduleBounds();
     });
     ipcRenderer.on('an-finding', (e, f) => {
       if (!f || !f.suspects || !f.suspects.length) return;
       const s = f.suspects[0];
-      const kindTxt = { driver: 'Treiber', process: 'Programm', 'gpu-throttle': 'GPU', vram: 'Grafikspeicher',
-                        disk: 'Datentraeger', 'proc-start': 'Programmstart', 'game-internal': 'Spiel selbst' }[s.kind] || s.kind;
+      const kindTxt = { driver: tr('Treiber'), process: tr('Programm'), 'gpu-throttle': tr('GPU'), vram: tr('Grafikspeicher'),
+                        disk: tr('Datentraeger'), 'proc-start': tr('Programmstart'), 'game-internal': tr('Spiel selbst') }[s.kind] || s.kind;
       const el = $('find');
-      el.innerHTML = '<b>Ruckler #' + f.id + ' · ' + (f.ftMs | 0) + ' ms</b> – ' + kindTxt +
+      el.innerHTML = '<b>' + tr('Ruckler #') + f.id + ' · ' + (f.ftMs | 0) + ' ms</b> – ' + kindTxt +
                      (s.name ? ': ' + s.name : '') + '<span class="sub">' + (s.evidence || '') + '</span>';
       el.style.display = 'block';
       el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
@@ -329,7 +369,7 @@
   function startDemo() {
     if (demoTimer) return;
     let sec = 0, spikes = 0;
-    $('hint').textContent = ipcRenderer ? 'VORSCHAU – so sieht die Messung aus' : 'DEMO – beispielspiel.exe';
+    $('hint').textContent = ipcRenderer ? tr('VORSCHAU – so sieht die Messung aus') : tr('DEMO – beispielspiel.exe');
     demoTimer = setInterval(() => {
       const batch = [];
       for (let i = 0; i < 14; i++) {
@@ -350,8 +390,8 @@
       if (spikeNew) {
         panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
         const el = $('find');
-        el.innerHTML = '<b>Ruckler #' + spikes + ' · ' + (batch[batch.length - 1] | 0) + ' ms</b> – Treiber: nvlddmkm.sys' +
-                       '<span class="sub">DPC/ISR max 812us, Summe 1943us im Fenster (Basis max 40us)</span>';
+        el.innerHTML = '<b>' + tr('Ruckler #') + spikes + ' · ' + (batch[batch.length - 1] | 0) + ' ms</b> – ' + tr('Treiber') + ': nvlddmkm.sys' +
+                       '<span class="sub">' + tr('DPC/ISR max 812us, Summe 1943us im Fenster (Basis max 40us)') + '</span>';
         el.style.display = 'block';
         el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
         clearTimeout(el._t); el._t = setTimeout(() => { el.style.display = 'none'; }, 6000);
@@ -361,7 +401,7 @@
   function stopDemo() {
     if (!demoTimer) return;
     clearInterval(demoTimer); demoTimer = null;
-    $('hint').textContent = 'Messung laeuft – Alt+A beendet sie';
+    $('hint').textContent = tr('Messung laeuft – Alt+A beendet sie');
     $('find').style.display = 'none';
     lastFrameNo = 0; lastSpikes = 0;   // echte Messdaten wieder sauber anknuepfen
   }

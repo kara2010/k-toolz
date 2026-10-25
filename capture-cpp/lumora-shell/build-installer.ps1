@@ -151,6 +151,9 @@ if ($LASTEXITCODE -ne 0) { throw "Uebersetzungs-Check fehlgeschlagen (s. Liste o
 # Werkbank-Seite hat ein eigenes (kleines) I18N_EN -> eigene Pruefung, minKeys=5
 & $node "$root\_testlab\i18n-check.js" "$root\analyze-werkbank.html" "$root\_testlab\i18n-ignore.txt" 5
 if ($LASTEXITCODE -ne 0) { throw "Uebersetzungs-Check (Werkbank) fehlgeschlagen - Bau abgebrochen" }
+# Analyse-OSD (StutterHunter-Mess-OSD) hat seit dem K-Toolz-Umbau ebenfalls ein eigenes I18N_EN
+& $node "$root_testlabi18n-check.js" "$rootanalyze-osd.html" "$root_testlabi18n-ignore.txt" 5
+if ($LASTEXITCODE -ne 0) { throw "Uebersetzungs-Check (Analyse-OSD) fehlgeschlagen - Bau abgebrochen" }
 
 # 0b) OSD-Rauchtest: baut jedes der sechs Designs mit allen Wertegruppen in einer
 # Sandbox WIRKLICH auf. Ein Syntax-Check reicht hier nicht - er ist auch dann
@@ -231,6 +234,12 @@ foreach ($f in "index.html","analyze-report.js","werkbank-timeline.js","styles.c
 foreach ($f in Get-ChildItem "$root\*.png","$root\*.svg" -ErrorAction SilentlyContinue) {
   if ($f.Length -lt 500KB) { Copy-Item $f.FullName $stage }   # Screenshots (mehrere MB) NICHT ins Paket
 }
+# Produkt-Icons: PNG fuer die Oberflaeche (Titelleiste, Werkzeug-Kacheln, Willkommensseite),
+# ICO fuer Startmenue-/Desktop-Verknuepfungen (Installer + Shell zeigen auf icons\<name>.ico)
+New-Item -ItemType Directory -Force "$stage\icons" | Out-Null
+Copy-Item "$root\icons\*.png" "$stage\icons"
+Copy-Item "$shell\icons\*.ico" "$stage\icons"
+Copy-Item "$shell\app.ico" "$stage\icons\k-toolz.ico"
 
 # Native Binaries (nur die, die die Shell wirklich startet - FFmpeg/C#-Helfer entfallen).
 # lumora-media-relay.exe ist der EIGENE C++-Relay (capture-cpp/lumora-relay).
@@ -314,7 +323,7 @@ if (-not $makensis) { throw "makensis.exe nicht gefunden" }
 Push-Location $shell
 & $makensis "/DVERSION=$version" "/DSRCDIR=stage" installer.nsi
 Pop-Location
-$out = "$shell\Lumora-Native-Setup-$version.exe"
+$out = "$shell\K-Toolz-Setup-$version.exe"   # ein Installer fuer alle Produkte; download.php benennt ihn je Produkt um
 if (-not (Test-Path $out)) { throw "NSIS-Build fehlgeschlagen" }
 
 # 4) Signieren (Certum, wie alle unsere EXEs)
@@ -328,7 +337,7 @@ $mb = [math]::Round((Get-Item $out).Length / 1MB, 1)
 Write-Output "FERTIG: $out ($mb MB)"
 
 # 5) Update-Feed erzeugen (native-update.json) - Rollout = diese 2 Dateien hochladen:
-#    website\updates\Lumora-Native-Setup-<version>.exe + website\updates\native-update.json
+#    website\updates\K-Toolz-Setup-<version>.exe + website\updates\native-update.json
 #    Bestandskunden ziehen das Update dann automatisch (Shell: setupAutoUpdate -> /S-Install).
 #    Release-Notes optional aus _testlab\release-notes\<version>.txt (===EN===-Trenner wie latest.yml).
 $updDir = "$root\website\updates"
@@ -343,7 +352,7 @@ if (Test-Path $notesFile) {
   if ($parts.Count -gt 1) { $notesEn = $parts[1].Trim() }
 }
 $feed = @{ version = $version
-           url = "https://lumora-streaming.de/updates/Lumora-Native-Setup-$version.exe"
+           url = "https://k-toolz.de/updates/K-Toolz-Setup-$version.exe"
            notes = $notes; notesEn = $notesEn } | ConvertTo-Json
 [IO.File]::WriteAllText("$updDir\native-update.json", $feed, (New-Object Text.UTF8Encoding($false)))   # BOM-frei (Feed-Parser!)
 Write-Output "Update-Feed: $updDir\native-update.json (v$version)"
@@ -366,7 +375,7 @@ foreach ($f in Get-ChildItem $stage -Recurse -File) {
   $files += @{ path = $rel; sha256 = $sha; size = $f.Length }
 }
 $manifest = @{ version = $version
-               baseUrl = "https://lumora-streaming.de/updates/components/$version/"
+               baseUrl = "https://k-toolz.de/updates/components/$version/"
                files = $files } | ConvertTo-Json -Depth 4
 [IO.File]::WriteAllText("$updDir\components.json", $manifest, (New-Object Text.UTF8Encoding($false)))
 Write-Output "Komponenten-Manifest: $updDir\components.json ($($files.Count) Dateien)"

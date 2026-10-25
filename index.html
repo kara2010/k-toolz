@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Lumora</title>
+  <title>K-Toolz</title>
   <style>
     /* Kritisches Inline-CSS: dunkler, gebrandeter Boot-Screen ab dem ersten Frame */
     html, body { margin: 0; background: #0f0f0f; }
@@ -36,8 +36,8 @@
 
   <div class="titlebar">
     <div class="titlebar-left">
-      <img class="titlebar-icon" src="icon-64.png" alt="">
-      <span class="titlebar-title">Lumora</span>
+      <img class="titlebar-icon" id="titlebarIcon" src="icon-64.png" alt="">
+      <span class="titlebar-title" id="titlebarTitle">K-Toolz</span>
     </div>
     <div class="titlebar-controls">
       <div class="hdr-indicator" id="streamIndicator" style="display:none; cursor:pointer" onclick="showSettings('stream')" title="Zum Stream-Tab">
@@ -266,6 +266,19 @@
 
         <!-- ===== ALLGEMEIN ===== -->
         <div class="settings-panel" data-panel="allgemein">
+          <!-- K-Toolz: Werkzeuge an/aus (activeModules). Reiter, Hintergrundarbeit und der
+               Anzeigename folgen der Auswahl; mindestens ein Werkzeug bleibt an. -->
+          <div class="form-group" id="modulesGroup">
+            <label>Werkzeuge</label>
+            <p class="settings-hint">Ausgeschaltete Werkzeuge verschwinden aus den Reitern und starten nichts im Hintergrund. Der Fenstername folgt der Auswahl: ein Werkzeug allein heißt wie das Werkzeug, mehrere heißen K-Toolz.</p>
+            <div class="module-tiles">
+              <div class="module-tile"><img src="icons/plainosd.png" alt=""><div><b>PlainOSD</b><small>FPS, Temperaturen und Auslastung als Overlay im Spiel.</small></div><label class="switch"><input type="checkbox" data-module="osd" onchange="onModuleToggle(this)"><span class="switch-slider"></span></label></div>
+              <div class="module-tile"><img src="icons/streamtofriend.png" alt=""><div><b>StreamToFriend</b><small>Dein Spiel an Freunde streamen – ohne Konto, direkt vom PC.</small></div><label class="switch"><input type="checkbox" data-module="stream" onchange="onModuleToggle(this)"><span class="switch-slider"></span></label></div>
+              <div class="module-tile"><img src="icons/stutterhunter.png" alt=""><div><b>StutterHunter</b><small>Findet heraus, warum dein Spiel ruckelt.</small></div><label class="switch"><input type="checkbox" data-module="stutter" onchange="onModuleToggle(this)"><span class="switch-slider"></span></label></div>
+              <div class="module-tile"><img src="icons/wheeltopad.png" alt=""><div><b>WheelToPad</b><small>Lenkrad oder Joystick als Xbox-Controller für jedes Spiel.</small></div><label class="switch"><input type="checkbox" data-module="wheel" onchange="onModuleToggle(this)"><span class="switch-slider"></span></label></div>
+              <div class="module-tile"><img src="icons/k-toolz.png" alt=""><div><b>Launcher</b><small>Alle deine Spiele aus Steam, Epic, GOG &amp; Co. in einer Bibliothek.</small></div><label class="switch"><input type="checkbox" data-module="launcher" onchange="onModuleToggle(this)"><span class="switch-slider"></span></label></div>
+            </div>
+          </div>
           <div class="form-group">
             <label>Allgemein</label>
             <div class="setting-toggle-row">
@@ -292,14 +305,19 @@
               <span class="setting-toggle-label">Netzwerk-Statistik pro Spiel erfassen</span>
               <label class="switch"><input type="checkbox" id="setNetStats" onchange="onAppSettingChange()"><span class="switch-slider"></span></label>
             </div>
-            <p class="settings-hint">Zählt während des Spielens die übertragenen Daten des Spielprozesses (Senden und Empfangen, inklusive Kindprozesse). Die Summe steht in der Bibliothek beim jeweiligen Spiel. Beim ersten Einschalten richtet Lumora einmalig einen Hintergrunddienst ein (eine Windows-Sicherheitsabfrage, kein Treiber).</p>
+            <p class="settings-hint">Zählt während des Spielens die übertragenen Daten des Spielprozesses (Senden und Empfangen, inklusive Kindprozesse). Die Summe steht in der Bibliothek beim jeweiligen Spiel. Beim ersten Einschalten richtet K-Toolz einmalig einen Hintergrunddienst ein (eine Windows-Sicherheitsabfrage, kein Treiber).</p>
             <p class="settings-hint">Einzelne Zähler löschst du direkt beim Spiel in der Bibliothek.</p>
             <button class="btn-browse" id="netResetAllBtn" style="align-self:flex-start" onclick="netAlleZaehlerLoeschen()">Alle Netzwerk-Zähler löschen</button>
           </div>
           <div class="form-group">
             <label>Updates</label>
-            <p class="settings-hint">Lumora sucht beim Start automatisch nach Updates. Du kannst auch jederzeit selbst prüfen.</p>
+            <p class="settings-hint">K-Toolz sucht beim Start automatisch nach Updates. Du kannst auch jederzeit selbst prüfen.</p>
             <button class="btn-browse" id="updateCheckBtn" style="align-self:flex-start" onclick="checkForUpdatesManually()">Jetzt nach Updates suchen</button>
+          </div>
+          <div class="form-group">
+            <label>Über</label>
+            <p class="settings-hint">Version, Lizenz und die eingesetzten Open-Source-Komponenten.</p>
+            <button class="btn-browse" style="align-self:flex-start" onclick="showAbout()">ⓘ Über</button>
           </div>
 
           <h3 class="settings-sec">Darstellung</h3>
@@ -333,7 +351,7 @@
                 <p><strong>Was es bringt:</strong> SteamGridDB ist eine riesige Community-Bibliothek mit Covern und Hero-Bannern für Spiele aus <em>jedem</em> Store. Statt nur des einen offiziellen Bildes wählst du je Spiel aus vielen Varianten — deine Bibliothek sieht einheitlich top aus.</p>
                 <p><strong>So holst du den kostenlosen Key:</strong></p>
                 <ol>
-                  <li>Auf <span class="about-link" onclick="openExternal('https://www.steamgriddb.com')">steamgriddb.com</span> mit <strong>Steam</strong> anmelden. Der Login läuft über Steam selbst — <strong>Lumora sieht deine Steam-Daten nie</strong>.</li>
+                  <li>Auf <span class="about-link" onclick="openExternal('https://www.steamgriddb.com')">steamgriddb.com</span> mit <strong>Steam</strong> anmelden. Der Login läuft über Steam selbst — <strong>K-Toolz sieht deine Steam-Daten nie</strong>.</li>
                   <li>Oben rechts aufs Profil → <strong>Preferences</strong> → Reiter <strong>API</strong>.</li>
                   <li><strong>Generate API Key</strong> klicken und den Key kopieren.</li>
                   <li>Hier oben ins Feld einfügen — fertig, sofort aktiv.</li>
@@ -345,7 +363,7 @@
           <h3 class="settings-sec">Steuerung</h3>
           <div class="form-group">
             <label>Steuerung</label>
-            <p class="settings-hint">Globaler Hotkey, um Lumora in den Vordergrund zu holen bzw. wieder zu verstecken – als Tastenkombination <strong>oder</strong> Gamepad-Kombi. Ein angeschlossener Controller steuert die Bibliothek automatisch (D-Pad/Stick bewegen, A wählt/startet, B zurück).</p>
+            <p class="settings-hint">Globaler Hotkey, um K-Toolz in den Vordergrund zu holen bzw. wieder zu verstecken – als Tastenkombination <strong>oder</strong> Gamepad-Kombi. Ein angeschlossener Controller steuert die Bibliothek automatisch (D-Pad/Stick bewegen, A wählt/startet, B zurück).</p>
             <div class="hotkey-row">
               <span class="hotkey-kind" title="Tastatur">⌨️</span>
               <span class="hotkey-display" id="hotkeyDisplay">Alt+L</span>
@@ -362,7 +380,7 @@
             <div class="form-group" style="margin-top:14px">
               <label>Hotkeys pausieren bei bestimmten Programmen</label>
               <input type="text" id="setHotkeyPauseExes" placeholder="z. B. VPinballX64.exe, VPinballX.exe" autocomplete="off" spellcheck="false" onchange="onAppSettingChange()">
-              <p class="settings-hint">Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert Lumora auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.</p>
+              <p class="settings-hint">Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.</p>
             </div>
           </div>
         </div>
@@ -458,7 +476,7 @@
               <button class="btn-cancel" onclick="clearGpHotkey('ab')">Aus</button>
             </div>
             <p class="settings-hint" id="gpAbHotkeyHint" style="display:none"></p>
-            <p class="settings-hint">Blendet das OSD von MSI Afterburner aus bzw. wieder ein – derselbe Schalter, den auch Afterburners eigener OSD-Hotkey nutzt. Das Lumora-Panel (eigener Hotkey oben) bleibt davon <b>unabhängig</b>: Afterburner z. B. links, Lumora rechts.</p>
+            <p class="settings-hint">Blendet das OSD von MSI Afterburner aus bzw. wieder ein – derselbe Schalter, den auch Afterburners eigener OSD-Hotkey nutzt. Das K-Toolz-Panel (eigener Hotkey oben) bleibt davon <b>unabhängig</b>: Afterburner z. B. links, K-Toolz rechts.</p>
 
             <h3 class="settings-sec">Datenquellen</h3>
             <div class="osd-field">
@@ -488,7 +506,7 @@
         <div class="settings-panel" data-panel="analyse" hidden>
           <div class="form-group">
             <label>Ruckler-Analyse</label>
-            <p class="settings-hint">Findet heraus, warum dein Spiel ruckelt: Während einer Messung überwacht Lumora Frametimes, Hintergrundprogramme, Treiber-Latenzen und deine Grafikkarte – und benennt bei jedem Ruckler die wahrscheinlichen Verursacher. Die Messung kostet praktisch keine Leistung und läuft nur, solange du sie startest.</p>
+            <p class="settings-hint">Findet heraus, warum dein Spiel ruckelt: Während einer Messung überwacht K-Toolz Frametimes, Hintergrundprogramme, Treiber-Latenzen und deine Grafikkarte – und benennt bei jedem Ruckler die wahrscheinlichen Verursacher. Die Messung kostet praktisch keine Leistung und läuft nur, solange du sie startest.</p>
             <div class="an-controls">
               <button class="btn-primary" id="anStartBtn" onclick="anToggle()">▶ Messung starten</button>
               <span class="an-live" id="anLive" style="display:none"><span class="an-rec"></span><span id="anLiveTxt">Messung läuft…</span></span>
@@ -685,7 +703,7 @@
                 <button class="btn-browse" onclick="shareStream('email')">E-Mail</button>
               </div>
               <!-- Aus dem laufenden Stream wird mit EINEM Klick eine Gruppe: erstellt
-                   den Raum und kopiert den Einladungslink. Freunde mit Lumora sind
+                   den Raum und kopiert den Einladungslink. Freunde mit K-Toolz sind
                    ueber den Link mit einem Klick dabei (lumora://join), alle anderen
                    schauen im Browser zu. Sichtbar nur, solange KEINE Gruppe laeuft. -->
               <div class="invite-row" id="streamGroupInvite" style="display:none">
@@ -701,10 +719,10 @@
               <div class="stream-forward-warn" id="streamForwardHelp" style="display:none">
                 <div class="sfw-title">⚠️ <span id="streamForwardTitle"></span></div>
                 <div class="sfw-steps" id="streamForwardSteps"></div>
-                <div style="margin-top:10px"><a style="cursor:pointer; color:#7ab3ff; font-size:12.5px; text-decoration:underline" onclick="openExternal('https://lumora-streaming.de/portfreigabe.html')">📖 Ausführliche Web-Anleitung mit allen Routern ↗</a></div>
+                <div style="margin-top:10px"><a style="cursor:pointer; color:#7ab3ff; font-size:12.5px; text-decoration:underline" onclick="openExternal('https://k-toolz.de/streamtofriend/portfreigabe/')">📖 Ausführliche Web-Anleitung mit allen Routern ↗</a></div>
               </div>
             </div>
-            <p class="settings-hint" id="streamHint" style="margin-top:8px">Beim Start öffnet Lumora automatisch den nötigen Port am Router (UPnP) und schließt ihn beim Stoppen wieder.</p>
+            <p class="settings-hint" id="streamHint" style="margin-top:8px">Beim Start öffnet K-Toolz automatisch den nötigen Port am Router (UPnP) und schließt ihn beim Stoppen wieder.</p>
           </div>
 
           <!-- Sektion 3: Zugriffsschutz (wer den Stream sehen darf) -->
@@ -739,7 +757,7 @@
               <div id="lanGroupHint" style="display:none"></div>
               <!-- Beitreten per Code/Link: der Fallback-Weg (z. B. Code aus dem
                    Discord-Chat). Der Normalweg ist der Einladungslink (ein Klick
-                   im Browser oeffnet Lumora) bzw. die LAN-Erkennung oben. -->
+                   im Browser oeffnet K-Toolz) bzw. die LAN-Erkennung oben. -->
               <details class="sgdb-guide" id="groupJoinDetails" style="margin-top:6px">
                 <summary>Einer Gruppe beitreten (Code oder Link)</summary>
                 <div class="osd-field" style="margin-top:8px">
@@ -750,7 +768,7 @@
               </details>
               <!-- Einrichtungs-Schritte: fuellen sich ADDITIV unter dem Klickpunkt
                    (fertige Zeilen bleiben stehen, neue kommen dazu) - zeigt sichtbar,
-                   was Lumora gerade alles prueft und einrichtet. -->
+                   was K-Toolz gerade alles prueft und einrichtet. -->
               <div id="groupSetupSteps" style="display:none; margin-top:10px; padding:10px 12px; background:rgba(255,255,255,.04); border-radius:10px"></div>
             </div>
 
@@ -765,7 +783,7 @@
                 <input type="text" id="groupLink" class="sort-select" style="flex:1; font-family:monospace" readonly onclick="this.select()">
                 <button class="btn-browse" onclick="copyGroupLink()">Link kopieren</button>
               </div>
-              <p class="settings-hint" style="margin-top:4px">Freunde mit Lumora brauchen nur den <b>Code</b> · der <b>Link</b> ist für Zuschauer im Browser (auch iPhone).</p>
+              <p class="settings-hint" style="margin-top:4px">Freunde mit K-Toolz brauchen nur den <b>Code</b> · der <b>Link</b> ist für Zuschauer im Browser (auch iPhone).</p>
               <div id="groupMemberBox" style="margin:10px 0 4px">
                 <div style="font-weight:600; font-size:13px; margin-bottom:6px; opacity:.85">Mitglieder</div>
                 <div id="groupMemberList"></div>
@@ -783,10 +801,10 @@
             <details class="sgdb-guide stream-advanced">
               <summary>Eigener Vermittlungs-Server</summary>
               <div class="sgdb-guide-body">
-                <p class="settings-hint" style="margin-top:0">Die Gruppen-Vermittlung läuft über ein kleines PHP-Skript. Es wird mit Lumora mitgeliefert (<span style="font-family:monospace">resources\gruppe.php</span> im Installationsordner) – lege es auf einen beliebigen PHP-Webspace und trage hier die Adresse ein. Leer = Standard-Server. Der Video-Traffic läuft nie über diesen Server.</p>
+                <p class="settings-hint" style="margin-top:0">Die Gruppen-Vermittlung läuft über ein kleines PHP-Skript. Es wird mit K-Toolz mitgeliefert (<span style="font-family:monospace">resources\gruppe.php</span> im Installationsordner) – lege es auf einen beliebigen PHP-Webspace und trage hier die Adresse ein. Leer = Standard-Server. Der Video-Traffic läuft nie über diesen Server.</p>
                 <div class="osd-field">
                   <span class="osd-field-label">Skript-URL</span>
-                  <input type="text" id="setGroupRelay" class="sort-select" style="flex:1; font-family:monospace" placeholder="https://lumora-streaming.de/gruppe.php" onchange="onGroupRelayChange()">
+                  <input type="text" id="setGroupRelay" class="sort-select" style="flex:1; font-family:monospace" placeholder="https://k-toolz.de/gruppe.php" onchange="onGroupRelayChange()">
                 </div>
               </div>
             </details>
@@ -868,7 +886,7 @@
               <span class="setting-toggle-label" id="ibStatusLabel">Virtuelles Gamepad: aus</span>
               <button class="btn-primary" id="ibToggleBtn" onclick="ibToggle()">▶ Aktivieren</button>
             </div>
-            <p class="settings-hint" id="ibSetupHint" style="display:none">Beim ersten Aktivieren richtet Lumora den signierten Open-Source-Treiber ViGEmBus ein (offizielle Quelle, eine Windows-Sicherheitsabfrage). Deinstallierbar über Apps &amp; Features.</p>
+            <p class="settings-hint" id="ibSetupHint" style="display:none">Beim ersten Aktivieren richtet K-Toolz den signierten Open-Source-Treiber ViGEmBus ein (offizielle Quelle, eine Windows-Sicherheitsabfrage). Deinstallierbar über Apps &amp; Features.</p>
           </div>
           <div class="form-group">
             <label>Profil</label>
@@ -943,7 +961,7 @@
           </div>
           <div class="form-group">
             <label>Mit Spielen verknüpfen</label>
-            <p class="settings-hint">Startet das Spiel (egal ob über Lumora oder direkt), aktiviert sich das verknüpfte Profil automatisch – aber erst, wenn das Spiel wirklich läuft. Beim Beenden geht das virtuelle Pad wieder aus.</p>
+            <p class="settings-hint">Startet das Spiel (egal ob über K-Toolz oder direkt), aktiviert sich das verknüpfte Profil automatisch – aber erst, wenn das Spiel wirklich läuft. Beim Beenden geht das virtuelle Pad wieder aus.</p>
             <div class="path-row">
               <select id="ibLinkGameSel" class="sort-select" style="flex:1"></select>
               <button class="btn-browse" onclick="ibLinkGame()">Verknüpfen</button>
@@ -976,22 +994,22 @@
   <!-- Über / Rechtliches -->
   <div class="overlay" id="aboutOverlay" style="display:none">
     <div class="dialog about-dialog">
-      <h2>Über Lumora</h2>
+      <h2>Über K-Toolz</h2>
       <p class="about-version" id="aboutVersion">kostenlos</p>
       <div class="about-body">
         <p class="about-text">
-          Lumora ist ein inoffizielles Tool und steht in keiner Verbindung zu Valve/Steam,
+          K-Toolz ist ein inoffizielles Tool und steht in keiner Verbindung zu Valve/Steam,
           Microsoft oder den jeweiligen Spieleherstellern. Spielecover, Logos und Markennamen sind
           Eigentum der jeweiligen Rechteinhaber. Coverbilder werden ausschließlich zur Identifikation
           der installierten Spiele von Steam bzw. dem Microsoft Store geladen und lokal gespeichert.
         </p>
         <p class="about-text">
-          <strong>Lumora ist Open Source.</strong>
+          <strong>K-Toolz ist Open Source.</strong>
           Der komplette Quellcode ist frei verfügbar unter der GNU AGPL v3:
           <span class="about-link" onclick="openExternal('https://github.com/kara2010/lumora')">github.com/kara2010/lumora</span>
-          — entwickelt und gepflegt von Karsten Radermacher. Der Name „Lumora" und das Logo sind nicht Teil der Lizenz.
+          — entwickelt und gepflegt von Karsten Radermacher. Die Namen „K-Toolz", „PlainOSD", „StreamToFriend", „StutterHunter" und „WheelToPad" sowie die Logos sind nicht Teil der Lizenz.
         </p>
-        <p class="about-text"><strong>Lumora steht auf den Schultern großartiger Open-Source-Projekte.</strong> Eingesetzte Komponenten und ihre Urheber:</p>
+        <p class="about-text"><strong>K-Toolz steht auf den Schultern großartiger Open-Source-Projekte.</strong> Eingesetzte Komponenten und ihre Urheber:</p>
         <!-- Native Version (seit dem Umbau von Electron/FFmpeg/mediamtx auf eigenen C++-Code):
              Bildaufnahme, Hardware-Encoding, MPEG-TS-Muxing, WebRTC-Medien-Relay, HDR-Umschaltung
              und FPS-Messung (ETW) sind durchgehend eigener Code - hier nur noch die verbleibenden
@@ -1015,7 +1033,7 @@
           <li><strong>SteamGridDB</strong> — optionale Community-Artworks (eigener API-Key) · <span class="about-link" onclick="openExternal('https://www.steamgriddb.com')">steamgriddb.com</span></li>
         </ul>
         <p class="about-text">
-          Zusätzlich liest Lumora — sofern vorhanden — Sensor- und FPS-Daten aus dem NVIDIA-Treiber (NVML),
+          Zusätzlich liest K-Toolz — sofern vorhanden — Sensor- und FPS-Daten aus dem NVIDIA-Treiber (NVML),
           dem AMD-Treiber (ADL) sowie MSI Afterburner/RTSS. Die Lizenztexte der gebündelten Komponenten
           liegen im Installationsordner bei.
         </p>
@@ -1151,7 +1169,7 @@
         <button class="btn-delete" onclick="document.getElementById('shareOverlay').style.display='none'" title="Schließen">✕</button>
       </div>
       <p class="settings-hint" style="margin:0 0 12px">
-        Der Bericht wird auf lumora-streaming.de abgelegt und ist über einen kurzen Link abrufbar.
+        Der Bericht wird auf k-toolz.de abgelegt und ist über einen kurzen Link abrufbar.
         Du kannst ihn jederzeit wieder zurückziehen. Es wird kein Konto angelegt.
       </p>
       <label class="switch-row"><input type="checkbox" id="shareOhneProzesse" onchange="anShareRefresh()">
@@ -1194,7 +1212,7 @@
         </div>
         <div class="update-hero-text">
           <div class="update-hero-title">Update verfügbar</div>
-          <div class="update-hero-sub">Lumora <span class="update-ver-pill" id="updateVersion"></span> ist bereit zur Installation</div>
+          <div class="update-hero-sub"><span data-appname>K-Toolz</span> <span class="update-ver-pill" id="updateVersion"></span> ist bereit zur Installation</div>
         </div>
       </div>
       <div class="update-section-label">Das ist neu</div>
@@ -1236,7 +1254,7 @@
 // flackerfreie Anwendung direkt beim Start.
 const I18N_EN = {
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
-  'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert Lumora auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, Lumora ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
+  'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, K-Toolz ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
 
   // --- Netzwerk-Zaehler loeschen ----------------------------------------------
   'Zurücksetzen': 'Reset',
@@ -1263,10 +1281,10 @@ const I18N_EN = {
   'Kein Systemstörer gefunden – die Ruckler kommen vermutlich aus dem Spiel selbst (z. B. Shader/Nachladen).':
     'No system-level offender found – the stutters likely come from the game itself (e.g. shaders/streaming).',
   "Werte & Reihenfolge": "Values & order",
-  "Der Bericht wird auf lumora-streaming.de abgelegt und ist über einen kurzen Link abrufbar. Du kannst ihn jederzeit wieder zurückziehen. Es wird kein Konto angelegt.": "The report is stored on lumora-streaming.de and reachable via a short link. You can withdraw it at any time. No account is created.",
+  "Der Bericht wird auf k-toolz.de abgelegt und ist über einen kurzen Link abrufbar. Du kannst ihn jederzeit wieder zurückziehen. Es wird kein Konto angelegt.": "The report is stored on k-toolz.de and reachable via a short link. You can withdraw it at any time. No account is created.",
   "Das Profil gilt für das gewählte Gerät („Alle Geräte\" = jede Quelle wird gemappt, z. B. Lenkrad + separate Pedale).": "The profile applies to the selected device (\"All devices\" = every source is mapped, e.g. wheel + separate pedals).",
   "Verwandelt jedes Eingabegerät (Joystick, Lenkrad, Flightstick …) in ein virtuelles Xbox-Gamepad. Damit lassen sich auch Spiele steuern, die nur Gamepads kennen – inklusive Microsoft-Store-/Game-Pass-Titeln, wo Steam Input nicht greift. Auch für Barrierefreiheit: einzelne Knöpfe können Achsen ersetzen (z. B. Knopf = Vollgas) und umgekehrt.": "Turns any input device (joystick, wheel, flight stick …) into a virtual Xbox gamepad. This lets you control games that only recognise gamepads – including Microsoft Store / Game Pass titles, where Steam Input doesn't work. Great for accessibility too: single buttons can replace axes (e.g. button = full throttle) and vice versa.",
-  "Beim ersten Aktivieren richtet Lumora den signierten Open-Source-Treiber ViGEmBus ein (offizielle Quelle, eine Windows-Sicherheitsabfrage). Deinstallierbar über Apps & Features.": "The first time you activate this, Lumora installs the signed open-source driver ViGEmBus (official source, one Windows security prompt). Removable via Apps & Features.",
+  "Beim ersten Aktivieren richtet K-Toolz den signierten Open-Source-Treiber ViGEmBus ein (offizielle Quelle, eine Windows-Sicherheitsabfrage). Deinstallierbar über Apps & Features.": "The first time you activate this, K-Toolz installs the signed open-source driver ViGEmBus (official source, one Windows security prompt). Removable via Apps & Features.",
   'Feineinstellung (Deadzone / Kurve / Invertieren) & Liste': 'Fine-tuning (deadzone / curve / invert) & list',
   'Mehr Cover & Hero über SteamGridDB (optional)': 'More covers & heroes via SteamGridDB (optional)',
   'Lohnt sich das? & in 2 Minuten einrichten': 'Worth it? Set up in 2 minutes',
@@ -1278,14 +1296,14 @@ const I18N_EN = {
   'Ein Klick auf einen Lauf öffnet die ausführliche Auswertung mit Zeitleiste und Beweisen. Hake zwei Läufe an, um sie zu vergleichen (z. B. vor/nach dem Abschalten eines verdächtigen Programms) – eine Notiz hilft, den Überblick zu behalten.':
       'Clicking a run opens the full evaluation with timeline and evidence. Tick two runs to compare them (e.g. before/after disabling a suspicious program) – a note helps you keep track.',
   'Ab wann zählt ein Frame als Ruckler? „Normal" meldet nur fühlbare Aussetzer (ab ~28 ms), „Empfindlich" auch kleine Unebenheiten, „Nur harte Ruckler" erst deutliche Hänger (ab ~45 ms).': 'When does a frame count as a stutter? "Normal" only reports noticeable hitches (from ~28 ms), "Sensitive" also small bumps, "Hard stutters only" only clear freezes (from ~45 ms).',
-  "Lumora ist ein inoffizielles Tool und steht in keiner Verbindung zu Valve/Steam, Microsoft oder den jeweiligen Spieleherstellern. Spielecover, Logos und Markennamen sind Eigentum der jeweiligen Rechteinhaber. Coverbilder werden ausschließlich zur Identifikation der installierten Spiele von Steam bzw. dem Microsoft Store geladen und lokal gespeichert.": "Lumora is an unofficial tool and is not affiliated with Valve/Steam, Microsoft or the respective game publishers. Game covers, logos and brand names are the property of their respective owners. Cover images are downloaded from Steam or the Microsoft Store solely to identify installed games and are stored locally.",
+  "K-Toolz ist ein inoffizielles Tool und steht in keiner Verbindung zu Valve/Steam, Microsoft oder den jeweiligen Spieleherstellern. Spielecover, Logos und Markennamen sind Eigentum der jeweiligen Rechteinhaber. Coverbilder werden ausschließlich zur Identifikation der installierten Spiele von Steam bzw. dem Microsoft Store geladen und lokal gespeichert.": "K-Toolz is an unofficial tool and is not affiliated with Valve/Steam, Microsoft or the respective game publishers. Game covers, logos and brand names are the property of their respective owners. Cover images are downloaded from Steam or the Microsoft Store solely to identify installed games and are stored locally.",
   "— WebRTC-Stack (WHEP) im eigenen Medien-Relay · Paul-Louis Ageneau · MPL 2.0 ·": "— WebRTC stack (WHEP) in our own media relay · Paul-Louis Ageneau · MPL 2.0 ·",
   "— DTLS-Verschlüsselung (WebRTC-Handshake) im Medien-Relay · Mbed-TLS-Projekt · Apache 2.0 ·": "— DTLS encryption (WebRTC handshake) in the media relay · Mbed TLS project · Apache 2.0 ·",
   "— Opus-Encoding für den Stream-Ton (WebRTC-tauglich, patentfrei) · Xiph.Org u. a. · BSD-3 ·": "— Opus encoding for the stream audio (WebRTC-capable, patent-free) · Xiph.Org and others · BSD-3 ·",
   "— signierter Treiber für CPU-Sensorik · namazso · GPL 2.0; wird bei Bedarf von der offiziellen Quelle installiert und ist jederzeit über „Apps & Features\" entfernbar ·": "— signed driver for CPU sensors · namazso · GPL 2.0; installed from the official source when needed and removable any time via \"Apps & Features\" ·",
   "(AMDFamily17, IntelMSR) — Sensor-Definitionen · namazso · LGPL 2.1 ·": "(AMDFamily17, IntelMSR) — sensor definitions · namazso · LGPL 2.1 ·",
   "— signierter Treiber für virtuelle Gamepads (Eingabe-Brücke) · Nefarius Software Solutions · BSD-3; wird bei Bedarf von der offiziellen Quelle installiert und ist jederzeit über „Apps & Features\" entfernbar ·": "— signed driver for virtual gamepads (input bridge) · Nefarius Software Solutions · BSD-3; installed from the official source when needed and removable any time via \"Apps & Features\" ·",
-  "Zusätzlich liest Lumora — sofern vorhanden — Sensor- und FPS-Daten aus dem NVIDIA-Treiber (NVML), dem AMD-Treiber (ADL) sowie MSI Afterburner/RTSS. Die Lizenztexte der gebündelten Komponenten liegen im Installationsordner bei.": "Additionally, Lumora reads — if present — sensor and FPS data from the NVIDIA driver (NVML), the AMD driver (ADL) and MSI Afterburner/RTSS. The license texts of the bundled components are included in the installation folder.",
+  "Zusätzlich liest K-Toolz — sofern vorhanden — Sensor- und FPS-Daten aus dem NVIDIA-Treiber (NVML), dem AMD-Treiber (ADL) sowie MSI Afterburner/RTSS. Die Lizenztexte der gebündelten Komponenten liegen im Installationsordner bei.": "Additionally, K-Toolz reads — if present — sensor and FPS data from the NVIDIA driver (NVML), the AMD driver (ADL) and MSI Afterburner/RTSS. The license texts of the bundled components are included in the installation folder.",
   "Ziehen zum Verschieben": "Drag to reorder",
   "Aus dem Overlay nehmen": "Remove from overlay",
   "Ins Overlay aufnehmen": "Add to overlay",
@@ -1303,7 +1321,7 @@ const I18N_EN = {
   "läuft": "running",
   "wird beim nächsten Spielstart erfasst": "will be recorded from the next game start",
   "Netzwerk-Statistik pro Spiel erfassen": "Record network statistics per game",
-  "Zählt während des Spielens die übertragenen Daten des Spielprozesses (Senden und Empfangen, inklusive Kindprozesse). Die Summe steht in der Bibliothek beim jeweiligen Spiel. Beim ersten Einschalten richtet Lumora einmalig einen Hintergrunddienst ein (eine Windows-Sicherheitsabfrage, kein Treiber).": "While you play, counts the data transferred by the game process (send and receive, including child processes). The total is shown in the library for each game. The first time you enable this, Lumora sets up a background service once (one Windows security prompt, no driver).",
+  "Zählt während des Spielens die übertragenen Daten des Spielprozesses (Senden und Empfangen, inklusive Kindprozesse). Die Summe steht in der Bibliothek beim jeweiligen Spiel. Beim ersten Einschalten richtet K-Toolz einmalig einen Hintergrunddienst ein (eine Windows-Sicherheitsabfrage, kein Treiber).": "While you play, counts the data transferred by the game process (send and receive, including child processes). The total is shown in the library for each game. The first time you enable this, K-Toolz sets up a background service once (one Windows security prompt, no driver).",
   "Übertragen (Netzwerk)": "Transferred (network)",
   "verdeckt": "hides",
   "Öffnen": "Open",
@@ -1367,7 +1385,7 @@ const I18N_EN = {
   "ist bereit – zum Aktivieren neu starten.": "is ready – restart to activate.",
   "– nicht verbunden": "– not connected",
   "— nicht belegt (klicken zum Zuweisen)": "— not mapped (click to assign)",
-  "⚠️ <b>Kein Bild.</b> Läuft dein Spiel im <b>exklusiven Vollbild</b>? Stelle es auf <b>randloses Fenster</b> („Borderless\"/„Fenster-Vollbild\") um – dann kann Lumora aufnehmen, ohne ins Spiel einzugreifen.": "⚠️ <b>No image.</b> Is your game in <b>exclusive fullscreen</b>? Switch it to <b>borderless window</b> (\"Borderless\"/\"Windowed fullscreen\") – then Lumora can capture without interfering with the game.",
+  "⚠️ <b>Kein Bild.</b> Läuft dein Spiel im <b>exklusiven Vollbild</b>? Stelle es auf <b>randloses Fenster</b> („Borderless\"/„Fenster-Vollbild\") um – dann kann K-Toolz aufnehmen, ohne ins Spiel einzugreifen.": "⚠️ <b>No image.</b> Is your game in <b>exclusive fullscreen</b>? Switch it to <b>borderless window</b> (\"Borderless\"/\"Windowed fullscreen\") – then K-Toolz can capture without interfering with the game.",
   "❌ Vermittlungs-Server nicht erreichbar – Internet prüfen (oder die Skript-URL unter „Eigener Vermittlungs-Server\").": "❌ Signaling server unreachable – check your internet (or the script URL under \"Custom signaling server\").",
   "= schon belegt (Quelle darunter). Bei aktivem Pad bewegt sich der Controller live mit.": "= already mapped (source below). With an active pad the controller moves along live.",
   "⚠ Spiele sehen dann zwei Controller (Original + virtuelles Pad). Falls Steam Input aktiv ist, dort das Originalgerät deaktivieren, sonst kommen Eingaben doppelt an.": "⚠ Games will then see two controllers (original + virtual pad). If Steam Input is active, disable the original device there, otherwise inputs arrive twice.",
@@ -1376,7 +1394,7 @@ const I18N_EN = {
   "Puffer: kurz = wenig Verzögerung, länger = ruhiger bei schwankender Leitung. Automatisch anpassen: senkt die Bitrate vorübergehend, wenn Zuschauer (z. B. über Mobilfunk) schlechten Empfang melden – und hebt sie wieder an, sobald es stabil läuft.": "Buffer: short = low latency, longer = smoother on an unstable connection. Auto-adjust: temporarily lowers the bitrate when viewers (e.g. on mobile data) report poor reception – and raises it again once things are stable.",
   "Seht euch gegenseitig im Grid – ideal fürs gemeinsame Zocken im Discord-Call. Eine Gruppe erstellst du mit „Freunde dazuholen\" am laufenden Stream.": "See each other in the grid – ideal for gaming together on a Discord call. Create a group via \"Invite friends\" on a running stream.",
   "Standard aus. Ist er an, sieht deinen Stream nur, wen du ausdrücklich freigibst – auch wer den Link oder die IP kennt, kommt nicht ungefragt hinein. Jeder neue Zuschauer wird dir einzeln zur Freigabe angezeigt (Fenster überm Spiel); ein Ablehnen gilt nur kurz.": "Off by default. When on, only people you explicitly approve can watch your stream – even someone who knows the link or IP can't get in unasked. Each new viewer is shown to you individually for approval (window over the game); a rejection only lasts briefly.",
-  "Startet das Spiel (egal ob über Lumora oder direkt), aktiviert sich das verknüpfte Profil automatisch – aber erst, wenn das Spiel wirklich läuft. Beim Beenden geht das virtuelle Pad wieder aus.": "When the game starts (whether via Lumora or directly), the linked profile activates automatically – but only once the game is really running. On exit the virtual pad turns off again.",
+  "Startet das Spiel (egal ob über K-Toolz oder direkt), aktiviert sich das verknüpfte Profil automatisch – aber erst, wenn das Spiel wirklich läuft. Beim Beenden geht das virtuelle Pad wieder aus.": "When the game starts (whether via K-Toolz or directly), the linked profile activates automatically – but only once the game is really running. On exit the virtual pad turns off again.",
   "Zeigt rohe Geräte-Eingaben und (bei aktivem Pad) das Ergebnis am virtuellen Controller.": "Shows raw device inputs and (with an active pad) the result on the virtual controller.",
   "★ Stammgäste": "★ Regulars",
   "🚫 Gesperrt": "🚫 Blocked",
@@ -1508,8 +1526,10 @@ const I18N_EN = {
   'Mit Windows starten': 'Start with Windows',
   'Beim Autostart minimiert starten': 'Start minimized on autostart',
   'Beim Schließen in den Infobereich (Tray)': 'Close to tray',
-  'Lumora sucht beim Start automatisch nach Updates. Du kannst auch jederzeit selbst prüfen.': 'Lumora checks for updates automatically at startup. You can also check manually anytime.',
+  'K-Toolz sucht beim Start automatisch nach Updates. Du kannst auch jederzeit selbst prüfen.': 'K-Toolz checks for updates automatically at startup. You can also check manually anytime.',
   'Jetzt nach Updates suchen': 'Check for updates now',
+  'Über': 'About',
+  'Version, Lizenz und die eingesetzten Open-Source-Komponenten.': 'Version, license and the open-source components in use.',
   'Cover-Darstellung': 'Cover style',
   'Hero-Banner': 'Hero banner',
   'Breites Querformat': 'Wide landscape',
@@ -1582,7 +1602,7 @@ const I18N_EN = {
   'E-Mail': 'E-mail',
   'Zuschauer: 0': 'Viewers: 0',
   'Wer schaut zu': 'Who is watching',
-  'Beim Start öffnet Lumora automatisch den nötigen Port am Router (UPnP) und schließt ihn beim Stoppen wieder.': 'On start, Lumora opens the required router port automatically (UPnP) and closes it again when you stop.',
+  'Beim Start öffnet K-Toolz automatisch den nötigen Port am Router (UPnP) und schließt ihn beim Stoppen wieder.': 'On start, K-Toolz opens the required router port automatically (UPnP) and closes it again when you stop.',
   'Gruppe': 'Group',
   'Seht euch gegenseitig im Grid – ideal fürs gemeinsame Zocken im Discord-Call. Eine Gruppe erstellst du mit „Freunde dazuholen" am laufenden Stream.': 'Watch each other in a grid – perfect for playing together on a voice call. Create a group with "Invite friends" on your running stream.',
   'Einer Gruppe beitreten (Code oder Link)': 'Join a group (code or link)',
@@ -1633,7 +1653,16 @@ const I18N_EN = {
   'Qualitätswechsel während des Streams: ': 'Quality switches during the stream: ',
   'Macht aus deinem Stream eine Gruppe: Der Einladungslink wird kopiert – Freunde streamen mit einem Klick mit, alle anderen schauen im Browser zu.': 'Turns your stream into a group: the invite link is copied – friends stream along with one click, everyone else watches in the browser.',
   'Mit dem Beitritt geht dein eigener Stream für die Gruppe live. Wähle vorher, was übertragen wird:': 'Joining takes your own stream live for the group. Choose what to share first:',
-  'Über Lumora': 'About Lumora',
+  'Über K-Toolz': 'About K-Toolz',
+  'enthält': 'includes',
+  'Werkzeuge': 'Tools',
+  'Ausgeschaltete Werkzeuge verschwinden aus den Reitern und starten nichts im Hintergrund. Der Fenstername folgt der Auswahl: ein Werkzeug allein heißt wie das Werkzeug, mehrere heißen K-Toolz.': 'Switched-off tools disappear from the tabs and start nothing in the background. The window name follows the selection: a single tool is named after that tool, several are called K-Toolz.',
+  'FPS, Temperaturen und Auslastung als Overlay im Spiel.': 'FPS, temperatures and load as an in-game overlay.',
+  'Dein Spiel an Freunde streamen – ohne Konto, direkt vom PC.': 'Stream your game to friends – no account, straight from your PC.',
+  'Findet heraus, warum dein Spiel ruckelt.': 'Finds out why your game stutters.',
+  'Lenkrad oder Joystick als Xbox-Controller für jedes Spiel.': 'Wheel or joystick as an Xbox controller for any game.',
+  'Alle deine Spiele aus Steam, Epic, GOG & Co. in einer Bibliothek.': 'All your games from Steam, Epic, GOG & co. in one library.',
+  'Mindestens ein Werkzeug muss eingeschaltet bleiben.': 'At least one tool must stay switched on.',
   'kostenlos': 'free',
   'Artwork suchen': 'Find artwork',
   'Cover (Hochformat)': 'Cover (portrait)',
@@ -1685,7 +1714,7 @@ const I18N_EN = {
   'Empfindlichkeit': 'Sensitivity',
   'Flaschenhals': 'Bottleneck',
   'GPU-Limit': 'GPU limit', 'CPU-Limit': 'CPU limit', 'Einzelkern-Limit': 'Single-core limit',
-  'Findet heraus, warum dein Spiel ruckelt: Während einer Messung überwacht Lumora Frametimes, Hintergrundprogramme, Treiber-Latenzen und deine Grafikkarte – und benennt bei jedem Ruckler die wahrscheinlichen Verursacher. Die Messung kostet praktisch keine Leistung und läuft nur, solange du sie startest.': 'Finds out why your game stutters: during a measurement Lumora watches frame times, background programs, driver latencies and your graphics card – and names the likely culprits for every stutter. The measurement costs practically no performance and only runs while you start it.',
+  'Findet heraus, warum dein Spiel ruckelt: Während einer Messung überwacht K-Toolz Frametimes, Hintergrundprogramme, Treiber-Latenzen und deine Grafikkarte – und benennt bei jedem Ruckler die wahrscheinlichen Verursacher. Die Messung kostet praktisch keine Leistung und läuft nur, solange du sie startest.': 'Finds out why your game stutters: during a measurement K-Toolz watches frame times, background programs, driver latencies and your graphics card – and names the likely culprits for every stutter. The measurement costs practically no performance and only runs while you start it.',
   'Normal': 'Normal',
   'Empfindlich': 'Sensitive',
   'Nur harte Ruckler': 'Hard stutters only',
@@ -1752,9 +1781,9 @@ const I18N_EN = {
   '  ·  nur im lokalen Netz': '  ·  local network only',
   'Zuschauer: ': 'Viewers: ',
   '⚠️ <b>Grafiktreiber veraltet.</b> Das Streaming benötigt einen aktuellen NVIDIA-Treiber (mindestens Version 610). Bitte über GeForce Experience oder nvidia.com aktualisieren – danach läuft es.': '⚠️ <b>Graphics driver outdated.</b> Streaming needs a current NVIDIA driver (at least version 610). Please update via GeForce Experience or nvidia.com – then it works.',
-  '⚠️ <b>Kein Bild.</b> Läuft dein Spiel im <b>exklusiven Vollbild</b>? Stelle es auf <b>randloses Fenster</b> („Borderless"/„Fenster-Vollbild") um – dann kann Lumora aufnehmen, ohne ins Spiel einzugreifen.': '⚠️ <b>No picture.</b> Is your game in <b>exclusive fullscreen</b>? Switch it to <b>borderless window</b> ("Borderless"/"Windowed fullscreen") – then Lumora can capture without interfering with the game.',
+  '⚠️ <b>Kein Bild.</b> Läuft dein Spiel im <b>exklusiven Vollbild</b>? Stelle es auf <b>randloses Fenster</b> („Borderless"/„Fenster-Vollbild") um – dann kann K-Toolz aufnehmen, ohne ins Spiel einzugreifen.': '⚠️ <b>No picture.</b> Is your game in <b>exclusive fullscreen</b>? Switch it to <b>borderless window</b> ("Borderless"/"Windowed fullscreen") – then K-Toolz can capture without interfering with the game.',
   '📶 Bitrate automatisch gesenkt – ein Zuschauer hat schwachen Empfang. Geht von selbst wieder hoch, sobald es stabil läuft.': '📶 Bitrate lowered automatically – a viewer has weak reception. It rises again on its own once things stabilize.',
-  '🎨 <b>HDR-Bildschirm erkannt.</b> Beim Teilen des ganzen Bildschirms wirken die Farben für Zuschauer blass. Für korrekte Farben das Spiel als <b>Fenster</b> freigeben – dort wandelt Lumora HDR sauber um.': '🎨 <b>HDR display detected.</b> When sharing the whole screen, colors look washed out for viewers. For correct colors, share the game as a <b>window</b> – Lumora converts HDR properly there.',
+  '🎨 <b>HDR-Bildschirm erkannt.</b> Beim Teilen des ganzen Bildschirms wirken die Farben für Zuschauer blass. Für korrekte Farben das Spiel als <b>Fenster</b> freigeben – dort wandelt K-Toolz HDR sauber um.': '🎨 <b>HDR display detected.</b> When sharing the whole screen, colors look washed out for viewers. For correct colors, share the game as a <b>window</b> – K-Toolz converts HDR properly there.',
   // Toasts
   '⚠️ Streaming braucht eine GPU mit Video-Encoder (NVIDIA, AMD oder Intel).': '⚠️ Streaming needs a GPU with a video encoder (NVIDIA, AMD or Intel).',
   '❌ Dein Stream konnte nicht gestartet werden – prüfe den Stream-Bereich oben.': '❌ Your stream could not be started – check the stream section above.',
@@ -1784,7 +1813,7 @@ const I18N_EN = {
   'Gruppenraum konnte nicht erstellt werden': 'Could not create group room',
   'Gruppe wird beigetreten…': 'Joining group…',
   'Gruppenraum wird erstellt…': 'Creating group room…',
-  'Gib den <b>Code</b> an Freunde mit Lumora weiter oder teile den <b>Link</b> mit Zuschauern. Die Gruppe bleibt bestehen, egal wer kommt oder geht.': 'Give the <b>code</b> to friends with Lumora, or share the <b>link</b> with viewers. The group stays alive no matter who joins or leaves.',
+  'Gib den <b>Code</b> an Freunde mit K-Toolz weiter oder teile den <b>Link</b> mit Zuschauern. Die Gruppe bleibt bestehen, egal wer kommt oder geht.': 'Give the <b>code</b> to friends with K-Toolz, or share the <b>link</b> with viewers. The group stays alive no matter who joins or leaves.',
   '<br><span style="opacity:.8">⏸ Dein Stream ist gerade aus – die anderen sehen dich als pausiert. Starte ihn, um wieder gesehen zu werden.</span>': '<br><span style="opacity:.8">⏸ Your stream is currently off – the others see you as paused. Start it to be seen again.</span>',
   'Noch allein hier – teile Code oder Link.': 'Alone here so far – share the code or link.',
   '(du)': '(you)',
@@ -1823,7 +1852,7 @@ const I18N_EN = {
   'Datenquellen — GPU: ': 'Data sources — GPU: ',
   'Wird eingerichtet…': 'Setting up…',
   'Noch keine Spielzeit erfasst.': 'No playtime recorded yet.',
-  'Starte ein Spiel über Lumora – dein Rückblick füllt sich dann automatisch.': 'Launch a game through Lumora – your recap will fill up automatically.',
+  'Starte ein Spiel über K-Toolz – dein Rückblick füllt sich dann automatisch.': 'Launch a game through K-Toolz – your recap will fill up automatically.',
   'Meistgespielt': 'Most played',
   'Lieblings-Genre': 'Favorite genre',
   'Favoriten': 'Favorites',
@@ -1847,31 +1876,31 @@ const I18N_EN = {
   "Auf": "Sign in at",
   "mit": "with",
   "anmelden. Der Login läuft über Steam selbst —": ". The login runs through Steam itself —",
-  "Lumora sieht deine Steam-Daten nie": "Lumora never sees your Steam data",
+  "K-Toolz sieht deine Steam-Daten nie": "K-Toolz never sees your Steam data",
   "Oben rechts aufs Profil →": "Top right on your profile →",
   "→ Reiter": "→ tab",
-  "Blendet das OSD von MSI Afterburner aus bzw. wieder ein – derselbe Schalter, den auch Afterburners eigener OSD-Hotkey nutzt. Das Lumora-Panel (eigener Hotkey oben) bleibt davon": "Shows or hides the MSI Afterburner OSD – the same switch that Afterburner's own OSD hotkey uses. The Lumora panel (its own hotkey above) stays",
+  "Blendet das OSD von MSI Afterburner aus bzw. wieder ein – derselbe Schalter, den auch Afterburners eigener OSD-Hotkey nutzt. Das K-Toolz-Panel (eigener Hotkey oben) bleibt davon": "Shows or hides the MSI Afterburner OSD – the same switch that Afterburner's own OSD hotkey uses. The K-Toolz panel (its own hotkey above) stays",
   "unabhängig": "independent",
-  ": Afterburner z. B. links, Lumora rechts.": ": Afterburner on the left, Lumora on the right, for example.",
-  "Globaler Hotkey, um Lumora in den Vordergrund zu holen bzw. wieder zu verstecken – als Tastenkombination": "Global hotkey to bring Lumora to the front or hide it again – as a key combination",
+  ": Afterburner z. B. links, K-Toolz rechts.": ": Afterburner on the left, K-Toolz on the right, for example.",
+  "Globaler Hotkey, um K-Toolz in den Vordergrund zu holen bzw. wieder zu verstecken – als Tastenkombination": "Global hotkey to bring K-Toolz to the front or hide it again – as a key combination",
   "oder": "or",
   "Gamepad-Kombi. Ein angeschlossener Controller steuert die Bibliothek automatisch (D-Pad/Stick bewegen, A wählt/startet, B zurück).": "gamepad combo. A connected controller drives the library automatically (move D-pad/stick, A selects/launches, B goes back).",
   "Ganzer": "Whole",
   "oder gezielt ein": "or a specific",
   "– dann landet nur dieses Fenster im Stream (auch im Vollbild). Läuft das Spiel noch nicht, erst starten, dann ↻.": "– then only this window ends up in the stream (in fullscreen too). If the game is not running yet, start it first, then ↻.",
-  "Freunde mit Lumora brauchen nur den": "Friends with Lumora only need the",
+  "Freunde mit K-Toolz brauchen nur den": "Friends with K-Toolz only need the",
   "· der": "· the",
   "ist für Zuschauer im Browser (auch iPhone).": "is for viewers in the browser (iPhone too).",
-  "Die Gruppen-Vermittlung läuft über ein kleines PHP-Skript. Es wird mit Lumora mitgeliefert (": "The group brokering runs through a small PHP script. It ships with Lumora (",
+  "Die Gruppen-Vermittlung läuft über ein kleines PHP-Skript. Es wird mit K-Toolz mitgeliefert (": "The group brokering runs through a small PHP script. It ships with K-Toolz (",
   "im Installationsordner) – lege es auf einen beliebigen PHP-Webspace und trage hier die Adresse ein. Leer = Standard-Server. Der Video-Traffic läuft nie über diesen Server.": "in the installation folder) – put it on any PHP web space and enter the address here. Empty = default server. The video traffic never goes through this server.",
   "Startet/stoppt die Freigabe von überall –": "Starts/stops sharing from anywhere –",
   ". Beim Start wird das": ". On start, the",
   "(dein laufendes Spiel) freigegeben.": "(your running game) is shared.",
   "Stellt den Link bewusst über IPv6 aus – zum gezielten Testen des IPv6-Direktwegs (z. B. Player vom Handy über Mobilfunk). Für den Normalbetrieb aus.": "Deliberately serves the link over IPv6 – for specifically testing the direct IPv6 path (e.g. a player on a phone over mobile data). Off for normal use.",
-  "Lumora ist Open Source.": "Lumora is open source.",
+  "K-Toolz ist Open Source.": "K-Toolz is open source.",
   "Der komplette Quellcode ist frei verfügbar unter der GNU AGPL v3:": "The complete source code is freely available under the GNU AGPL v3:",
-  "— entwickelt und gepflegt von Karsten Radermacher. Der Name „Lumora\" und das Logo sind nicht Teil der Lizenz.": "— developed and maintained by Karsten Radermacher. The “Lumora” name and logo are not part of the license.",
-  "Lumora steht auf den Schultern großartiger Open-Source-Projekte.": "Lumora stands on the shoulders of great open-source projects.",
+  "— entwickelt und gepflegt von Karsten Radermacher. Die Namen „K-Toolz\", „PlainOSD\", „StreamToFriend\", „StutterHunter\" und „WheelToPad\" sowie die Logos sind nicht Teil der Lizenz.": "— developed and maintained by Karsten Radermacher. The names \"K-Toolz\", \"PlainOSD\", \"StreamToFriend\", \"StutterHunter\" and \"WheelToPad\" and the logos are not part of the license.",
+  "K-Toolz steht auf den Schultern großartiger Open-Source-Projekte.": "K-Toolz stands on the shoulders of great open-source projects.",
   "Eingesetzte Komponenten und ihre Urheber:": "Components used and their authors:",
   "— ICE/STUN/TURN (Verbindungsaufbau durch NAT/Router) im Medien-Relay · Paul-Louis Ageneau · MIT ·": "— ICE/STUN/TURN (connection setup through NAT/router) in the media relay · Paul-Louis Ageneau · MIT ·",
   "— Verschlüsselung der Medienströme (SRTP) im Medien-Relay · Cisco Systems · BSD-3 ·": "— encryption of the media streams (SRTP) in the media relay · Cisco Systems · BSD-3 ·",
@@ -2731,6 +2760,8 @@ function applyI18n() {
     }
 
     function applyLibView() {
+      // Launcher-Modul aus: es gibt keine Bibliothek - Rueckweg fuehrt in die Einstellungen.
+      if (window.APP_MODULES && !window.APP_MODULES.includes('launcher')) { showSettings('allgemein'); return }
       // Bibliotheks-Ansicht = raus aus den Einstellungen.
       settingsTab = null
       document.getElementById('settingsView').style.display = 'none'
@@ -2793,6 +2824,7 @@ function applyI18n() {
     }
 
     function selectGame(i, restore) {
+      if (window.APP_MODULES && !window.APP_MODULES.includes('launcher')) return   // Launcher aus: kein Spieldetail, von keinem Aufrufer (Scan, Cover, Fremdstart, Deep-Link)
       selectedIndex = i
       if (!restore) {
         libView = 'detail'
@@ -3343,7 +3375,7 @@ async function anOpen() {
 }
 // --- Berichts-Darstellung: EINE Quelle fuer App und Webseite ---
 // Die Zeichen-/Formatier-Funktionen liegen in analyze-report.js (oben eingebunden) und
-// werden vom geteilten Bericht auf lumora-streaming.de MITBENUTZT. Bewusst kein
+// werden vom geteilten Bericht auf k-toolz.de MITBENUTZT. Bewusst kein
 // Duplikat: Kopien driften auseinander (Lightbox-Kopie, Klick-durch nur im Gaming-OSD,
 // recentFt nur an einer Lesestelle). Wer die Darstellung aendert, aendert sie dort.
 LumoraReport.setTranslator(function (t) { return window.tr(t) })
@@ -3738,7 +3770,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
 
       if (!played.length) {
         body.innerHTML = '<div class="review-empty"><div class="review-empty-icon">🎮</div>' +
-          '<p>' + window.tr('Noch keine Spielzeit erfasst.') + '</p><span>' + window.tr('Starte ein Spiel über Lumora – dein Rückblick füllt sich dann automatisch.') + '</span></div>'
+          '<p>' + window.tr('Noch keine Spielzeit erfasst.') + '</p><span>' + window.tr('Starte ein Spiel über K-Toolz – dein Rückblick füllt sich dann automatisch.') + '</span></div>'
         document.getElementById('reviewOverlay').style.display = 'flex'
         return
       }
@@ -3844,6 +3876,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     }
     function showLibraryView() { stopStreamPreview(); applyLibView() }   // zurück zur Bibliothek (setzt settingsTab=null)
     async function showSettings(tab) {
+      if (tab && window.APP_MODULES && typeof tabAllowed === 'function' && !tabAllowed(tab)) tab = 'allgemein'   // Modul aus -> Reiter gibt es nicht
       settingsTab = tab || 'allgemein'
       document.getElementById('gridView').style.display = 'none'
       document.getElementById('gameDetail').style.display = 'none'
@@ -4211,7 +4244,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         else net = window.tr('  ·  nur im lokalen Netz')
         const cap = st.driverError
           ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('⚠️ <b>Grafiktreiber veraltet.</b> Das Streaming benötigt einen aktuellen NVIDIA-Treiber (mindestens Version 610). Bitte über GeForce Experience oder nvidia.com aktualisieren – danach läuft es.') + '</div>'
-          : st.captureError ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('⚠️ <b>Kein Bild.</b> Läuft dein Spiel im <b>exklusiven Vollbild</b>? Stelle es auf <b>randloses Fenster</b> („Borderless"/„Fenster-Vollbild") um – dann kann Lumora aufnehmen, ohne ins Spiel einzugreifen.') + '</div>' : ''
+          : st.captureError ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('⚠️ <b>Kein Bild.</b> Läuft dein Spiel im <b>exklusiven Vollbild</b>? Stelle es auf <b>randloses Fenster</b> („Borderless"/„Fenster-Vollbild") um – dann kann K-Toolz aufnehmen, ohne ins Spiel einzugreifen.') + '</div>' : ''
         // Adaptive Bitrate aktiv abgesenkt? Dezent, aber sichtbar erklaeren.
         const adapt = st.adaptKbit
           ? '<div style="color:#7fb3e6; margin-top:6px">' + window.tr('📶 Bitrate automatisch gesenkt – ein Zuschauer hat schwachen Empfang. Geht von selbst wieder hoch, sobald es stabil läuft.') + ' (' + (Math.round(st.adaptKbit / 100) / 10) + ' Mbit)</div>'
@@ -4219,7 +4252,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         // HDR-Bildschirm im Monitor-Weg: Farben wirken beim Zuschauer blass
         // (kein Tonemapping auf diesem Pfad) - erklaeren + Fenster-Weg empfehlen.
         const hdrW = st.hdrMonitor
-          ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('🎨 <b>HDR-Bildschirm erkannt.</b> Beim Teilen des ganzen Bildschirms wirken die Farben für Zuschauer blass. Für korrekte Farben das Spiel als <b>Fenster</b> freigeben – dort wandelt Lumora HDR sauber um.') + '</div>'
+          ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('🎨 <b>HDR-Bildschirm erkannt.</b> Beim Teilen des ganzen Bildschirms wirken die Farben für Zuschauer blass. Für korrekte Farben das Spiel als <b>Fenster</b> freigeben – dort wandelt K-Toolz HDR sauber um.') + '</div>'
           : ''
         document.getElementById('streamStats').innerHTML =
           window.tr('Zuschauer: ') + (st.viewers || 0) + (st.quality ? '  ·  ' + st.quality : '') + net + adapt + hdrW + cap
@@ -4294,7 +4327,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       setTimeout(refreshViewers, 300)
     }
     // --- Gruppen-Stream: mehrere Streams gemeinsam im Grid ansehen -----------
-    // Kein eigener Vermittlungs-Server: der Host ist einfach die Lumora-Instanz,
+    // Kein eigener Vermittlungs-Server: der Host ist einfach die K-Toolz-Instanz,
     // die aktuell die Mitgliederliste fuehrt (siehe main.js groupTick). Faellt
     // sie aus, uebernimmt automatisch ein anderes Mitglied - die Oberflaeche
     // hier zeigt davon nur das Endergebnis (wer gerade Host ist).
@@ -4327,7 +4360,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       // am eigenen Streamen - das dem Nutzer auch sagen.
       const pauseNote = _streamActive ? '' : window.tr('<br><span style="opacity:.8">⏸ Dein Stream ist gerade aus – die anderen sehen dich als pausiert. Starte ihn, um wieder gesehen zu werden.</span>')
       document.getElementById('groupRoleHint').innerHTML =
-        window.tr('Gib den <b>Code</b> an Freunde mit Lumora weiter oder teile den <b>Link</b> mit Zuschauern. Die Gruppe bleibt bestehen, egal wer kommt oder geht.') + pauseNote
+        window.tr('Gib den <b>Code</b> an Freunde mit K-Toolz weiter oder teile den <b>Link</b> mit Zuschauern. Die Gruppe bleibt bestehen, egal wer kommt oder geht.') + pauseNote
       document.getElementById('groupCode').value = st.code || ''
       document.getElementById('groupLink').value = st.link || ''
       const el = document.getElementById('groupMemberList')
@@ -4345,7 +4378,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // Einrichtung laeuft: der GEKLICKTE Knopf zeigt Spinner + festen Text (stabiler
     // Klickpunkt), und darunter fuellt sich eine Schritt-Liste ADDITIV - fertige
     // Zeilen bleiben mit gruenem Haken stehen, neue kommen dazu. So sieht man,
-    // was Lumora alles prueft und einrichtet, ohne dass irgendetwas wegspringt.
+    // was K-Toolz alles prueft und einrichtet, ohne dass irgendetwas wegspringt.
     let _groupBusy = false, _groupBusySince = 0, _groupStepTimer = null, _groupJoinMode = false
     const groupSleep = (ms) => new Promise((r) => setTimeout(r, ms))
     function groupStepsRender(state) {   // state: 'run' | 'done' | 'fail'
@@ -4493,7 +4526,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       groupJoinClick()
     }
     ipcRenderer.on('lan-groups', (e, list) => { _lanGroups = Array.isArray(list) ? list : []; renderLanGroups() })
-    // Beitritt per lumora://join/<CODE> (Grid-Button "Mit Lumora mitstreamen" oder
+    // Beitritt per lumora://join/<CODE> (Grid-Button "Mit K-Toolz mitstreamen" oder
     // geteilter Link): Stream-Tab oeffnen und den normalen, sichtbaren Beitritts-
     // Flow fahren - exakt dasselbe Feedback wie beim manuellen Beitreten.
     ipcRenderer.on('deep-join', (e, d) => {
@@ -4929,7 +4962,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // auf "Stream aus" zurueckzuspringen (Audit-Befund).
     ipcRenderer.on('stream-error', (e, msg) => streamToast('⚠️ ' + msg))
     // Klick auf die native "Router öffnet Ports nicht"-Benachrichtigung: direkt
-    // zur Anleitung springen (Lumora selbst wird von showMainWindow() im
+    // zur Anleitung springen (K-Toolz selbst wird von showMainWindow() im
     // Hauptprozess bereits nach vorne geholt, auch aus einem Vollbild-Spiel heraus).
     ipcRenderer.on('show-forward-help', () => {
       showSettings('stream')
@@ -5408,6 +5441,55 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
 
     // App-Version anzeigen (Fußzeile + Über-Dialog)
     try {
+      // K-Toolz-Identitaet: Anzeigename-Regel (genau ein aktives Modul -> Produktname und
+      // -Icon, sonst Suite) kommt aus der Shell. Titelleiste, Fenstertitel, Update-Texte
+      // ([data-appname]) und der Ueber-Dialog folgen ihr; aendert sich die Modulwahl,
+      // pusht die Shell 'app-identity'.
+      window.APP_NAME = 'K-Toolz'
+      window.APP_MODULES = ['osd', 'stream', 'stutter', 'wheel', 'launcher']
+      const MODULE_NAMES = { osd: 'PlainOSD', stream: 'StreamToFriend', stutter: 'StutterHunter', wheel: 'WheelToPad', launcher: 'Launcher' }
+      function applyAppIdentity(id) {
+        if (!id || !id.name) return
+        window.APP_NAME = id.name
+        window.APP_MODULES = Array.isArray(id.modules) && id.modules.length ? id.modules : window.APP_MODULES
+        document.title = id.name
+        const t = document.getElementById('titlebarTitle'); if (t) t.textContent = id.name
+        const i = document.getElementById('titlebarIcon'); if (i) i.src = 'icons/' + (id.icon || 'k-toolz') + '.png'
+        document.querySelectorAll('[data-appname]').forEach((el) => { el.textContent = id.name })
+        const av = document.getElementById('aboutVersion')
+        if (av && id.version) av.textContent = window.tr('Version ') + id.version + window.tr(' · kostenlos') + ' · ' + window.tr('enthält') + ' ' + window.APP_MODULES.map((k) => MODULE_NAMES[k] || k).join(', ')
+        if (window.applyModuleVisibility) window.applyModuleVisibility()
+      }
+      ipcRenderer.invoke('get-app-identity').then(applyAppIdentity).catch(() => {})
+      ipcRenderer.on('app-identity', (e, id) => applyAppIdentity(id))
+      window.applyAppIdentity = applyAppIdentity
+      // Startmodus: --mode=<modul> (Startmenue-Eintrag) oeffnet den Reiter des Werkzeugs -
+      // beim Laden (aus identity.json, einmalig) und bei Zweitstart (Push 'start-mode').
+      const MODE_TAB = { osd: 'overlay', stream: 'stream', stutter: 'analyse', wheel: 'eingabe', launcher: 'library' }
+      function openStartMode(k) {
+        const tab = MODE_TAB[k]; if (!tab || !tabAllowed(tab)) return
+        if (tab === 'library') { if (settingsTab) showLibraryView() } else showSettings(tab)
+      }
+      window.openStartMode = openStartMode
+      ipcRenderer.on('start-mode', (e, k) => openStartMode(k))
+      // Modul-Sichtbarkeit: Reiter, Bibliothek und die Kachel-Schalter folgen activeModules.
+      // 'eingabe' gehoert zu WheelToPad, 'library' zum Launcher; 'allgemein' bleibt immer.
+      const TAB_MODULE = { library: 'launcher', overlay: 'osd', eingabe: 'wheel', analyse: 'stutter', stream: 'stream' }
+      function tabAllowed(v) { const m = TAB_MODULE[v]; return !m || window.APP_MODULES.includes(m) }
+      function applyModuleVisibility() {
+        document.querySelectorAll('#detailNav .detail-nav-tab').forEach((b) => { b.style.display = tabAllowed(b.dataset.view) ? '' : 'none' })
+        const lay = document.querySelector('.layout'); if (lay) lay.classList.toggle('module-off', !tabAllowed('library'))   // Raster einspaltig, Liste weg
+        document.querySelectorAll('[data-module]').forEach((i) => { i.checked = window.APP_MODULES.includes(i.dataset.module) })
+        if (settingsTab ? !tabAllowed(settingsTab) : !tabAllowed('library')) showSettings('allgemein')
+      }
+      window.applyModuleVisibility = applyModuleVisibility
+      async function onModuleToggle(cb) {
+        const k = cb.dataset.module
+        const list = window.APP_MODULES.filter((x) => x !== k); if (cb.checked) list.push(k)
+        if (!list.length) { cb.checked = true; showGamepadToast(window.tr('Mindestens ein Werkzeug muss eingeschaltet bleiben.')); return }
+        await ipcRenderer.invoke('set-app-settings', { activeModules: list })   // die Shell antwortet mit 'app-identity'
+      }
+      window.onModuleToggle = onModuleToggle
       const _ver = ipcRenderer.sendSync('get-version-sync')
       if (_ver) {
         document.getElementById('appVersion').textContent = 'v' + _ver
@@ -5494,7 +5576,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
 
     ipcRenderer.on('update-ready', (e, info) => {
       upTitle.textContent = window.tr('Update bereit')
-      upText.textContent = 'Lumora ' + info.version + window.tr(' wurde geladen.')
+      upText.textContent = window.APP_NAME + ' ' + info.version + window.tr(' wurde geladen.')
       upTrack.style.display = 'none'
       setUpdateActions([
         { label: window.tr('Neu starten & installieren'), primary: true, onClick: () => ipcRenderer.invoke('install-update') },
@@ -5506,7 +5588,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // Komponenten-Update hat die Shell getauscht - Neustart noetig, damit die neue Version laeuft.
     ipcRenderer.on('update-restart', (e, info) => {
       upTitle.textContent = window.tr('Update installiert')
-      upText.textContent = 'Lumora ' + info.version + window.tr(' ist bereit – zum Aktivieren neu starten.')
+      upText.textContent = window.APP_NAME + ' ' + info.version + window.tr(' ist bereit – zum Aktivieren neu starten.')
       upTrack.style.display = 'none'
       setUpdateActions([
         { label: window.tr('Jetzt neu starten'), primary: true, onClick: async () => {
@@ -5624,7 +5706,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       if (!combo || !combo.length) return '—'
       return combo.map(i => XBTN[i] || ('Knopf ' + i)).join(' + ')
     }
-    // Zwei Gamepad-Hotkeys nach gleichem Schema: 'main' holt Lumora nach vorn,
+    // Zwei Gamepad-Hotkeys nach gleichem Schema: 'main' holt K-Toolz nach vorn,
     // 'osd' blendet das Overlay ein/aus. Ein Slot-Deskriptor je Ziel; nur ein
     // Slot kann gleichzeitig aufnehmen.
     const GP_SLOTS = {
@@ -6253,7 +6335,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
 
     // ---- Gamepad-Anbindung an die Fokus-Engine ----
     // Polling per setInterval (nicht requestAnimationFrame): läuft mit
-    // backgroundThrottling:false auch weiter, wenn Lumora minimiert ist – nötig,
+    // backgroundThrottling:false auch weiter, wenn K-Toolz minimiert ist – nötig,
     // damit der Gamepad-Hotkey das Fenster zurückholen kann.
     let gpPadIndex = null, gpNativeState = null
     const gpPressed = {}, gpRepeatAt = {}
@@ -6449,14 +6531,18 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     applyAccent()
     document.getElementById('sortSelect').value = sortMode
     renderList()
+    // Module/Anzeigename SYNCHRON vor dem ersten Bild (Reiter, Bibliothek, Scan-Dialog)
+    let startMode = ''
+    try { const idj = JSON.parse(ipcRenderer.sendSync('get-app-identity-sync') || 'null'); if (idj && window.applyAppIdentity) { window.applyAppIdentity(idj); startMode = idj.startMode || '' } } catch (e) {}
     applyLibView()
+    if (startMode && window.openStartMode) window.openStartMode(startMode)   // Startmenue-Eintrag eines Werkzeugs
     // Zuletzt gewähltes Spiel wiederherstellen (per ID, sortierungs-unabhängig)
-    if (lastSelectedId) {
+    if (lastSelectedId && window.APP_MODULES.includes('launcher')) {
       const idx = games.findIndex(g => g.id === lastSelectedId)
       if (idx >= 0) selectGame(idx, true)
     }
     migrateMedia()
-    if (games.length === 0) showScanDialog(true)
+    if (games.length === 0 && window.APP_MODULES.includes('launcher')) showScanDialog(true)   // ohne Launcher nichts zu scannen
 
     // Hotkey-Einstellungen früh laden, damit der Gamepad-Hotkey ab Start greift
     // (auch wenn der Einstellungsdialog nie geöffnet wird).

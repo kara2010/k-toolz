@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Lumora Analyse-Werkbank</title>
+<title>StutterHunter Analyse-Werkbank</title>
 <style>
   /* Analyse-Werkbank - Designsprache "randloses Laborinstrument" (Nutzer-Entscheid
      2026-08-05): KEINE Karten, KEINE Rahmen, KEINE Rundungen. Das Signal fuellt die
@@ -160,7 +160,7 @@
 <body>
 <div id="app">
   <div id="kopf">
-    <span class="marke">Lumora · Analyse-Werkbank</span>
+    <span class="marke">StutterHunter · Analyse-Werkbank</span>
     <span id="urteilPunkt" style="background:#556; color:#556"></span>
     <span id="laufName">–</span>
     <span id="laufMeta"></span>
@@ -230,6 +230,8 @@
   // Sprachquelle (localStorage lumoraLang, von index.html gepflegt - selber Origin).
   const I18N_EN = {
     'Median': 'Median',
+    'StutterHunter Analyse-Werkbank': 'StutterHunter Analysis Workbench',
+    'StutterHunter · Analyse-Werkbank': 'StutterHunter · Analysis Workbench',
     'Ruckler': 'Stutters',
     'Kein Lauf geladen': 'No run loaded',
     'Über den Analyse-Reiter „In der Werkbank öffnen" wählen.': 'Choose "Open in the workbench" from the Analysis tab.',
@@ -417,7 +419,7 @@
       lw.title = tr('Woran der Lauf überwiegend hing – Anteil an der Messzeit. Eine Einschätzung aus GPU-/Kernlast, keine frame-genaue Messung.')
     } else lw.style.display = 'none'
     document.getElementById('exportKnopf').style.display = ''
-    document.title = 'Lumora Analyse-Werkbank – ' + (spiel || berichtFile)
+    document.title = 'StutterHunter Analyse-Werkbank – ' + (spiel || berichtFile)
   }
 
   // Bericht als Text in die Zwischenablage (aus dem Reiter hierher umgezogen - hier
@@ -425,7 +427,7 @@
   async function wbExport() {
     const r = bericht; if (!r) return
     const Z = []
-    Z.push('Lumora Ruckler-Analyse – ' + (r.wall || '').replace('T', ' '))
+    Z.push('StutterHunter Ruckler-Analyse – ' + (r.wall || '').replace('T', ' '))
     Z.push((r.game || '') + ' · ' + Math.round((r.durS || 0) / 60) + ' min · ' + (r.gpu || '') + (r.gpuDriver ? ' (Treiber ' + r.gpuDriver + ')' : ''))
     const m = r.context || {}
     Z.push([m.resolution, m.hdr ? 'HDR' : 'SDR', m.streaming ? 'Streaming aktiv' : null, 'Windows-Build ' + (m.winBuild || '?')].filter(Boolean).join(' · '))

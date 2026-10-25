@@ -138,7 +138,7 @@ inline int cmpVer3(const std::string& a, const std::string& b) {
 inline std::string runOnce(const Deps& d, const std::wstring& appDir, const std::string& currentVer, bool* restartRequired = nullptr) {
     if (restartRequired) *restartRequired = false;
     json s = d.loadSettings();
-    std::string feed = s.value("componentFeed", std::string("https://lumora-streaming.de/updates/components.json"));
+    std::string feed = s.value("componentFeed", std::string("https://k-toolz.de/updates/components.json"));
 
     std::string body = d.httpGetBody(feed);
     if (body.empty()) return "";
