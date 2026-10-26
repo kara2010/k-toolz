@@ -14,7 +14,7 @@ $stage = "$shell\stage"
 # wer sie gezogen hatte, bekaeme dieselbe Nummer nie erneut als Update angeboten
 # (der Updater vergleicht nur die Versionsnummer, s. RELEASE.md 12).
 $version = "4.0.0"   # 4.0.0: Lumora heisst K-Toolz. Werkzeuge PlainOSD/StreamToFriend/StutterHunter/
-                     #        WheelToPad + Launcher, einzeln schaltbar; Produkt-Installer per Dateiname.
+                     #        WheelToPad + Launcher, einzeln zuschaltbar; Produkt-Installer per Dateiname.
                      #        Programmdateien k-toolz*.exe, Datenordner %APPDATA%\K-Toolz (Umzug aus
                      #        lumora), Protokoll ktoolz:// (lumora:// bleibt), Komponenten-Manifest
                      #        k-toolz-components.json (components.json eingefroren). Treiber-Setups
