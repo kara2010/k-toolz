@@ -24,12 +24,15 @@
   /* minmax(0,1fr) fuer die EINE Spalte: eine implizite Grid-Spalte waechst sonst auf
      min-content - der Kopf war real 1309px breit (gemessen), body overflow:hidden
      verschluckte den Rest, und keine flex-shrink-Regel IM Kopf konnte das je fixen. */
-  #app { display: grid; grid-template-rows: 66px 1fr; grid-template-columns: minmax(0, 1fr); height: 100%; }
+  #app { display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); height: 100%; }
 
   /* Kopfzeile: Baseline-Reihe, grosse duenne Zahlen, Mikrolabels.
      Zugleich TITELZEILE des rahmenlosen Fensters: app-region:drag macht sie ziehbar
      (Doppelklick maximiert), alles Anklickbare darin ist explizit no-drag. */
-  #kopf { display: flex; align-items: baseline; gap: 20px; padding: 18px 24px 0;
+  /* Zwei Zeilen: oben Marke/Lauf/Kennzahlen/Knoepfe, darunter das Urteil als ganzer Satz.
+     Frueher stand das Urteil einzeilig in der Kopfzeile (max. 400px, Auslassungspunkte) - bei
+     1280 DIP (maximiert bei hoher Skalierung) blieben vom Satz ohne Systemstoerer 286 von 642 px. */
+  #kopf { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 8px; padding: 18px 24px 12px;
     border-bottom: 1px solid var(--line); -webkit-app-region: drag; }
   #kopf button, #kopf [data-nodrag] { -webkit-app-region: no-drag; }
   #fensterKnoepfe { display: flex; gap: 2px; align-self: flex-start; margin: -12px -14px 0 0; }
@@ -59,9 +62,10 @@
   #hilfeBox .schl button:hover { color: var(--phos); border-color: var(--phos); }
   #kopf .marke { font: 600 10px/1 Consolas, monospace; letter-spacing: .42em;
     text-transform: uppercase; color: var(--phos); white-space: nowrap; }
-  #laufName { font-size: 13px; color: var(--hell); font-weight: 500; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; max-width: 400px; flex-shrink: 1; min-width: 80px; }
-  #laufMeta { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 3; min-width: 0; }
+  #kopfZeile { display: flex; align-items: baseline; gap: 20px; min-width: 0; }
+  #urteilZeile { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  #laufName { font-size: 13px; line-height: 1.4; color: var(--hell); font-weight: 500; flex: 1 1 auto; min-width: 0; }
+  #laufMeta { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0; margin-left: auto; padding-left: 16px; }
   #kopf .luft { flex: 1; }
   .kopfstat { text-align: right; flex-shrink: 0; }
   .kopfstat b { font: 300 26px/1 Consolas, monospace; color: var(--hell); letter-spacing: -.02em; }
@@ -160,10 +164,8 @@
 <body>
 <div id="app">
   <div id="kopf">
+   <div id="kopfZeile">
     <span class="marke">StutterHunter · Analyse-Werkbank</span>
-    <span id="urteilPunkt" style="background:#556; color:#556"></span>
-    <span id="laufName">–</span>
-    <span id="laufMeta"></span>
     <span class="luft"></span>
     <span class="kopfstat"><b id="kAvg" class="mono">–</b><span>Ø FPS</span></span>
     <span class="kopfstat"><b id="kLow" class="mono">–</b><span>1%-Low</span></span>
@@ -177,6 +179,8 @@
       <button id="wbMaxBtn" onclick="wbCtl('max')" title="Maximieren/Wiederherstellen">❐</button>
       <button class="zu" onclick="wbCtl('close')" title="Schließen">✕</button>
     </div>
+   </div>
+   <div id="urteilZeile"><span id="urteilPunkt" style="background:#556; color:#556"></span><span id="laufName">–</span><span id="laufMeta"></span></div>
   </div>
   <div id="hilfe" onclick="if (event.target === this) hilfeAn(false)">
     <div id="hilfeBox">

@@ -4592,8 +4592,18 @@ static LRESULT CALLBACK wbWndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         if (w == SIZE_MAXIMIZED) sendToWerkbank("wb-maximized", nullptr);
         else if (w == SIZE_RESTORED) sendToWerkbank("wb-unmaximized", nullptr);
         return 0;
-    case WM_GETMINMAXINFO: {   // Timeline + Spuren + Panels brauchen Platz
-        auto* mm = (MINMAXINFO*)l; mm->ptMinTrackSize.x = 1100; mm->ptMinTrackSize.y = 700; return 0; }
+    case WM_GETMINMAXINFO: {   // Timeline + Spuren + Panels brauchen Platz: 1100x700 DIP
+        // DPI-skaliert wie das Hauptfenster - frueher Pixel: bei hoher Skalierung war das Minimum viel zu klein
+        // und das wiederhergestellte Fenster 427x267 DIP, die Kopfzeile samt Fensterknoepfen passte nicht.
+        // Auf die Arbeitsflaeche begrenzt, sonst laesst sich das Fenster auf kleinen Schirmen nicht platzieren.
+        auto* mm = (MINMAXINFO*)l;
+        UINT dpi = GetDpiForWindow(h); if (!dpi) dpi = 96;
+        LONG mw = MulDiv(1100, dpi, 96), mh = MulDiv(700, dpi, 96);
+        MONITORINFO mi{ sizeof(mi) };
+        if (GetMonitorInfoW(MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST), &mi)) {
+            mw = (std::min)(mw, mi.rcWork.right - mi.rcWork.left); mh = (std::min)(mh, mi.rcWork.bottom - mi.rcWork.top);
+        }
+        mm->ptMinTrackSize.x = mw; mm->ptMinTrackSize.y = mh; return 0; }
     // Rahmenlos wie das Hauptfenster (Nutzer-Befund: "Standard-UI passt nicht zu Lumora").
     // Gleiche Mechanik: NCCALCSIZE nimmt den Systemrahmen weg, maximiert wird auf die
     // Arbeitsflaeche geschnitten (sonst ragt das Fenster in die Taskleiste, s. Hauptfenster).
@@ -4648,14 +4658,17 @@ static void createWerkbankWindow(const std::string& file) {
     if (!reg) {
         WNDCLASSW wc{}; wc.lpfnWndProc = wbWndProc; wc.hInstance = GetModuleHandleW(nullptr);
         wc.lpszClassName = L"KToolzWerkbank"; wc.hbrBackground = CreateSolidBrush(RGB(8, 9, 14));
-        wc.hIcon = LoadIconW(GetModuleHandleW(nullptr), L"IDI_MOD_STUTTER");   // Werkbank gehoert zu StutterHunter wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+        wc.hIcon = LoadIconW(GetModuleHandleW(nullptr), L"IDI_MOD_STUTTER");   // Werkbank gehoert zu StutterHunter
+        wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
         RegisterClassW(&wc); reg = true;
     }
-    // Mittig auf dem Monitor des Hauptfensters, 1280x800 (Minimum 1100x700 via MINMAXINFO)
+    // Mittig auf dem Monitor des Hauptfensters, 1280x800 DIP (Minimum 1100x700 DIP via MINMAXINFO),
+    // DPI-skaliert und auf die Arbeitsflaeche begrenzt
     RECT wa{ 0, 0, 1920, 1080 };
     { HMONITOR mon = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTOPRIMARY);
       MONITORINFO mi{ sizeof(mi) }; if (GetMonitorInfoW(mon, &mi)) wa = mi.rcWork; }
-    int w = (std::min)(1280L, wa.right - wa.left), h = (std::min)(800L, wa.bottom - wa.top);
+    UINT wbDpi = g_hwnd ? GetDpiForWindow(g_hwnd) : 0; if (!wbDpi) wbDpi = 96;
+    int w = (int)(std::min)((LONG)MulDiv(1280, wbDpi, 96), wa.right - wa.left), h = (int)(std::min)((LONG)MulDiv(800, wbDpi, 96), wa.bottom - wa.top);
     g_wbHwnd = CreateWindowExW(0, L"KToolzWerkbank", L"StutterHunter Analyse-Werkbank",
         WS_OVERLAPPEDWINDOW,
         wa.left + (wa.right - wa.left - w) / 2, wa.top + (wa.bottom - wa.top - h) / 2, w, h,
