@@ -1041,6 +1041,10 @@ body:not(.nav-mode) .game-item:hover .game-item-fav { opacity: 1; }
   overflow: hidden;
   overflow: clip;   /* clip statt hidden: kein Scroll-Container, scrollIntoView darunter kann die
                        Reiterleiste nicht mehr unerreichbar nach oben schieben (hidden bleibt Rueckfall) */
+  /* min-height/min-width PFLICHT zu clip: ohne Scroll-Container gilt sonst die Inhaltsgroesse als
+     Mindestgroesse - die Grid-Zeile wuchs mit den Einstellungen, die Sidebar-Fussleiste rutschte aus dem Fenster */
+  min-height: 0;
+  min-width: 0;
   background: #0f0f0f;
   position: relative;
 }
