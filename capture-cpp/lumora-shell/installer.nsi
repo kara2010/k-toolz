@@ -66,6 +66,7 @@ Var CbStream
 Var CbStutter
 Var CbWheel
 Var CbLauncher
+Var FontName         ; fette Schrift der Werkzeugnamen auf der Auswahlseite
 
 ; --- Optik: K-Toolz-Logo, Welcome/Finish-Bitmap (164x314); Produkt-Installer tauschen das Bild in ktGuiInit.
 ;     Kein Kopfbild: das dunkle Rechteck rechts in der weissen Kopfzeile wirkte wie ein Fremdkoerper.
@@ -113,16 +114,16 @@ LangString S_ModTitle ${LANG_GERMAN} "Was möchtest du nutzen?"
 LangString S_ModTitle ${LANG_ENGLISH} "What would you like to use?"
 LangString S_ModSub ${LANG_GERMAN} "Aktiv ist nur, was du anhakst – der Rest lässt sich später in den Einstellungen einschalten."
 LangString S_ModSub ${LANG_ENGLISH} "Only what you tick is active – the rest can be switched on later in the settings."
-LangString S_ModOsd ${LANG_GERMAN} "PlainOSD - FPS, Temperaturen und Auslastung als Overlay im Spiel"
-LangString S_ModOsd ${LANG_ENGLISH} "PlainOSD - FPS, temperatures and load as an in-game overlay"
-LangString S_ModStream ${LANG_GERMAN} "StreamToFriend - dein Spiel an Freunde streamen, ohne Konto"
-LangString S_ModStream ${LANG_ENGLISH} "StreamToFriend - stream your game to friends, no account"
-LangString S_ModStutter ${LANG_GERMAN} "StutterHunter - findet heraus, warum dein Spiel ruckelt"
-LangString S_ModStutter ${LANG_ENGLISH} "StutterHunter - finds out why your game stutters"
-LangString S_ModWheel ${LANG_GERMAN} "WheelToPad - Lenkrad oder Joystick als Xbox-Controller"
-LangString S_ModWheel ${LANG_ENGLISH} "WheelToPad - wheel or joystick as an Xbox controller"
-LangString S_ModLauncher ${LANG_GERMAN} "Launcher - alle deine Spiele aus Steam, Epic, GOG && Co. in einer Bibliothek"
-LangString S_ModLauncher ${LANG_ENGLISH} "Launcher - all your games from Steam, Epic, GOG && co. in one library"
+LangString S_ModOsd ${LANG_GERMAN} "FPS, Temperaturen und Auslastung als Overlay im Spiel"
+LangString S_ModOsd ${LANG_ENGLISH} "FPS, temperatures and load as an in-game overlay"
+LangString S_ModStream ${LANG_GERMAN} "Dein Spiel an Freunde streamen, ohne Konto"
+LangString S_ModStream ${LANG_ENGLISH} "Stream your game to friends, no account"
+LangString S_ModStutter ${LANG_GERMAN} "Findet heraus, warum dein Spiel ruckelt"
+LangString S_ModStutter ${LANG_ENGLISH} "Finds out why your game stutters"
+LangString S_ModWheel ${LANG_GERMAN} "Lenkrad oder Joystick als Xbox-Controller"
+LangString S_ModWheel ${LANG_ENGLISH} "Wheel or joystick as an Xbox controller"
+LangString S_ModLauncher ${LANG_GERMAN} "Alle deine Spiele aus Steam, Epic, GOG && Co. in einer Bibliothek"
+LangString S_ModLauncher ${LANG_ENGLISH} "All your games from Steam, Epic, GOG && co. in one library"
 LangString S_ModNone ${LANG_GERMAN} "Bitte mindestens ein Werkzeug auswählen."
 LangString S_ModNone ${LANG_ENGLISH} "Please select at least one tool."
 LangString S_RunNow ${LANG_GERMAN} "$ProdName jetzt starten"
@@ -267,6 +268,23 @@ Function un.onInit
 FunctionEnd
 
 ; --- Auswahlseite: nur bei neutralem Namen, frischer Installation, nicht still ---
+; Eine Zeile der Auswahlseite. Icons kommen aus dem Staging (dieselben Dateien wie im Startmenue).
+!macro ModRow Y YDESC ICON NAME DESC CB
+  ${NSD_CreateIcon} 0 ${Y} 20u 20u ""
+  Pop $0
+  File "/oname=$PLUGINSDIR\${ICON}" "${SRCDIR}\icons\${ICON}"
+  ${NSD_SetIcon} $0 "$PLUGINSDIR\${ICON}" $1
+  SetCtlColors $0 "" 0xFFFFFF
+  ${NSD_CreateCheckbox} 26u ${Y} -26u 12u "${NAME}"
+  Pop ${CB}
+  SendMessage ${CB} ${WM_SETFONT} $FontName 1
+  SetCtlColors ${CB} 0x1F2937 0xFFFFFF
+  ${NSD_Check} ${CB}
+  ${NSD_CreateLabel} 38u ${YDESC} -38u 10u "${DESC}"
+  Pop $0
+  SetCtlColors $0 0x6B7280 0xFFFFFF
+!macroend
+
 Function modPage
   ${If} $Mode != "all"
     Abort
@@ -283,21 +301,15 @@ Function modPage
   ${If} $Dlg == error
     Abort
   ${EndIf}
-  ${NSD_CreateCheckbox} 0 8u 100% 12u "$(S_ModOsd)"
-  Pop $CbOsd
-  ${NSD_Check} $CbOsd
-  ${NSD_CreateCheckbox} 0 26u 100% 12u "$(S_ModStream)"
-  Pop $CbStream
-  ${NSD_Check} $CbStream
-  ${NSD_CreateCheckbox} 0 44u 100% 12u "$(S_ModStutter)"
-  Pop $CbStutter
-  ${NSD_Check} $CbStutter
-  ${NSD_CreateCheckbox} 0 62u 100% 12u "$(S_ModWheel)"
-  Pop $CbWheel
-  ${NSD_Check} $CbWheel
-  ${NSD_CreateCheckbox} 0 80u 100% 12u "$(S_ModLauncher)"
-  Pop $CbLauncher
-  ${NSD_Check} $CbLauncher
+  ; Weisser Grund wie Kopfzeile und Willkommensseite; je Werkzeug eine Zeile:
+  ; Icon | [x] Name (fett, Klick auf den Namen schaltet um) / Beschreibung grau darunter
+  SetCtlColors $Dlg "" 0xFFFFFF
+  CreateFont $FontName "Segoe UI" 10 600
+  !insertmacro ModRow 4u 16u "plainosd.ico" "PlainOSD" "$(S_ModOsd)" $CbOsd
+  !insertmacro ModRow 30u 42u "streamtofriend.ico" "StreamToFriend" "$(S_ModStream)" $CbStream
+  !insertmacro ModRow 56u 68u "stutterhunter.ico" "StutterHunter" "$(S_ModStutter)" $CbStutter
+  !insertmacro ModRow 82u 94u "wheeltopad.ico" "WheelToPad" "$(S_ModWheel)" $CbWheel
+  !insertmacro ModRow 108u 120u "k-toolz.ico" "Launcher" "$(S_ModLauncher)" $CbLauncher
   nsDialogs::Show
 FunctionEnd
 
