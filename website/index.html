@@ -75,11 +75,11 @@
         "@type": "SoftwareApplication",
         "@id": "https://lumora-streaming.de/#app",
         "name": "Lumora",
-        "softwareVersion": "3.2.10",
+        "softwareVersion": "4.0.0",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
         "license": "https://www.gnu.org/licenses/agpl-3.0.html",
-        "sameAs": ["https://github.com/kara2010/lumora"],
+        "sameAs": ["https://github.com/kara2010/k-toolz"],
         "applicationSubCategory": "Utility",
         "url": "https://lumora-streaming.de/",
         "image": "https://lumora-streaming.de/screenshot.png",
@@ -792,7 +792,7 @@
   <details class="ss-hint">
     <summary>🛡️ Windows zeigt eine Sicherheitswarnung? So geht's weiter</summary>
     <div class="ss-body">
-      Lumora ist <strong>digital signiert</strong> (Certum Code Signing) – Windows zeigt beim Installieren den geprüften Herausgeber statt „Unbekannter Herausgeber". Bei einem ganz frischen Release kann SmartScreen trotzdem kurz eine Meldung wie <strong>„Der Computer wurde durch Windows geschützt"</strong> zeigen, bis die Signatur Reputation gesammelt hat – das ist weder ein Fehler noch ein Virus (und der komplette Quellcode ist offen auf <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">GitHub</a> einsehbar). So startest du ganz normal weiter:
+      Lumora ist <strong>digital signiert</strong> (Certum Code Signing) – Windows zeigt beim Installieren den geprüften Herausgeber statt „Unbekannter Herausgeber". Bei einem ganz frischen Release kann SmartScreen trotzdem kurz eine Meldung wie <strong>„Der Computer wurde durch Windows geschützt"</strong> zeigen, bis die Signatur Reputation gesammelt hat – das ist weder ein Fehler noch ein Virus (und der komplette Quellcode ist offen auf <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">GitHub</a> einsehbar). So startest du ganz normal weiter:
       <ol>
         <li>Auf <strong>„Weitere Informationen"</strong> klicken.</li>
         <li>Dann auf <strong>„Trotzdem ausführen"</strong>.</li>
@@ -1054,8 +1054,20 @@
     <div class="changelog">
       <div class="release">
         <div class="release-head">
-          <span class="release-ver">3.2.10</span>
+          <span class="release-ver">4.0.0</span>
           <span class="release-tag">aktuell</span>
+        </div>
+        <ul>
+          <li><strong>Lumora heißt jetzt K-Toolz</strong> – deine Spiele, Einstellungen, Hotkeys und Profile ziehen beim Update automatisch mit um.</li>
+          <li><strong>Vier Werkzeuge, einzeln schaltbar</strong> – PlainOSD, StreamToFriend, StutterHunter und WheelToPad, dazu der Launcher. Was du nicht brauchst, schaltest du unter Allgemein → Werkzeuge ab. Jedes Werkzeug hat einen eigenen Startmenü-Eintrag.</li>
+          <li><strong>Treiber im Paket</strong> – PawnIO für CPU-Temperaturen und ViGEmBus für virtuelle Controller liegen dem Installer bei und werden nur installiert, wenn du sie brauchst.</li>
+          <li><strong>Start dort, wo du aufgehört hast</strong> – K-Toolz öffnet beim Start den Bereich, den du zuletzt offen hattest.</li>
+          <li><strong>Analyse-Werkbank</strong> – passt sich hohen Bildschirmskalierungen an und zeigt ihr Urteil als ganzen Satz.</li>
+        </ul>
+      </div>
+      <div class="release">
+        <div class="release-head">
+          <span class="release-ver">3.2.10</span>
         </div>
         <ul>
           <li><strong>Streaming-Bild mit aktuellen NVIDIA-Treibern zurück</strong> – neuere Treiber liefern AV1-Bilder in einer anderen Aufteilung, die der Übertragungsweg zum Browser bisher so zerlegte, dass Player und Vorschau zwar Daten empfingen, aber kein Bild zusammensetzen konnten. Jedes Bild wird jetzt so gepackt, wie Browser es erwarten – das Bild ist wieder da, bei AV1 wie bei H.264 und unabhängig vom Treiberstand.</li>
@@ -1093,6 +1105,7 @@
           <li>Maximiert schneidet die Taskleiste nichts mehr vom Fenster ab, und Bibliothek wie Einstellungen scrollen wieder bis zum Ende.</li>
         </ul>
       </div>
+      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.5</span>
@@ -1103,7 +1116,6 @@
           <li>Bibliothek und Einstellungen werden beim Start robuster geladen.</li>
         </ul>
       </div>
-      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.4</span>
@@ -1279,7 +1291,7 @@
           <span class="release-ver">2.2.18</span>
         </div>
         <ul>
-          <li><strong>Lumora ist jetzt Open Source</strong>: Der komplette Quellcode ist öffentlich einsehbar unter <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">github.com/kara2010/lumora</a> (Lizenz: GNU AGPL v3) – jeder kann nachprüfen, was die App tut.</li>
+          <li><strong>Lumora ist jetzt Open Source</strong>: Der komplette Quellcode ist öffentlich einsehbar unter <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">github.com/kara2010/k-toolz</a> (Lizenz: GNU AGPL v3) – jeder kann nachprüfen, was die App tut.</li>
           <li><strong>Gruppen kinderleicht</strong>: Am laufenden Stream erstellt „Freunde dazuholen" die Gruppe und kopiert den Einladungslink – wer ihn öffnet, ist mit einem Klick dabei („Mit Lumora mitstreamen"). Eigene Rechner im selben Netz erkennen eine laufende Gruppe von selbst und bieten den Beitritt direkt an. Kein Code-Abtippen mehr.</li>
           <li><strong>Teilen per Web-Adresse statt IP</strong>: Der Stream-Link ist jetzt eine kurze URL – funktioniert erstmals auch auf dem iPhone, hält deine IP-Adresse aus der Adresszeile der Zuschauer heraus und bleibt selbst bei einem IP-Wechsel gültig.</li>
           <li><strong>Grid-Player rundum erneuert</strong>: deutlich schnellerer Verbindungsaufbau, Bild-in-Bild (einzelne Kachel oder das ganze Grid als schwebendes Mini-Fenster über dem Spiel), Spotlight-Ansicht, Lautstärkeregler, gemerkte Ton-Wahl, wacher Handy-Bildschirm, edleres Design, ausblendende Bedienelemente – auf Deutsch und Englisch.</li>
@@ -1495,7 +1507,7 @@
       </div>
       </div><!-- /#changelogRest -->
     </div>
-    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Ältere Versionen anzeigen (36)</button>
+    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Ältere Versionen anzeigen (37)</button>
   </div>
 </section>
 
@@ -1515,7 +1527,7 @@
         <div class="num">2</div>
         <p>
           <strong>Windows SmartScreen-Hinweis:</strong> Lumora ist digital signiert (Certum Code Signing), Windows zeigt also den geprüften Herausgeber. Bei einem ganz frischen Release kann trotzdem kurz eine Meldung erscheinen, bis die Signatur Reputation gesammelt hat – dann einfach auf <strong>„Weitere Informationen"</strong> → <strong>„Trotzdem ausführen"</strong> klicken.
-          Der komplette Quellcode ist offen auf <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">GitHub</a> einsehbar; alle verwendeten Komponenten sind unten unter „Transparenz" dokumentiert.
+          Der komplette Quellcode ist offen auf <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">GitHub</a> einsehbar; alle verwendeten Komponenten sind unten unter „Transparenz" dokumentiert.
         </p>
       </div>
       <div class="install-step">
@@ -1545,7 +1557,7 @@
     <h2>Womit ist das gebaut?</h2>
     <p class="section-sub">
       Lumora ist selbst Open Source: Der komplette Quellcode steht unter der GNU AGPL v3 auf
-      <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">github.com/kara2010/lumora</a> —
+      <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">github.com/kara2010/k-toolz</a> —
       jede Zeile ist öffentlich nachlesbar. Seit der nativen Version ist Lumora
       <strong>durchgehend eigener C++-Code</strong>: Bildaufnahme (Windows Graphics Capture),
       Hardware-Encoding (NVENC/AMF/QuickSync direkt), MPEG-TS-Muxing, der WebRTC-Medien-Relay,
@@ -1739,7 +1751,7 @@
     <a href="gamepad.html">Bedienung per Gamepad</a>
   </p>
   <p>
-    Lumora · Kostenlos &amp; Open Source (<a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">Quellcode auf GitHub</a>, AGPL v3) ·
+    Lumora · Kostenlos &amp; Open Source (<a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">Quellcode auf GitHub</a>, AGPL v3) ·
     durchgehend eigener C++-Code: HDR-Umschaltung, FPS-Messung (ETW), Hardware-Encoding und WebRTC-Medien-Relay ohne Fremd-Tools ·
     CPU-Sensorik optional via <a href="https://pawnio.eu" target="_blank" rel="noopener">PawnIO</a> (namazso, GPL v2) ·
     virtueller Controller optional via <a href="https://github.com/nefarius/ViGEmBus" target="_blank" rel="noopener">ViGEmBus</a> (Nefarius, BSD-3)
@@ -1912,7 +1924,7 @@
     if (!rest || !btn) return;
     var open = rest.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Weniger anzeigen' : 'Ältere Versionen anzeigen (36)';
+    btn.textContent = open ? 'Weniger anzeigen' : 'Ältere Versionen anzeigen (37)';
   }
 
   function toggleFeatures() {

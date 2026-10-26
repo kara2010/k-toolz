@@ -268,6 +268,39 @@ Function un.onInit
 FunctionEnd
 
 ; --- Auswahlseite: nur bei neutralem Namen, frischer Installation, nicht still ---
+; Verwaiste Lumora-Eintraege in Apps & Features entfernen (Nutzer-Befund 26.10.: "Lumora" blieb nach
+; dem Umzug stehen). Nicht nur feste Schluesselnamen: die Electron-Version schrieb unter einem eigenen
+; Schluessel. Geloescht wird nur, was mit "Lumora" beginnt UND dessen Programmordner nicht mehr existiert;
+; ohne InstallLocation bleibt der Eintrag (keine Vermutung ueber den Ordner).
+Function cleanOldUninstallEntries
+  Push $R0
+  Push $R1
+  Push $R2
+  Push $R3
+  StrCpy $R0 0
+  cleanLoop:
+    EnumRegKey $R1 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall" $R0
+    StrCmp $R1 "" cleanDone
+    ReadRegStr $R2 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\$R1" "DisplayName"
+    StrCpy $R2 $R2 6
+    ${If} $R2 == "Lumora"
+      ReadRegStr $R3 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\$R1" "InstallLocation"
+      ${If} $R3 != ""
+      ${AndIfNot} ${FileExists} "$R3\*.*"
+        DetailPrint "Alter Eintrag entfernt: $R1"
+        DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\$R1"
+        Goto cleanLoop   ; gleicher Index: die Aufzaehlung rueckt nach dem Loeschen nach
+      ${EndIf}
+    ${EndIf}
+    IntOp $R0 $R0 + 1
+    Goto cleanLoop
+  cleanDone:
+  Pop $R3
+  Pop $R2
+  Pop $R1
+  Pop $R0
+FunctionEnd
+
 ; Eine Zeile der Auswahlseite. Icons kommen aus dem Staging (dieselben Dateien wie im Startmenue).
 !macro ModRow Y YDESC ICON NAME DESC CB
   ${NSD_CreateIcon} 0 ${Y} 20u 20u ""
@@ -553,6 +586,7 @@ wv2ok:
   ; Apps & Features: EIN Eintrag "K-Toolz". Alte Schluessel der Lumora-Zeit entfernen.
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\lumora"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\lumora-native"
+  Call cleanOldUninstallEntries
   ${If} $WasLumora == "1"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayName" "K-Toolz (früher Lumora)"
   ${Else}

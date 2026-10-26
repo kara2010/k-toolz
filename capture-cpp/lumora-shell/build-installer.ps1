@@ -13,7 +13,13 @@ $stage = "$shell\stage"
 # osd-Rauchtest als Bau-Sperre (Schritt 0b). Die Nummer 3.2.6 bleibt verbrannt -
 # wer sie gezogen hatte, bekaeme dieselbe Nummer nie erneut als Update angeboten
 # (der Updater vergleicht nur die Versionsnummer, s. RELEASE.md 12).
-$version = "3.2.10"  # 3.2.10: Streaming-Bild zurueck mit aktuellen NVIDIA-Treibern: der Encoder
+$version = "4.0.0"   # 4.0.0: Lumora heisst K-Toolz. Werkzeuge PlainOSD/StreamToFriend/StutterHunter/
+                     #        WheelToPad + Launcher, einzeln schaltbar; Produkt-Installer per Dateiname.
+                     #        Programmdateien k-toolz*.exe, Datenordner %APPDATA%\K-Toolz (Umzug aus
+                     #        lumora), Protokoll ktoolz:// (lumora:// bleibt), Komponenten-Manifest
+                     #        k-toolz-components.json (components.json eingefroren). Treiber-Setups
+                     #        im Paket. Start im zuletzt offenen Reiter; Werkbank DPI-skaliert.
+$prev_3_2_10 = "" # 3.2.10: Streaming-Bild zurueck mit aktuellen NVIDIA-Treibern: der Encoder
                      #        liefert AV1-Frame-Header und Tile-Group als getrennte OBUs, der
                      #        Relay schickte jedes OBU als eigene RTP-Paketkette - Browser sahen
                      #        Bilder ohne Bilddaten und verwarfen alles (Schwarzbild in Player +

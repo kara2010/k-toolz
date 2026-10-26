@@ -62,11 +62,11 @@
         "@type": "SoftwareApplication",
         "@id": "https://lumora-streaming.de/en/#app",
         "name": "Lumora",
-        "softwareVersion": "3.2.10",
+        "softwareVersion": "4.0.0",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
         "license": "https://www.gnu.org/licenses/agpl-3.0.html",
-        "sameAs": ["https://github.com/kara2010/lumora"],
+        "sameAs": ["https://github.com/kara2010/k-toolz"],
         "applicationSubCategory": "Utility",
         "url": "https://lumora-streaming.de/en/",
         "image": "https://lumora-streaming.de/screenshot.png",
@@ -779,7 +779,7 @@
   <details class="ss-hint">
     <summary>🛡️ Windows shows a security warning? Here’s what to do</summary>
     <div class="ss-body">
-      Lumora is <strong>digitally signed</strong> (Certum Code Signing) – Windows shows the verified publisher instead of “Unknown publisher”. For a brand-new release, SmartScreen may still briefly show a message like <strong>“Windows protected your PC”</strong> until the signature builds reputation – this is neither an error nor a virus (and the complete source code is open on <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">GitHub</a>). Here’s how to continue normally:
+      Lumora is <strong>digitally signed</strong> (Certum Code Signing) – Windows shows the verified publisher instead of “Unknown publisher”. For a brand-new release, SmartScreen may still briefly show a message like <strong>“Windows protected your PC”</strong> until the signature builds reputation – this is neither an error nor a virus (and the complete source code is open on <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">GitHub</a>). Here’s how to continue normally:
       <ol>
         <li>Click <strong>“More info”</strong>.</li>
         <li>Then click <strong>“Run anyway”</strong>.</li>
@@ -1041,8 +1041,20 @@
     <div class="changelog">
       <div class="release">
         <div class="release-head">
-          <span class="release-ver">3.2.10</span>
+          <span class="release-ver">4.0.0</span>
           <span class="release-tag">current</span>
+        </div>
+        <ul>
+          <li><strong>Lumora is now K-Toolz</strong> – your games, settings, hotkeys and profiles move over automatically with the update.</li>
+          <li><strong>Four tools, each switchable</strong> – PlainOSD, StreamToFriend, StutterHunter and WheelToPad, plus the launcher. Switch off what you do not need under General → Tools. Each tool has its own Start menu entry.</li>
+          <li><strong>Drivers included</strong> – PawnIO for CPU temperatures and ViGEmBus for virtual controllers ship with the installer and are only installed when you need them.</li>
+          <li><strong>Start where you left off</strong> – K-Toolz opens the area you had open last when it starts.</li>
+          <li><strong>Analysis workbench</strong> – adapts to high display scaling and shows its verdict as a full sentence.</li>
+        </ul>
+      </div>
+      <div class="release">
+        <div class="release-head">
+          <span class="release-ver">3.2.10</span>
         </div>
         <ul>
           <li><strong>Streaming picture back with current NVIDIA drivers</strong> – newer drivers deliver AV1 frames in a different layout, which the transport to the browser previously split in a way that let player and preview receive data without ever assembling a frame. Every frame is now packed the way browsers expect – the picture is back, for AV1 as well as H.264 and regardless of the driver version.</li>
@@ -1080,6 +1092,7 @@
           <li>Maximised, the taskbar no longer cuts anything off the window, and your library and settings scroll all the way down again.</li>
         </ul>
       </div>
+      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.5</span>
@@ -1090,7 +1103,6 @@
           <li>Your library and settings load more robustly at startup.</li>
         </ul>
       </div>
-      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.4</span>
@@ -1266,7 +1278,7 @@
           <span class="release-ver">2.2.18</span>
         </div>
         <ul>
-          <li><strong>Lumora is now open source</strong>: the complete source code is publicly available at <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">github.com/kara2010/lumora</a> (license: GNU AGPL v3) – anyone can verify what the app does.</li>
+          <li><strong>Lumora is now open source</strong>: the complete source code is publicly available at <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">github.com/kara2010/k-toolz</a> (license: GNU AGPL v3) – anyone can verify what the app does.</li>
           <li><strong>Effortless groups</strong>: on a running stream, “Invite friends” creates the group and copies the invite link – anyone opening it joins with a single click (“Join with Lumora”). Your own PCs on the same network even detect a running group by themselves and offer to join. No more typing codes.</li>
           <li><strong>Share a web address instead of an IP</strong>: the stream link is now a short URL – it finally works on iPhone too, keeps your IP address out of the viewers' address bar, and even survives an IP change.</li>
           <li><strong>Grid player overhauled</strong>: much faster connection setup, picture-in-picture (a single tile or the whole grid as a floating mini window above your game), spotlight view, volume slider, remembered sound selection, phone display stays awake, sleeker design, controls fade out when idle – in German and English.</li>
@@ -1482,7 +1494,7 @@
       </div>
       </div><!-- /#changelogRest -->
     </div>
-    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (36)</button>
+    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (37)</button>
   </div>
 </section>
 
@@ -1502,7 +1514,7 @@
         <div class="num">2</div>
         <p>
           <strong>Windows SmartScreen notice:</strong> Lumora is digitally signed (Certum Code Signing), so Windows shows the verified publisher. For a brand-new release a message may still appear briefly until the signature builds reputation – just click <strong>“More info”</strong> → <strong>“Run anyway”</strong> to continue.
-          The complete source code is openly available on <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">GitHub</a>; all components used are documented below under “Transparency”.
+          The complete source code is openly available on <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">GitHub</a>; all components used are documented below under “Transparency”.
         </p>
       </div>
       <div class="install-step">
@@ -1532,7 +1544,7 @@
     <h2>What is this built with?</h2>
     <p class="section-sub">
       Lumora itself is open source: the complete source code is available under the GNU AGPL v3 at
-      <a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">github.com/kara2010/lumora</a> —
+      <a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">github.com/kara2010/k-toolz</a> —
       every line is publicly verifiable. Lumora is built entirely from freely available
       open-source components; here is a complete list of all third-party technologies used.
     </p>
@@ -1710,7 +1722,7 @@
     <a href="gamepad.html">Gamepad control</a>
   </p>
   <p>
-    Lumora · Free &amp; open source (<a href="https://github.com/kara2010/lumora" target="_blank" rel="noopener">source code on GitHub</a>, AGPL v3) ·
+    Lumora · Free &amp; open source (<a href="https://github.com/kara2010/k-toolz" target="_blank" rel="noopener">source code on GitHub</a>, AGPL v3) ·
     HDR via <a href="https://github.com/res2k/HDRTray" target="_blank" rel="noopener">HDRTray</a> (Frank Richter, GPL v3) ·
     FPS via <a href="https://github.com/GameTechDev/PresentMon" target="_blank" rel="noopener">PresentMon</a> (Intel, MIT) ·
     CPU-Sensorik via <a href="https://pawnio.eu" target="_blank" rel="noopener">PawnIO</a> (namazso, GPL v2)
@@ -1883,7 +1895,7 @@
     if (!rest || !btn) return;
     var open = rest.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Show less' : 'Show older versions (36)';
+    btn.textContent = open ? 'Show less' : 'Show older versions (37)';
   }
 
   function toggleFeatures() {
