@@ -3790,7 +3790,13 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     async function welcomeDone(zeigen) {
       document.getElementById('welcomeOverlay').style.display = 'none'
       try { await ipcRenderer.invoke('set-app-settings', { ktoolzWelcomeShown: true, ktoolzWelcomePending: false }) } catch (e) {}
-      if (zeigen) { showSettings('allgemein'); const g = document.getElementById('modulesGroup'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+      // Nur den Einstellungs-Scroller fahren: scrollIntoView verschob auch #detail (overflow:hidden,
+      // nicht vom Nutzer zurueckscrollbar) - die Reiterleiste verschwand nach oben (Befund 26.10.)
+      if (zeigen) {
+        showSettings('allgemein')
+        const sv = document.getElementById('settingsView'), g = document.getElementById('modulesGroup')
+        if (sv && g) requestAnimationFrame(() => sv.scrollTo({ top: g.getBoundingClientRect().top - sv.getBoundingClientRect().top + sv.scrollTop - 8, behavior: 'smooth' }))
+      }
     }
     function openExternal(url) { require('electron').shell.openExternal(url) }
 

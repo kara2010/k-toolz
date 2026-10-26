@@ -1039,6 +1039,8 @@ body:not(.nav-mode) .game-item:hover .game-item-fav { opacity: 1; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overflow: clip;   /* clip statt hidden: kein Scroll-Container, scrollIntoView darunter kann die
+                       Reiterleiste nicht mehr unerreichbar nach oben schieben (hidden bleibt Rueckfall) */
   background: #0f0f0f;
   position: relative;
 }
