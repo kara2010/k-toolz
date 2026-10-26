@@ -246,7 +246,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $a === '') {
   // ist, schalten die Links von selbst auf die kurze Form um.
   $ht = __DIR__ . '/.htaccess';
   $kurz = is_readable($ht) && strpos((string) @file_get_contents($ht), '^b/(') !== false;
-  $url = 'https://lumora-streaming.de/' . ($kurz ? 'b/' . $id : 'bericht.php?id=' . $id);
+  $url = 'https://k-toolz.de/' .   // gleiche Docroot; alte Clients posten weiter an lumora-streaming.de
+  ($kurz ? 'b/' . $id : 'bericht.php?id=' . $id);
   jout(['ok' => true, 'id' => $id, 'url' => $url, 'token' => $token]);
 }
 
@@ -291,13 +292,13 @@ $en = $lang === 'en';
 // sagen - sonst steht im Reiter und in jeder Chat-Vorschau "Ruckler-Analyse", als
 // gaebe es die Seite noch.
 if ($r === null) {
-  $ogTitel = $en ? 'Report not found | Lumora' : 'Bericht nicht gefunden | Lumora';
+  $ogTitel = $en ? 'Report not found | StutterHunter' : 'Bericht nicht gefunden | StutterHunter';
   $ogText  = $en ? 'This report is no longer available.'
                  : 'Dieser Bericht ist nicht mehr verfügbar.';
 } else {
-  $ogTitel = $en ? 'Stutter analysis | Lumora' : 'Ruckler-Analyse | Lumora';
-  $ogText  = $en ? 'A stutter report measured with Lumora.'
-                 : 'Ein mit Lumora gemessener Ruckler-Bericht.';
+  $ogTitel = $en ? 'Stutter report | StutterHunter' : 'Ruckler-Bericht | StutterHunter';
+  $ogText  = $en ? 'A stutter report measured with StutterHunter.'
+                 : 'Ein mit StutterHunter gemessener Ruckler-Bericht.';
 }
 if ($r) {
   $spikes = (int) ($r['spikes'] ?? 0);
@@ -324,11 +325,11 @@ if ($r) {
     'proc-start'   => 'Programmstarts im Hintergrund',
     default        => 'Keine Systemursache gefunden – vermutlich spielintern',
   };
-  $ogTitel = $urteil . ' | Lumora';
+  $ogTitel = $urteil . ' | StutterHunter';
   $spiel   = ($r['game'] ?? '') ? ' · ' . $r['game'] : '';
   $ogText  = $en
-    ? $spikes . ' stutters in ' . $min . ' min · avg ' . $fps . ' fps' . $spiel . ' – measured with Lumora.'
-    : $spikes . ' Ruckler in ' . $min . ' min · ø ' . $fps . ' fps' . $spiel . ' – gemessen mit Lumora.';
+    ? $spikes . ' stutters in ' . $min . ' min · avg ' . $fps . ' fps' . $spiel . ' – measured with StutterHunter.'
+    : $spikes . ' Ruckler in ' . $min . ' min · ø ' . $fps . ' fps' . $spiel . ' – gemessen mit StutterHunter.';
 }
 $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 
@@ -354,17 +355,17 @@ header('X-Frame-Options: DENY');   // aeltere Browser ohne frame-ancestors
      die Domain. Die Vorschaukarte fuer Chat-Programme bleibt davon unberuehrt. -->
 <meta name="robots" content="noindex, follow">
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="Lumora">
+<meta property="og:site_name" content="K-Toolz">
 <meta property="og:locale" content="<?= $en ? 'en_US' : 'de_DE' ?>">
 <meta property="og:title" content="<?= $h($ogTitel) ?>">
 <meta property="og:description" content="<?= $h($ogText) ?>">
-<meta property="og:image" content="https://lumora-streaming.de/bericht-og.png">
+<meta property="og:image" content="https://k-toolz.de/bericht-og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="<?= $h($ogTitel) ?>">
 <meta name="twitter:description" content="<?= $h($ogText) ?>">
-<meta name="twitter:image" content="https://lumora-streaming.de/bericht-og.png">
+<meta name="twitter:image" content="https://k-toolz.de/bericht-og.png">
 <link rel="icon" href="/favicon-v2.png">
 <link rel="stylesheet" href="/bericht.css">
 </head>
@@ -374,7 +375,7 @@ header('X-Frame-Options: DENY');   // aeltere Browser ohne frame-ancestors
     <div class="leer-icon">🔍</div>
     <h1>Dieser Bericht ist nicht (mehr) da</h1>
     <p>Der Link ist ungültig, oder der Bericht wurde von der Person zurückgezogen, die ihn geteilt hat.</p>
-    <a class="cta" href="https://lumora-streaming.de/ruckler-analyse.html">Was ist die Lumora Ruckler-Analyse?</a>
+    <a class="cta" href="https://k-toolz.de/<?= $en ? 'en/' : '' ?>stutterhunter/"><?= $en ? 'What is StutterHunter?' : 'Was ist StutterHunter?' ?></a>
   </main>
 <?php else: ?>
   <main id="app" data-id="<?= $h($id) ?>">
