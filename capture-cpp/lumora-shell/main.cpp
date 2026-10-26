@@ -3285,7 +3285,7 @@ static void ensureOsdSetup() {
         else if (needSense) parts += L"• CPU-Temperatur & -Verbrauch: Hintergrunddienst für den PawnIO-Treiber\n";
         std::wstring dlg = L"Damit das OSD alle Werte anzeigen kann, richtet " + appDisplayName() + L" einmalig ein:\n\n" + parts +
             L"\nGleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte). Danach läuft alles automatisch – ohne weitere Nachfragen.";
-        if (MessageBoxW(g_hwnd, dlg.c_str(), L"OSD einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
+        if (MessageBoxW(g_hwnd, dlg.c_str(), L"PlainOSD einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             json s = loadSettings(); s["osdSetupDeclined"] = true; writeFile(settingsPath(), s.dump(2));
             sendToUi("osd-fps-off", nullptr);   // Schalter zurueck auf "aus", nicht staendig neu fragen
             g_osdSetupRunning = false; return;
@@ -3535,11 +3535,11 @@ static void ensureAnalyzeSetup() {
         if (analyzeTaskPresent()) {
             g_anReady = 1; g_anSetupRunning = false; analyzePushStatus(); return;
         }
-        std::wstring dlg = L"Für die Ruckler-Analyse richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
+        std::wstring dlg = L"Für die Messung richtet " + appDisplayName() + L" einmalig einen Hintergrunddienst ein\n"
             L"(Windows-Leistungsdaten lesen: Frametimes, Treiber-Latenzen, Prozess-Last).\n\n"
             L"Gleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte).\n"
             L"Es wird KEIN Treiber installiert.";
-        if (MessageBoxW(g_hwnd, dlg.c_str(), L"Ruckler-Analyse einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
+        if (MessageBoxW(g_hwnd, dlg.c_str(), L"StutterHunter einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             g_anSetupRunning = false; analyzePushStatus(); return;
         }
         auto q = [](std::wstring s) { size_t p = 0; while ((p = s.find(L'\'', p)) != std::wstring::npos) { s.insert(p, 1, L'\''); p += 2; } return s; };
@@ -3548,7 +3548,7 @@ static void ensureAnalyzeSetup() {
             L"$a=New-ScheduledTaskAction -Execute '" + q(exeW) + L"' -Argument '--analyze-broker'; "
             L"$p=New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive; "
             L"$s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
-            L"Register-ScheduledTask -TaskName 'K-Toolz-Analyze' -Description 'K-Toolz (StutterHunter): Mess-Broker der Ruckler-Analyse (Frametimes, Treiber-Latenzen, Prozesslast über Windows-ETW). Startet nur für eine Messung, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
+            L"Register-ScheduledTask -TaskName 'K-Toolz-Analyze' -Description 'K-Toolz (StutterHunter): Mess-Broker von StutterHunter (Frametimes, Treiber-Latenzen, Prozesslast über Windows-ETW). Startet nur für eine Messung, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);
         std::wstring b64w = widen(b64);
         std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
@@ -3563,9 +3563,9 @@ static void ensureAnalyzeSetup() {
         analyzePushStatus();
         // KEIN Auto-Messstart: bewusst getrennter Schritt, damit der erste echte Lauf
         // ohne Setup-/UAC-Stoergeraeusche ablaeuft (am besten VOR dem Spielstart einrichten).
-        if (ok) MessageBoxW(g_hwnd, L"Einrichtung abgeschlossen. ✓\n\nDie Ruckler-Analyse ist jetzt bereit - starte eine Messung am besten,\nBEVOR du das Spiel startest bzw. während das Spiel bereits ruhig läuft.",
-                            L"Ruckler-Analyse", MB_OK | MB_ICONINFORMATION);
-        else MessageBoxW(g_hwnd, L"Die Einrichtung wurde nicht abgeschlossen (Windows-Sicherheitsabfrage abgelehnt?).\nEinfach erneut starten, wenn du die Analyse nutzen möchtest.", L"Ruckler-Analyse", MB_OK | MB_ICONWARNING);
+        if (ok) MessageBoxW(g_hwnd, L"Einrichtung abgeschlossen. ✓\n\nStutterHunter ist jetzt bereit - starte eine Messung am besten,\nBEVOR du das Spiel startest bzw. während das Spiel bereits ruhig läuft.",
+                            L"StutterHunter", MB_OK | MB_ICONINFORMATION);
+        else MessageBoxW(g_hwnd, L"Die Einrichtung wurde nicht abgeschlossen (Windows-Sicherheitsabfrage abgelehnt?).\nEinfach erneut starten, wenn du die Analyse nutzen möchtest.", L"StutterHunter", MB_OK | MB_ICONWARNING);
     }).detach();
 }
 static void analyzeStop() {
@@ -3643,10 +3643,10 @@ static void ensureVigemSetup() {
         auto statusDone = [](const std::string& m) { sendToUiMulti("input-bridge-setup-status", json::array({ m, true })); };
         auto statusOff  = []()                      { sendToUiMulti("input-bridge-setup-status", json::array({ nullptr, false })); };
         if (MessageBoxW(g_hwnd,
-            (L"Für die Eingabe-Brücke (Joystick/Lenkrad als virtuelles Xbox-Gamepad) richtet " + appDisplayName() + L" einmalig ein:\n\n"
+            (L"Für WheelToPad (Joystick/Lenkrad als virtuelles Xbox-Gamepad) richtet " + appDisplayName() + L" einmalig ein:\n\n"
             L"• Virtueller-Gamepad-Treiber ViGEmBus (signierter Open-Source-Treiber, liegt dem Paket bei, Signatur wird geprüft)\n\n"
             L"Gleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte). Der Treiber lässt sich jederzeit über Apps & Features wieder deinstallieren.").c_str(),
-            L"Eingabe-Brücke einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
+            L"WheelToPad einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             json s = loadSettings(); s["inputBridgeSetupDeclined"] = true; writeFile(settingsPath(), s.dump(2));
             statusOff();   // Schalter zurueck, nicht staendig neu fragen
             g_vigemSetupRunning = false; return;
@@ -3679,7 +3679,7 @@ static void ensureVigemSetup() {
         std::wstring outer = (GetFileAttributesW(elevExe.c_str()) != INVALID_FILE_ATTRIBUTES)
             ? L"Start-Process -FilePath '" + q(elevExe) + L"' -Verb RunAs -WindowStyle Hidden -ArgumentList '--ps-encoded','" + b64w + L"'"
             : L"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -EncodedCommand " + b64w + L"'";
-        status("Eingabe-Bruecke: Warte auf deine Bestaetigung (Windows-Sicherheitsabfrage) ...");
+        status("WheelToPad: Warte auf deine Bestätigung (Windows-Sicherheitsabfrage) ...");
         runCaptureOutput(L"powershell -NoProfile -Command \"" + outer + L"\"", 20000);
         // 3) Warten bis der Bus-Dienst da ist, dann Vollzug melden.
         bool ok = false;
@@ -3689,8 +3689,8 @@ static void ensureVigemSetup() {
         // lubridge::start pusht input-bridge-active -> die UI kippt den Schalter auf "an".
         if (ok && g_bridgeStartAfterSetup) { g_bridgeAutoGame.clear(); lubridge::start(g_bridgePendingProfile, "nach-setup"); }
         g_bridgeStartAfterSetup = false;
-        statusDone(ok ? "Eingabe-Bruecke eingerichtet und aktiviert - das virtuelle Gamepad ist an. ✓"
-                      : "Einrichtung nicht abgeschlossen - erneut ueber Einstellungen → Eingabe-Bruecke.");
+        statusDone(ok ? "WheelToPad eingerichtet und aktiviert - das virtuelle Gamepad ist an. ✓"
+                      : "Einrichtung nicht abgeschlossen - erneut über Einstellungen → WheelToPad.");
         g_vigemSetupRunning = false;
     }).detach();
 }

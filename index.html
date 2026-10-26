@@ -98,10 +98,10 @@
       <nav class="detail-nav" id="detailNav">
         <button class="detail-nav-tab active" data-view="library" onclick="showLibraryView()">Bibliothek</button>
         <button class="detail-nav-tab" data-view="allgemein" onclick="showSettings('allgemein')">Allgemein</button>
-        <button class="detail-nav-tab" data-view="overlay" onclick="showSettings('overlay')">Overlay</button>
-        <button class="detail-nav-tab" data-view="eingabe" onclick="showSettings('eingabe')">Eingabe</button>
-        <button class="detail-nav-tab" data-view="analyse" onclick="showSettings('analyse')">Analyse</button>
-        <button class="detail-nav-tab" data-view="stream" onclick="showSettings('stream')">Stream</button>
+        <button class="detail-nav-tab" data-view="overlay" onclick="showSettings('overlay')">PlainOSD</button>
+        <button class="detail-nav-tab" data-view="eingabe" onclick="showSettings('eingabe')">WheelToPad</button>
+        <button class="detail-nav-tab" data-view="analyse" onclick="showSettings('analyse')">StutterHunter</button>
+        <button class="detail-nav-tab" data-view="stream" onclick="showSettings('stream')">StreamToFriend</button>
       </nav>
       <div class="empty-state" id="emptyState">
         <div class="empty-icon">🎮</div>
@@ -388,7 +388,7 @@
         <!-- ===== OVERLAY (OSD) ===== -->
         <div class="settings-panel" data-panel="overlay" hidden>
           <div class="form-group">
-            <label>Performance-Overlay (OSD)</label>
+            <label>PlainOSD – Overlay im Spiel</label>
             <p class="settings-hint">Blendet GPU-/CPU-Auslastung, Temperaturen und FPS über dem Spiel ein – funktioniert über randlos laufenden Spielen.</p>
             <p class="settings-hint" id="osdSourcesInfo" style="display:none"></p>
             <div class="setting-toggle-row">
@@ -505,7 +505,7 @@
         <!-- ===== STEUERUNG ===== -->
         <div class="settings-panel" data-panel="analyse" hidden>
           <div class="form-group">
-            <label>Ruckler-Analyse</label>
+            <label>StutterHunter – Ruckler finden</label>
             <p class="settings-hint">Findet heraus, warum dein Spiel ruckelt: Während einer Messung überwacht K-Toolz Frametimes, Hintergrundprogramme, Treiber-Latenzen und deine Grafikkarte – und benennt bei jedem Ruckler die wahrscheinlichen Verursacher. Die Messung kostet praktisch keine Leistung und läuft nur, solange du sie startest.</p>
             <div class="an-controls">
               <button class="btn-primary" id="anStartBtn" onclick="anToggle()">▶ Messung starten</button>
@@ -875,7 +875,7 @@
                oben die Landkarte, und darunter kommen die Modi NACHEINANDER, nie
                ineinander verschachtelt. -->
           <div class="form-group">
-            <label>Eingabe-Brücke</label>
+            <label>WheelToPad – Lenkrad als Gamepad</label>
             <p class="settings-hint">Verwandelt jedes Eingabegerät (Joystick, Lenkrad, Flightstick …) in ein virtuelles Xbox-Gamepad. Damit lassen sich auch Spiele steuern, die nur Gamepads kennen – inklusive Microsoft-Store-/Game-Pass-Titeln, wo Steam Input nicht greift. Auch für Barrierefreiheit: einzelne Knöpfe können Achsen ersetzen (z.&nbsp;B. Knopf = Vollgas) und umgekehrt.</p>
             <p class="settings-hint">⚠ Spiele sehen dann zwei Controller (Original + virtuelles Pad). Falls Steam Input aktiv ist, dort das Originalgerät deaktivieren, sonst kommen Eingaben doppelt an.</p>
             <div class="setting-toggle-row">
@@ -1022,14 +1022,14 @@
           <li><strong>usrsctp</strong> — SCTP-Transport (WebRTC-Datenkanäle) im Medien-Relay · sctplab · BSD-3 · <span class="about-link" onclick="openExternal('https://github.com/sctplab/usrsctp')">GitHub</span></li>
           <li><strong>libopus</strong> — Opus-Encoding für den Stream-Ton (WebRTC-tauglich, patentfrei) · Xiph.Org u.&nbsp;a. · BSD-3 · <span class="about-link" onclick="openExternal('https://opus-codec.org')">opus-codec.org</span></li>
           <li><strong>nlohmann/json</strong> — JSON-Verarbeitung (Einstellungen, IPC, APIs) · Niels Lohmann · MIT · <span class="about-link" onclick="openExternal('https://github.com/nlohmann/json')">GitHub</span></li>
-          <li><strong>ViGEmClient</strong> — Ansteuerung des virtuellen Xbox-Controllers für die Eingabe-Brücke · Benjamin Höglinger-Stelzer · MIT · <span class="about-link" onclick="openExternal('https://github.com/nefarius/ViGEmClient')">GitHub</span></li>
+          <li><strong>ViGEmClient</strong> — Ansteuerung des virtuellen Xbox-Controllers für WheelToPad · Benjamin Höglinger-Stelzer · MIT · <span class="about-link" onclick="openExternal('https://github.com/nefarius/ViGEmClient')">GitHub</span></li>
           <li><strong>nv-codec-headers</strong> — NVENC-API-Header (NVIDIA-Hardware-Encoding) · FFmpeg-Projekt · MIT · <span class="about-link" onclick="openExternal('https://github.com/FFmpeg/nv-codec-headers')">GitHub</span></li>
           <li><strong>AMF SDK</strong> — AMD-Hardware-Encoding-API (Radeon-GPUs) · AMD · MIT · <span class="about-link" onclick="openExternal('https://github.com/GPUOpen-LibrariesAndSDKs/AMF')">GitHub</span></li>
           <li><strong>libvpl</strong> — Intel-oneVPL-Dispatcher für QuickSync-Hardware-Encoding · Intel Corporation · MIT · <span class="about-link" onclick="openExternal('https://github.com/intel/libvpl')">GitHub</span></li>
           <li><strong>WebView2</strong> — Rendering der Benutzeroberfläche (Chromium-basiert, Windows-Systemkomponente) · Microsoft · BSD (Loader) · <span class="about-link" onclick="openExternal('https://developer.microsoft.com/microsoft-edge/webview2')">developer.microsoft.com</span></li>
           <li><strong>PawnIO</strong> — signierter Treiber für CPU-Sensorik · namazso · GPL&nbsp;2.0; Version 2.2.0 liegt dem Paket bei, wird nur bei Bedarf installiert und ist jederzeit über „Apps &amp; Features" entfernbar · <span class="about-link" onclick="openExternal('https://pawnio.eu')">pawnio.eu</span></li>
           <li><strong>PawnIO-Module</strong> (AMDFamily17, IntelMSR) — Sensor-Definitionen · namazso · LGPL&nbsp;2.1 · <span class="about-link" onclick="openExternal('https://github.com/namazso/PawnIO.Modules')">GitHub</span></li>
-          <li><strong>ViGEmBus</strong> — signierter Treiber für virtuelle Gamepads (Eingabe-Brücke) · Nefarius Software Solutions · BSD-3; Version 1.22.0 liegt dem Paket bei, wird nur bei Bedarf installiert und ist jederzeit über „Apps &amp; Features" entfernbar · <span class="about-link" onclick="openExternal('https://github.com/nefarius/ViGEmBus')">GitHub</span></li>
+          <li><strong>ViGEmBus</strong> — signierter Treiber für virtuelle Gamepads (WheelToPad) · Nefarius Software Solutions · BSD-3; Version 1.22.0 liegt dem Paket bei, wird nur bei Bedarf installiert und ist jederzeit über „Apps &amp; Features" entfernbar · <span class="about-link" onclick="openExternal('https://github.com/nefarius/ViGEmBus')">GitHub</span></li>
           <li><strong>SteamGridDB</strong> — optionale Community-Artworks (eigener API-Key) · <span class="about-link" onclick="openExternal('https://www.steamgriddb.com')">steamgriddb.com</span></li>
         </ul>
         <p class="about-text">
@@ -1052,10 +1052,10 @@
         <p class="about-text">Alles bleibt, wie es war: deine Spiele, Einstellungen, Hotkeys und Profile. Neu ist der Name – und dass jedes Werkzeug einzeln ein- und ausschaltbar ist.</p></div></div>
       <div class="welcome-map">
         <div class="welcome-row"><span class="welcome-old">Bibliothek</span><span class="welcome-arrow">→</span><img src="icons/k-toolz.png" alt=""><div><b>Launcher</b><small>Alle deine Spiele in einer Bibliothek</small></div></div>
-        <div class="welcome-row"><span class="welcome-old">Overlay</span><span class="welcome-arrow">→</span><img src="icons/plainosd.png" alt=""><div><b>PlainOSD</b><small>Das Gaming-OSD</small></div></div>
+        <div class="welcome-row"><span class="welcome-old">Overlay</span><span class="welcome-arrow">→</span><img src="icons/plainosd.png" alt=""><div><b>PlainOSD</b><small>FPS, GPU &amp; CPU im Spiel</small></div></div>
         <div class="welcome-row"><span class="welcome-old">Stream</span><span class="welcome-arrow">→</span><img src="icons/streamtofriend.png" alt=""><div><b>StreamToFriend</b><small>Streamen an Freunde</small></div></div>
-        <div class="welcome-row"><span class="welcome-old">Analyse</span><span class="welcome-arrow">→</span><img src="icons/stutterhunter.png" alt=""><div><b>StutterHunter</b><small>Die Ruckler-Analyse</small></div></div>
-        <div class="welcome-row"><span class="welcome-old">Eingabe</span><span class="welcome-arrow">→</span><img src="icons/wheeltopad.png" alt=""><div><b>WheelToPad</b><small>Die Eingabe-Brücke</small></div></div>
+        <div class="welcome-row"><span class="welcome-old">Analyse</span><span class="welcome-arrow">→</span><img src="icons/stutterhunter.png" alt=""><div><b>StutterHunter</b><small>Findet heraus, warum dein Spiel ruckelt</small></div></div>
+        <div class="welcome-row"><span class="welcome-old">Eingabe</span><span class="welcome-arrow">→</span><img src="icons/wheeltopad.png" alt=""><div><b>WheelToPad</b><small>Lenkrad &amp; Joystick als Xbox-Controller</small></div></div>
       </div>
       <p class="about-text">Unter <strong>Allgemein → Werkzeuge</strong> schaltest du ab, was du nicht brauchst. Ein Werkzeug allein heißt dann wie das Werkzeug, mehrere heißen K-Toolz. Die Website ist umgezogen: <span class="about-link" onclick="openExternal('https://k-toolz.de')">k-toolz.de</span></p>
       <div class="dialog-actions">
@@ -1323,7 +1323,7 @@ const I18N_EN = {
   "— Opus-Encoding für den Stream-Ton (WebRTC-tauglich, patentfrei) · Xiph.Org u. a. · BSD-3 ·": "— Opus encoding for the stream audio (WebRTC-capable, patent-free) · Xiph.Org and others · BSD-3 ·",
   "— signierter Treiber für CPU-Sensorik · namazso · GPL 2.0; Version 2.2.0 liegt dem Paket bei, wird nur bei Bedarf installiert und ist jederzeit über „Apps & Features\" entfernbar ·": "— signed driver for CPU sensors · namazso · GPL 2.0; version 2.2.0 ships with the package, is installed only when needed and removable any time via \"Apps & Features\" ·",
   "(AMDFamily17, IntelMSR) — Sensor-Definitionen · namazso · LGPL 2.1 ·": "(AMDFamily17, IntelMSR) — sensor definitions · namazso · LGPL 2.1 ·",
-  "— signierter Treiber für virtuelle Gamepads (Eingabe-Brücke) · Nefarius Software Solutions · BSD-3; Version 1.22.0 liegt dem Paket bei, wird nur bei Bedarf installiert und ist jederzeit über „Apps & Features\" entfernbar ·": "— signed driver for virtual gamepads (input bridge) · Nefarius Software Solutions · BSD-3; version 1.22.0 ships with the package, is installed only when needed and removable any time via \"Apps & Features\" ·",
+  "— signierter Treiber für virtuelle Gamepads (WheelToPad) · Nefarius Software Solutions · BSD-3; Version 1.22.0 liegt dem Paket bei, wird nur bei Bedarf installiert und ist jederzeit über „Apps & Features\" entfernbar ·": "— signed driver for virtual gamepads (WheelToPad) · Nefarius Software Solutions · BSD-3; version 1.22.0 ships with the package, is installed only when needed and removable any time via \"Apps & Features\" ·",
   "Zusätzlich liest K-Toolz — sofern vorhanden — Sensor- und FPS-Daten aus dem NVIDIA-Treiber (NVML), dem AMD-Treiber (ADL) sowie MSI Afterburner/RTSS. Die Lizenztexte der gebündelten Komponenten liegen im Installationsordner bei.": "Additionally, K-Toolz reads — if present — sensor and FPS data from the NVIDIA driver (NVML), the AMD driver (ADL) and MSI Afterburner/RTSS. The license texts of the bundled components are included in the installation folder.",
   "Ziehen zum Verschieben": "Drag to reorder",
   "Aus dem Overlay nehmen": "Remove from overlay",
@@ -1447,7 +1447,7 @@ const I18N_EN = {
   'Darstellung': 'Appearance',
   'Steuerung': 'Controls',
   'Eingabe': 'Input',
-  'Eingabe-Brücke': 'Input bridge',
+  'WheelToPad – Lenkrad als Gamepad': 'WheelToPad – wheel as gamepad',
   'Bei verknüpften Spielen automatisch aktivieren': 'Activate automatically for linked games',
   'Virtuelles Gamepad: aus': 'Virtual gamepad: off',
   'Virtuelles Gamepad: AKTIV': 'Virtual gamepad: ACTIVE',
@@ -1565,7 +1565,7 @@ const I18N_EN = {
   'klicken und den Key kopieren.': 'and copy the key.',
   'Hier oben ins Feld einfügen — fertig, sofort aktiv.': 'Paste it into the field above — done, active immediately.',
   '↗ Key-Seite öffnen': '↗ Open key page',
-  'Performance-Overlay (OSD)': 'Performance overlay (OSD)',
+  'PlainOSD – Overlay im Spiel': 'PlainOSD – in-game overlay',
   'Blendet GPU-/CPU-Auslastung, Temperaturen und FPS über dem Spiel ein – funktioniert über randlos laufenden Spielen.': 'Shows GPU/CPU load, temperatures and FPS on top of your game – works over borderless games.',
   'Ein-/ausblenden': 'Show/hide',
   'Ändern': 'Change',
@@ -1680,10 +1680,10 @@ const I18N_EN = {
   'Alles bleibt, wie es war: deine Spiele, Einstellungen, Hotkeys und Profile. Neu ist der Name – und dass jedes Werkzeug einzeln ein- und ausschaltbar ist.': 'Everything stays as it was: your games, settings, hotkeys and profiles. What is new is the name – and that every tool can be switched on and off individually.',
   'Bibliothek': 'Library',
   'Alle deine Spiele in einer Bibliothek': 'All your games in one library',
-  'Das Gaming-OSD': 'The gaming OSD',
+  'FPS, GPU & CPU im Spiel': 'FPS, GPU & CPU in-game',
   'Streamen an Freunde': 'Streaming to friends',
-  'Die Ruckler-Analyse': 'The stutter analysis',
-  'Die Eingabe-Brücke': 'The input bridge',
+  'Findet heraus, warum dein Spiel ruckelt': 'Finds out why your game stutters',
+  'Lenkrad & Joystick als Xbox-Controller': 'Wheel & joystick as an Xbox controller',
   'schaltest du ab, was du nicht brauchst. Ein Werkzeug allein heißt dann wie das Werkzeug, mehrere heißen K-Toolz. Die Website ist umgezogen:': 'you switch off what you do not need. A single tool is then named after that tool, several are called K-Toolz. The website has moved:',
   'Unter': 'Under',
   'Allgemein → Werkzeuge': 'General → Tools',
@@ -1738,7 +1738,7 @@ const I18N_EN = {
   'Bild-URL (https://…)': 'Image URL (https://…)',
   // --- Ruckler-Analyse (Analyse-Reiter + Analyse-OSD-Berichte) -----------------
   'Analyse': 'Analysis',
-  'Ruckler-Analyse': 'Stutter analysis',
+  'StutterHunter – Ruckler finden': 'StutterHunter – find stutters',
   'Tipp: Messung im Spiel per Hotkey starten, ein paar Minuten spielen (gern bis Ruckler auftreten), dann per Hotkey beenden – der Bericht erscheint hier.':
     'Tip: start the measurement in-game via hotkey, play a few minutes (ideally until stutters occur), then stop via hotkey – the report appears here.',
   '▶ Messung starten': '▶ Start measurement',
@@ -1940,7 +1940,7 @@ const I18N_EN = {
   "— Verschlüsselung der Medienströme (SRTP) im Medien-Relay · Cisco Systems · BSD-3 ·": "— encryption of the media streams (SRTP) in the media relay · Cisco Systems · BSD-3 ·",
   "— SCTP-Transport (WebRTC-Datenkanäle) im Medien-Relay · sctplab · BSD-3 ·": "— SCTP transport (WebRTC data channels) in the media relay · sctplab · BSD-3 ·",
   "— JSON-Verarbeitung (Einstellungen, IPC, APIs) · Niels Lohmann · MIT ·": "— JSON handling (settings, IPC, APIs) · Niels Lohmann · MIT ·",
-  "— Ansteuerung des virtuellen Xbox-Controllers für die Eingabe-Brücke · Benjamin Höglinger-Stelzer · MIT ·": "— drives the virtual Xbox controller for the input bridge · Benjamin Höglinger-Stelzer · MIT ·",
+  "— Ansteuerung des virtuellen Xbox-Controllers für WheelToPad · Benjamin Höglinger-Stelzer · MIT ·": "— drives the virtual Xbox controller for WheelToPad · Benjamin Höglinger-Stelzer · MIT ·",
   "— NVENC-API-Header (NVIDIA-Hardware-Encoding) · FFmpeg-Projekt · MIT ·": "— NVENC API headers (NVIDIA hardware encoding) · FFmpeg project · MIT ·",
   "— AMD-Hardware-Encoding-API (Radeon-GPUs) · AMD · MIT ·": "— AMD hardware encoding API (Radeon GPUs) · AMD · MIT ·",
   "— Intel-oneVPL-Dispatcher für QuickSync-Hardware-Encoding · Intel Corporation · MIT ·": "— Intel oneVPL dispatcher for QuickSync hardware encoding · Intel Corporation · MIT ·",

@@ -427,7 +427,7 @@
   async function wbExport() {
     const r = bericht; if (!r) return
     const Z = []
-    Z.push('StutterHunter Ruckler-Analyse – ' + (r.wall || '').replace('T', ' '))
+    Z.push('StutterHunter – ' + (r.wall || '').replace('T', ' '))
     Z.push((r.game || '') + ' · ' + Math.round((r.durS || 0) / 60) + ' min · ' + (r.gpu || '') + (r.gpuDriver ? ' (Treiber ' + r.gpuDriver + ')' : ''))
     const m = r.context || {}
     Z.push([m.resolution, m.hdr ? 'HDR' : 'SDR', m.streaming ? 'Streaming aktiv' : null, 'Windows-Build ' + (m.winBuild || '?')].filter(Boolean).join(' · '))
