@@ -267,6 +267,24 @@ foreach ($b in "lumora-capture-native.exe","lumora-media-relay.exe","lumora-elev
 foreach ($b in "AMDFamily17.bin","IntelMSR.bin") {
   if (Test-Path "$root\$b") { Copy-Item "$root\$b" $stage }
 }
+# Treiber-Setups mitliefern (seit 4.0.0): Installation bleibt bei Bedarf in der App (eine UAC-Abfrage),
+# das Paket macht sie offline-faehig und pinnt die Versionen. Quelle: _testlab\tools\drivers (gitignoriert),
+# fehlt eine Datei, wird sie von der gepinnten offiziellen Quelle geladen; SHA-256 MUSS stimmen (gemessen 2026-10-26).
+$drivers = @(
+  @{ name = "PawnIO_setup.exe"; url = "https://github.com/namazso/PawnIO.Setup/releases/download/2.2.0/PawnIO_setup.exe"; sha = "1F519A22E47187F70A1379A48CA604981C4FCF694F4E65B734AAA74A9FBA3032" },
+  @{ name = "ViGEmBus_1.22.0_x64_x86_arm64.exe"; url = "https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe"; sha = "89220A7865076B342892F98865F3499FB7C4CFD673159E89D352C360FD014C6A" }
+)
+$drvDir = "$root\_testlab\tools\drivers"; New-Item -ItemType Directory -Force $drvDir | Out-Null
+New-Item -ItemType Directory -Force "$stage\drivers" | Out-Null
+foreach ($d in $drivers) {
+  $f = "$drvDir\$($d.name)"
+  if (-not (Test-Path $f)) { Write-Output "Lade $($d.name) ..."; Invoke-WebRequest -Uri $d.url -OutFile $f -UseBasicParsing }
+  $h = (Get-FileHash $f -Algorithm SHA256).Hash
+  if ($h -ne $d.sha) { throw "Treiber-Setup $($d.name): SHA-256 weicht ab ($h) - Datei pruefen, Pin nur nach bewusster Aktualisierung aendern" }
+  if ((Get-AuthenticodeSignature $f).Status -ne "Valid") { throw "Treiber-Setup $($d.name): Signatur ungueltig" }
+  Copy-Item $f "$stage\drivers"
+}
+Write-Output ("Treiber-Setups: " + ($drivers.name -join ", "))
 # Lizenztexte (Distributionspflicht)
 foreach ($f in Get-ChildItem "$root\*-LICENSE.txt","$root\*LICENSE*.txt" -ErrorAction SilentlyContinue) { Copy-Item $f.FullName $stage }
 

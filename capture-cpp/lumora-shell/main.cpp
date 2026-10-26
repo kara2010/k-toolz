@@ -1278,6 +1278,12 @@ static bool g_bcForwardNotified = false;   // Balloon nur einmal je Stream
 
 static void bcPushState() { sendToUi("broadcast-status", g_bcState); }
 static std::wstring binDir() { return g_appDir + L"\\bin"; }
+// Mitgelieferte Treiber-Setups (drivers\ im Paket, seit 4.0.0): PawnIO 2.2.0, ViGEmBus 1.22.0. Leer, wenn die Datei
+// fehlt (Entwicklungsbaum ohne Staging) - dann greift der Download von der gepinnten offiziellen Quelle.
+static std::wstring bundledSetup(const wchar_t* name) {
+    std::wstring p = g_appDir + L"\\drivers\\" + name;
+    return GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES ? p : L"";
+}
 static std::wstring tempPath(const wchar_t* name) { wchar_t t[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", t, MAX_PATH); return std::wstring(t) + L"\\" + name; }
 static void bcWriteBitrateControl(int kbit) { writeFile(tempPath(L"lumora-bitrate.txt"), std::to_string((std::max)(500, kbit))); }
 static void bcWriteSourceControl(const json& cfg) {
@@ -3275,7 +3281,7 @@ static void ensureOsdSetup() {
         // 0) Erklaer-Dialog - listet nur, was wirklich fehlt.
         std::wstring parts;
         if (needFps)        parts += L"• FPS-Messung: kleiner Hintergrunddienst von " + appDisplayName() + L" (liest Windows-Leistungsdaten, kein Treiber)\n";
-        if (needPawnio)     parts += L"• CPU-Temperatur & -Verbrauch: signierter Open-Source-Treiber PawnIO (wird von der offiziellen Quelle geladen)\n";
+        if (needPawnio)     parts += L"• CPU-Temperatur & -Verbrauch: signierter Open-Source-Treiber PawnIO (liegt dem Paket bei, Signatur wird geprüft)\n";
         else if (needSense) parts += L"• CPU-Temperatur & -Verbrauch: Hintergrunddienst für den PawnIO-Treiber\n";
         std::wstring dlg = L"Damit das OSD alle Werte anzeigen kann, richtet " + appDisplayName() + L" einmalig ein:\n\n" + parts +
             L"\nGleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte). Danach läuft alles automatisch – ohne weitere Nachfragen.";
@@ -3290,11 +3296,20 @@ static void ensureOsdSetup() {
         // 1) PawnIO-Installer non-elevated laden + Authenticode-Signatur pruefen.
         std::wstring setupExe;
         if (needPawnio) {
-            status("OSD-Einrichtung: Lade PawnIO-Treiber herunter und pruefe die Signatur ...");
-            wchar_t tmp[MAX_PATH]; GetTempPathW(MAX_PATH, tmp);
-            setupExe = std::wstring(tmp) + L"PawnIO_setup.exe";
-            std::wstring dl = L"Invoke-WebRequest -Uri 'https://github.com/namazso/PawnIO.Setup/releases/latest/download/PawnIO_setup.exe' -OutFile '"
-                + q(setupExe) + L"' -UseBasicParsing; (Get-AuthenticodeSignature '" + q(setupExe) + L"').Status";
+            // Mitgeliefertes Setup bevorzugen (offline, getestete Version); Rueckfall: gepinnter Download 2.2.0.
+            setupExe = bundledSetup(L"PawnIO_setup.exe");
+            std::wstring dl;
+            if (!setupExe.empty()) {
+                status("OSD-Einrichtung: Prüfe die Signatur des mitgelieferten PawnIO-Installers ...");
+                dl = L"(Get-AuthenticodeSignature '" + q(setupExe) + L"').Status";
+                bcLogStream("osd-setup: PawnIO aus dem Paket: " + narrow(setupExe));
+            } else {
+                status("OSD-Einrichtung: Lade PawnIO-Treiber herunter und prüfe die Signatur ...");
+                wchar_t tmp[MAX_PATH]; GetTempPathW(MAX_PATH, tmp);
+                setupExe = std::wstring(tmp) + L"PawnIO_setup.exe";
+                dl = L"Invoke-WebRequest -Uri 'https://github.com/namazso/PawnIO.Setup/releases/download/2.2.0/PawnIO_setup.exe' -OutFile '"
+                    + q(setupExe) + L"' -UseBasicParsing; (Get-AuthenticodeSignature '" + q(setupExe) + L"').Status";
+            }
             std::string out = runCaptureOutput(L"powershell -NoProfile -Command \"" + dl + L"\"", 180000);
             if (out.find("Valid") == std::string::npos) {
                 statusOff();
@@ -3611,7 +3626,7 @@ static void analyzeTick() {   // TIMER_ANALYZE (100 ms): Heartbeat, Tail, Status
 }
 
 // --- Eingabe-Bruecke: ViGEmBus-Ersteinrichtung (Muster ensureOsdSetup: Einwilligung,
-// Download von der offiziellen Quelle, Authenticode-Pruefung, EIN UAC). Version
+// Setup aus dem Paket (drivers\), Authenticode-Pruefung, EIN UAC; Download nur als Rueckfall). Version
 // GEPINNT: das Projekt ist archiviert, v1.22.0 ist der finale Stand - "latest"
 // waere hier Zufall. Deinstallation macht der ViGEmBus-Installer selbst ueber
 // Apps & Features (registriert sich dort als "Nefarius Virtual Gamepad Emulation Bus").
@@ -3629,7 +3644,7 @@ static void ensureVigemSetup() {
         auto statusOff  = []()                      { sendToUiMulti("input-bridge-setup-status", json::array({ nullptr, false })); };
         if (MessageBoxW(g_hwnd,
             (L"Für die Eingabe-Brücke (Joystick/Lenkrad als virtuelles Xbox-Gamepad) richtet " + appDisplayName() + L" einmalig ein:\n\n"
-            L"• Virtueller-Gamepad-Treiber ViGEmBus (signierter Open-Source-Treiber, wird von der offiziellen Quelle geladen)\n\n"
+            L"• Virtueller-Gamepad-Treiber ViGEmBus (signierter Open-Source-Treiber, liegt dem Paket bei, Signatur wird geprüft)\n\n"
             L"Gleich fragt Windows EINMAL nach deiner Bestätigung (Administratorrechte). Der Treiber lässt sich jederzeit über Apps & Features wieder deinstallieren.").c_str(),
             L"Eingabe-Brücke einrichten", MB_OKCANCEL | MB_ICONINFORMATION | MB_SETFOREGROUND) != IDOK) {
             json s = loadSettings(); s["inputBridgeSetupDeclined"] = true; writeFile(settingsPath(), s.dump(2));
@@ -3637,11 +3652,18 @@ static void ensureVigemSetup() {
             g_vigemSetupRunning = false; return;
         }
         // 1) Installer non-elevated laden + Authenticode-Signatur pruefen (wie PawnIO).
-        status("Eingabe-Bruecke: Lade ViGEmBus-Treiber herunter und pruefe die Signatur ...");
-        wchar_t tmp[MAX_PATH]; GetTempPathW(MAX_PATH, tmp);
-        std::wstring setupExe = std::wstring(tmp) + L"ViGEmBus_1.22.0_x64_x86_arm64.exe";
-        std::wstring dl = L"Invoke-WebRequest -Uri 'https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe' -OutFile '"
-            + q(setupExe) + L"' -UseBasicParsing; (Get-AuthenticodeSignature '" + q(setupExe) + L"').Status";
+        std::wstring setupExe = bundledSetup(L"ViGEmBus_1.22.0_x64_x86_arm64.exe"), dl;
+        if (!setupExe.empty()) {
+            status("WheelToPad: Prüfe die Signatur des mitgelieferten ViGEmBus-Installers ...");
+            dl = L"(Get-AuthenticodeSignature '" + q(setupExe) + L"').Status";
+            bcLogStream("vigem-setup: ViGEmBus aus dem Paket: " + narrow(setupExe));
+        } else {
+            status("WheelToPad: Lade ViGEmBus-Treiber herunter und prüfe die Signatur ...");
+            wchar_t tmp[MAX_PATH]; GetTempPathW(MAX_PATH, tmp);
+            setupExe = std::wstring(tmp) + L"ViGEmBus_1.22.0_x64_x86_arm64.exe";
+            dl = L"Invoke-WebRequest -Uri 'https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe' -OutFile '"
+                + q(setupExe) + L"' -UseBasicParsing; (Get-AuthenticodeSignature '" + q(setupExe) + L"').Status";
+        }
         std::string out = runCaptureOutput(L"powershell -NoProfile -Command \"" + dl + L"\"", 180000);
         if (out.find("Valid") == std::string::npos) {
             statusOff();

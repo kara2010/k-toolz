@@ -1,4 +1,4 @@
-; K-Toolz - NSIS-Installer der C++-Shell. EIN Installer fuer alle Produkte (byte-identisch):
+﻿; K-Toolz - NSIS-Installer der C++-Shell. EIN Installer fuer alle Produkte (byte-identisch):
 ; der DATEINAME entscheidet, was eingeschaltet wird ($EXEFILE, siehe .onInit):
 ;   PlainOSD-Setup-*.exe / StreamToFriend-Setup-*.exe / StutterHunter-Setup-*.exe /
 ;   WheelToPad-Setup-*.exe  -> Produktmodus: keine Auswahlseite, Willkommensseite mit
@@ -95,7 +95,7 @@ LangString S_WelcomeTitle ${LANG_GERMAN} "Willkommen bei $ProdName"
 LangString S_WelcomeTitle ${LANG_ENGLISH} "Welcome to $ProdName"
 LangString S_WelcomeText ${LANG_GERMAN} "$(S_Pitch)$\r$\n$\r$\nK-Toolz ist Open Source (AGPL v3), kostenlos und besteht aus eigenem, signiertem Code. Kein Konto, keine Registrierung.$\r$\n$\r$\nKlicke auf Weiter, um fortzufahren."
 LangString S_WelcomeText ${LANG_ENGLISH} "$(S_Pitch)$\r$\n$\r$\nK-Toolz is open source (AGPL v3), free and consists of our own signed code. No account, no registration.$\r$\n$\r$\nClick Next to continue."
-LangString S_PitchAll ${LANG_GERMAN} "Vier Werkzeuge und ein Launcher fuer PC-Gamer in einem Download: PlainOSD (FPS-Overlay), StreamToFriend (Streaming an Freunde), StutterHunter (Ruckler-Analyse), WheelToPad (Lenkrad als Gamepad) und ein Launcher fuer alle deine Spiele."
+LangString S_PitchAll ${LANG_GERMAN} "Vier Werkzeuge und ein Launcher für PC-Gamer in einem Download: PlainOSD (FPS-Overlay), StreamToFriend (Streaming an Freunde), StutterHunter (Ruckler-Analyse), WheelToPad (Lenkrad als Gamepad) und ein Launcher für alle deine Spiele."
 LangString S_PitchAll ${LANG_ENGLISH} "Four tools and one launcher for PC gamers in a single download: PlainOSD (FPS overlay), StreamToFriend (streaming to friends), StutterHunter (stutter analysis), WheelToPad (wheel as gamepad) and a launcher for all your games."
 LangString S_PitchOsd ${LANG_GERMAN} "FPS, Temperaturen und Auslastung als Overlay im Spiel - ohne Afterburner, ohne Konto. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
 LangString S_PitchOsd ${LANG_ENGLISH} "FPS, temperatures and load as an in-game overlay - no Afterburner, no account. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
@@ -103,14 +103,14 @@ LangString S_PitchStream ${LANG_GERMAN} "Dein Spiel an Freunde streamen - direkt
 LangString S_PitchStream ${LANG_ENGLISH} "Stream your game to friends - straight from your PC, no account. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
 LangString S_PitchStutter ${LANG_GERMAN} "Findet heraus, warum dein Spiel ruckelt: Frametimes, Treiber-Latenzen und Hintergrundprogramme mit Befund. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
 LangString S_PitchStutter ${LANG_ENGLISH} "Finds out why your game stutters: frame times, driver latencies and background programs with a verdict. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
-LangString S_PitchWheel ${LANG_GERMAN} "Lenkrad oder Joystick als Xbox-Controller fuer jedes Spiel. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
+LangString S_PitchWheel ${LANG_GERMAN} "Lenkrad oder Joystick als Xbox-Controller für jedes Spiel. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
 LangString S_PitchWheel ${LANG_ENGLISH} "Wheel or joystick as an Xbox controller for any game. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
 LangString S_Pitch ${LANG_GERMAN} "$(S_PitchAll)"
 LangString S_Pitch ${LANG_ENGLISH} "$(S_PitchAll)"
-LangString S_ModTitle ${LANG_GERMAN} "Was moechtest du nutzen?"
+LangString S_ModTitle ${LANG_GERMAN} "Was möchtest du nutzen?"
 LangString S_ModTitle ${LANG_ENGLISH} "What would you like to use?"
-LangString S_ModSub ${LANG_GERMAN} "Es wird immer alles installiert (3,8 MB). Du kannst jedes Werkzeug spaeter in den Einstellungen ein- oder ausschalten."
-LangString S_ModSub ${LANG_ENGLISH} "Everything is always installed (3.8 MB). You can switch every tool on or off later in the settings."
+LangString S_ModSub ${LANG_GERMAN} "Aktiv ist nur, was du hier anhakst. Alles andere bleibt abgeschaltet und lässt sich später in den Einstellungen einschalten."
+LangString S_ModSub ${LANG_ENGLISH} "Only what you tick here is active. Everything else stays off and can be switched on later in the settings."
 LangString S_ModOsd ${LANG_GERMAN} "PlainOSD - FPS, Temperaturen und Auslastung als Overlay im Spiel"
 LangString S_ModOsd ${LANG_ENGLISH} "PlainOSD - FPS, temperatures and load as an in-game overlay"
 LangString S_ModStream ${LANG_GERMAN} "StreamToFriend - dein Spiel an Freunde streamen, ohne Konto"
@@ -121,13 +121,13 @@ LangString S_ModWheel ${LANG_GERMAN} "WheelToPad - Lenkrad oder Joystick als Xbo
 LangString S_ModWheel ${LANG_ENGLISH} "WheelToPad - wheel or joystick as an Xbox controller"
 LangString S_ModLauncher ${LANG_GERMAN} "Launcher - alle deine Spiele aus Steam, Epic, GOG && Co. in einer Bibliothek"
 LangString S_ModLauncher ${LANG_ENGLISH} "Launcher - all your games from Steam, Epic, GOG && co. in one library"
-LangString S_ModNone ${LANG_GERMAN} "Bitte mindestens ein Werkzeug auswaehlen."
+LangString S_ModNone ${LANG_GERMAN} "Bitte mindestens ein Werkzeug auswählen."
 LangString S_ModNone ${LANG_ENGLISH} "Please select at least one tool."
 LangString S_RunNow ${LANG_GERMAN} "$ProdName jetzt starten"
 LangString S_RunNow ${LANG_ENGLISH} "Launch $ProdName now"
-LangString S_RemoveData ${LANG_GERMAN} "Sollen auch deine Einstellungen, Spielzeiten und die Spiele-Bibliothek entfernt werden?$\n$\nJa = alles restlos entfernen ($APPDATA\lumora)$\nNein = Einstellungen behalten (empfohlen, falls du K-Toolz spaeter erneut installierst)"
+LangString S_RemoveData ${LANG_GERMAN} "Sollen auch deine Einstellungen, Spielzeiten und die Spiele-Bibliothek entfernt werden?$\n$\nJa = alles restlos entfernen ($APPDATA\lumora)$\nNein = Einstellungen behalten (empfohlen, falls du K-Toolz später erneut installierst)"
 LangString S_RemoveData ${LANG_ENGLISH} "Also remove your settings, playtimes and game library?$\n$\nYes = remove everything ($APPDATA\lumora)$\nNo = keep settings (recommended if you might reinstall K-Toolz later)"
-LangString S_VcMissing ${LANG_GERMAN} "K-Toolz benoetigt die Microsoft Visual C++ Laufzeit, die auf diesem PC fehlt und gerade nicht geladen werden konnte (keine Internetverbindung?).$\n$\nBitte einmal 'Microsoft Visual C++ Redistributable (x64)' installieren - danach startet K-Toolz normal."
+LangString S_VcMissing ${LANG_GERMAN} "K-Toolz benötigt die Microsoft Visual C++ Laufzeit, die auf diesem PC fehlt und gerade nicht geladen werden konnte (keine Internetverbindung?).$\n$\nBitte einmal 'Microsoft Visual C++ Redistributable (x64)' installieren - danach startet K-Toolz normal."
 LangString S_VcMissing ${LANG_ENGLISH} "K-Toolz needs the Microsoft Visual C++ runtime, which is missing on this PC and could not be downloaded right now (no internet connection?).$\n$\nPlease install 'Microsoft Visual C++ Redistributable (x64)' once - K-Toolz will then start normally."
 
 ; Verzeichnis-Seite bei Updates ueberspringen (Ziel steht fest)
