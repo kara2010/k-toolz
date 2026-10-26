@@ -559,8 +559,11 @@
     // Streamer die Bitrate fuer ALLE Zuschauer (Audit-Befund).
     if (document.visibilityState !== 'visible') { _qosPrev = null; return }
     try {
-      var s = await window._pc.getStats(), inb = null
-      s.forEach(function (r) { if (r.type === 'inbound-rtp' && r.kind === 'video') inb = r })
+      var s = await window._pc.getStats(), inb = null, rtt = null
+      s.forEach(function (r) {
+        if (r.type === 'inbound-rtp' && r.kind === 'video') inb = r
+        if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded' && r.currentRoundTripTime != null) rtt = Math.round(r.currentRoundTripTime * 1000)
+      })
       if (!inb) return
       var cur = { recv: inb.packetsReceived || 0, lost: inb.packetsLost || 0, drop: inb.framesDropped || 0, frz: inb.freezeCount || 0 }
       if (_qosPrev) {
@@ -570,6 +573,10 @@
           drop: cur.drop - _qosPrev.drop, frz: cur.frz - _qosPrev.frz,
           jit: inb.jitter != null ? Math.round(inb.jitter * 1000) : 0,
           fps: inb.framesPerSecond != null ? inb.framesPerSecond : null,
+          // Diagnose (Streamer-Log qos-diag): Software-Dekodierung von AV1 sieht wie Netzverlust aus -
+          // ohne Decoder-Angabe ist eine Ruckel-Ursache beim Zuschauer nicht von der Strecke zu trennen.
+          dec: inb.decoderImplementation || '', hw: inb.powerEfficientDecoder != null ? !!inb.powerEfficientDecoder : null,
+          w: inb.frameWidth || 0, h: inb.frameHeight || 0, rtt: rtt,
         }) }).catch(function () {})
       }
       _qosPrev = cur

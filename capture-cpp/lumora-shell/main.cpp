@@ -877,6 +877,20 @@ static void bcQosReport(const std::string& ip, const json& q) {
     ULONGLONG first = prev != g_qosMap.end() ? prev->second.first : GetTickCount64();
     g_qosMap[key] = { GetTickCount64(), bad, lossRate, streak, first, lost + recv };
     if (bad) bcLogStream("qos: " + key + " lost=" + std::to_string(lost) + "/" + std::to_string(lost + recv) + " !");
+    // Diagnosezeile JEDER Meldung (alle 5 s je Zuschauer): vorher nur schlechte Fenster und nur der
+    // Verlust - Bildrate, verworfene/eingefrorene Frames und Decoder des Zuschauers gingen verloren,
+    // Schwankungen ohne Paketverlust waren im Log unsichtbar.
+    auto num = [&](const char* k) -> std::string {
+        if (!q.contains(k) || q[k].is_null()) return "-";
+        if (q[k].is_number_float()) { char b[32]; snprintf(b, sizeof(b), "%.1f", q[k].get<double>()); return b; }
+        if (q[k].is_number()) return std::to_string(q[k].get<long long>());
+        if (q[k].is_boolean()) return q[k].get<bool>() ? "ja" : "nein";
+        return "-";
+    };
+    std::string dec = q.contains("dec") && q["dec"].is_string() ? q["dec"].get<std::string>().substr(0, 40) : "-";
+    bcLogStream("qos-diag: " + key + " fps=" + num("fps") + " recv=" + std::to_string(recv) + " lost=" + std::to_string(lost)
+        + " drop=" + std::to_string(drop) + " frz=" + std::to_string(frz) + " jit=" + num("jit") + "ms rtt=" + num("rtt")
+        + "ms dec=" + (dec.empty() ? "-" : dec) + " hw=" + num("hw") + " res=" + num("w") + "x" + num("h"));
 }
 // --- Verbindungstest (STUN-NAT-Erkennung + UPnP-/IPv6-Proben, 1:1 aus main.js) ---
 struct StunResult { std::string ip; int port = 0; };
