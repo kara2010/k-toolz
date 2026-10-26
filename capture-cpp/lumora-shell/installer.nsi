@@ -29,6 +29,7 @@ Unicode true
 !endif
 
 Name "K-Toolz ${VERSION}"
+BrandingText " "   ; keine "Nullsoft Install System"-Zeile im Fenster
 OutFile "K-Toolz-Setup-${VERSION}.exe"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
@@ -109,8 +110,8 @@ LangString S_Pitch ${LANG_GERMAN} "$(S_PitchAll)"
 LangString S_Pitch ${LANG_ENGLISH} "$(S_PitchAll)"
 LangString S_ModTitle ${LANG_GERMAN} "Was möchtest du nutzen?"
 LangString S_ModTitle ${LANG_ENGLISH} "What would you like to use?"
-LangString S_ModSub ${LANG_GERMAN} "Aktiv ist nur, was du hier anhakst. Alles andere bleibt abgeschaltet und lässt sich später in den Einstellungen einschalten."
-LangString S_ModSub ${LANG_ENGLISH} "Only what you tick here is active. Everything else stays off and can be switched on later in the settings."
+LangString S_ModSub ${LANG_GERMAN} "Aktiv ist nur, was du anhakst – der Rest lässt sich später in den Einstellungen einschalten."
+LangString S_ModSub ${LANG_ENGLISH} "Only what you tick is active – the rest can be switched on later in the settings."
 LangString S_ModOsd ${LANG_GERMAN} "PlainOSD - FPS, Temperaturen und Auslastung als Overlay im Spiel"
 LangString S_ModOsd ${LANG_ENGLISH} "PlainOSD - FPS, temperatures and load as an in-game overlay"
 LangString S_ModStream ${LANG_GERMAN} "StreamToFriend - dein Spiel an Freunde streamen, ohne Konto"
