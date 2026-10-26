@@ -192,7 +192,7 @@ private:
         if (counts_.size() > 2048) counts_.clear();
     }
 
-    std::wstring name_ = L"LumoraNetTrace";
+    std::wstring name_ = L"KToolzNetTrace";
     TRACEHANDLE session_ = 0;
     TRACEHANDLE consumer_ = INVALID_PROCESSTRACE_HANDLE;
     std::vector<char> propsBuf_;

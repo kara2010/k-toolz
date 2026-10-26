@@ -1,4 +1,4 @@
-// Ressourcen des nativen Aufnahme-Helfers: Lumora-Logo (Explorer, Task-Manager,
+// Ressourcen des nativen Aufnahme-Helfers: K-Toolz-Logo (Explorer, Task-Manager,
 // SmartScreen, evtl. Firewall-Dialog) + VersionInfo (Produktname/Beschreibung, die
 // Windows im Datei-Dialog anzeigt). Signatur (Herausgebername) kommt separat beim Build.
 #include <windows.h>
@@ -19,12 +19,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Karsten Radermacher"
-            VALUE "FileDescription", "Lumora Aufnahme-Helfer"
+            VALUE "FileDescription", "K-Toolz Aufnahme-Helfer"
             VALUE "FileVersion", "2.2.21.0"
-            VALUE "InternalName", "lumora-capture-native"
+            VALUE "InternalName", "k-toolz-capture"
             VALUE "LegalCopyright", "\xA9 Karsten Radermacher"
-            VALUE "OriginalFilename", "lumora-capture-native.exe"
-            VALUE "ProductName", "Lumora"
+            VALUE "OriginalFilename", "k-toolz-capture.exe"
+            VALUE "ProductName", "K-Toolz"
             VALUE "ProductVersion", "2.2.21.0"
         END
     END

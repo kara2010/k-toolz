@@ -1,5 +1,5 @@
 <?php
-// Lumora Gruppen-Vermittlung ("Rendezvous"): EINE Datei, kein Datenbank-Zwang.
+// K-Toolz Gruppen-Vermittlung ("Rendezvous"): EINE Datei, kein Datenbank-Zwang.
 // Verwaltet Raumcodes und die aktuellen Adressen der Mitglieder und liefert den
 // Grid-Player aus. Der VIDEO-Traffic laeuft NIE hierueber - die Browser bauen
 // direkte WebRTC-Verbindungen zu den Streamern auf; dieses Skript reicht nur die
@@ -8,7 +8,7 @@
 // Content) - PHP darf das serverseitig.
 //
 // Selbst hosten: diese Datei auf einen beliebigen PHP-Webspace legen (PHP 7+,
-// Schreibrechte im eigenen Ordner). In Lumora unter Stream -> Gruppe die URL
+// Schreibrechte im eigenen Ordner). In StreamToFriend unter Gruppe die URL
 // eintragen - fertig. Es entsteht ein Unterordner "gruppen/" fuer die Raumdaten.
 
 error_reporting(0);
@@ -275,7 +275,7 @@ if ($a === 'whep') {
   // Tuersteher-Nachweis: NICHT den Token uebertragen, sondern eine HMAC-Signatur ueber
   // GENAU dieses SDP (+Zeitstempel), mit dem Streamer-Token als Schluessel. Ein Mitlauscher
   // sieht nur die Signatur (nicht umkehrbar, an dieses SDP gebunden, ~60 s gueltig) – nie
-  // den Token. Der direkte IP-Zugriff ohne gueltige Signatur wird von Lumora abgewiesen.
+  // den Token. Der direkte IP-Zugriff ohne gueltige Signatur wird von K-Toolz abgewiesen.
   $sig_qs = '';
   $mvk = isset($j['members'][$mid]['vk']) ? $j['members'][$mid]['vk'] : '';
   if ($mvk) { $ts = time(); $sig = hash_hmac('sha256', $sdp . '|' . $ts, $mvk); $sig_qs = '?sig=' . $sig . '&ts=' . $ts; }
@@ -293,7 +293,7 @@ if ($a === 'whep') {
       if ($r['location']) $session = preg_match('#^https?://#', $r['location']) ? $r['location'] : $base . $r['location'];
       jout(array('ok' => true, 'sdp' => $r['body'], 'session' => $session));
     }
-    // Tuersteher: Lumora hat BEWUSST abgewiesen (401 = kein gueltiger Nachweis,
+    // Tuersteher: K-Toolz hat BEWUSST abgewiesen (401 = kein gueltiger Nachweis,
     // 403 = pending/denied) -> Grund an den Player durchreichen, nicht als
     // "unreachable" verschleiern.
     if ($r && ($r['status'] === 401 || $r['status'] === 403)) {
@@ -362,7 +362,7 @@ if ($a === 'cfg') {
 }
 
 // ---- Einzelstream-Zuschauerlink (?s=<CODE>) ------------------------------------
-// Lumora registriert jeden Einzelstream als Ein-Personen-"Schattenraum" und teilt
+// K-Toolz registriert jeden Einzelstream als Ein-Personen-"Schattenraum" und teilt
 // DIESE URL statt der nackten IP (Privatsphaere + iPhone-tauglich + ueberlebt
 // IP-Wechsel). Die Seite entscheidet CLIENTSEITIG (robuster als Server-UA, iPads
 // melden sich als Macintosh): iOS -> Grid ueber HTTPS (Relay-Handshake, laeuft
@@ -388,7 +388,7 @@ if ($s !== '' && code_ok($s)) {
   if (!$found) {
     // Stream (noch) nicht da: freundliche Offline-Seite, die alle 6 s selbst
     // nachschaut - wer den Link kurz vor dem Streamstart oeffnet, landet automatisch.
-    echo '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="6"><title>Lumora Stream</title></head>'
+    echo '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="6"><title>K-Toolz Stream</title></head>'
        . '<body style="background:#0b0d12;color:#e8e8ea;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
        . '<div style="text-align:center"><div style="font-size:20px;font-weight:600" id="t1">Der Stream ist gerade offline</div>'
        . '<div style="color:#888;margin-top:8px" id="t2">Diese Seite prüft alle paar Sekunden automatisch neu.</div></div>'
@@ -401,7 +401,7 @@ if ($s !== '' && code_ok($s)) {
   // nur wenn player.html neben diesem Skript deployt ist; sonst wie frueher
   // die direkte IP-Weiterleitung (Sicherheitsnetz, kein Redirect-Kreis moeglich).
   $desktopTarget = is_file(__DIR__ . '/player.html') ? '("?p=" + encodeURIComponent(code))' : '(v4 || v6)';
-  echo '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lumora Stream</title></head>'
+  echo '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>K-Toolz Stream</title></head>'
      . '<body style="background:#0b0d12;color:#e8e8ea;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
      . '<div style="text-align:center"><div style="font-size:16px;color:#888" id="msg">Stream wird geöffnet…</div>'
      . '<div style="margin-top:14px"><a id="fallback" style="color:#7ab3ff" href="#"></a></div></div>'
@@ -455,10 +455,10 @@ if ($p !== '' && code_ok($p)) {
 // ---- Grid-Player (Browser-Zuschauer) ------------------------------------------
 if (!code_ok($code)) {
   header('Content-Type: text/html; charset=utf-8');
-  echo '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Lumora Gruppen-Vermittlung</title></head>'
+  echo '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>K-Toolz Gruppen-Vermittlung</title></head>'
      . '<body style="background:#0b0d12;color:#e8e8ea;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
-     . '<div style="text-align:center"><div style="font-size:20px;font-weight:600">Lumora Gruppen-Vermittlung ist aktiv ✅</div>'
-     . '<div style="color:#888;margin-top:8px">Öffne einen Gruppen-Link mit ?code=… oder starte eine Gruppe in Lumora.</div></div></body></html>';
+     . '<div style="text-align:center"><div style="font-size:20px;font-weight:600">K-Toolz Gruppen-Vermittlung ist aktiv ✅</div>'
+     . '<div style="color:#888;margin-top:8px">Öffne einen Gruppen-Link mit ?code=… oder starte eine Gruppe in StreamToFriend.</div></div></body></html>';
   exit;
 }
 header('Content-Type: text/html; charset=utf-8');
@@ -470,13 +470,13 @@ echo <<<'HTMLHEAD'
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Lumora Gruppen-Grid</title>
+<title>K-Toolz Gruppen-Grid</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; background: #0b0d12; color: #e8e8ea; font-family: system-ui, -apple-system, Segoe UI, sans-serif; overflow: hidden; }
   body { height: 100dvh; }
   #grid { display: grid; gap: 8px; padding: 8px; height: 100%; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); grid-auto-rows: 1fr; }
-  /* ── Lumora-Designsprache (wie App + Website): Akzentblau, Glas-Optik mit
+  /* ── K-Toolz-Designsprache (wie App + Website): Akzentblau, Glas-Optik mit
      Licht-Kante, weiche Radien, Hover-Leben. Ein wiederverwendbarer Glas-Look
      fuer ALLE Overlays (Pills, Icons, Slider, Leisten-Knoepfe). ── */
   .tile { position: relative; background: #000; border-radius: 12px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color .18s, box-shadow .18s; touch-action: manipulation; }
@@ -542,7 +542,7 @@ echo <<<'HTMLHEAD'
   @keyframes soundPulse { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.045); } }
   @media (max-width: 640px), (pointer: coarse) { #soundHint { font-size: 15px; padding: 13px 20px; white-space: normal; max-width: 88vw; text-align: left; bottom: 14%; } }
   /* Fenster-Knopfleiste: Glas-Pillen mit Licht-Kante, Hover hebt an + Akzent-Rand.
-     Der Lumora-Beitritts-Knopf ist der Primaer-CTA im Marken-Gradient. */
+     Der Beitritts-Knopf ist der Primaer-CTA im Marken-Gradient. */
   #bar { position: fixed; bottom: 0; right: 0; display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 14px max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) 16px; z-index: 15; }
   button.ctl, a.ctl {
     display: flex; align-items: center; gap: 8px;
@@ -585,13 +585,14 @@ echo <<<'HTMLHEAD'
 </div>
 <div id="soundHint"><span class="ico">🔊</span><span>Auf eine Kachel tippen, um deren Ton zu hören</span></div>
 <div id="bar">
-  <!-- "Mit Lumora mitstreamen": oeffnet die installierte App per lumora://join/<CODE>
+  <!-- "Mit K-Toolz mitstreamen": oeffnet die installierte App per lumora://join/<CODE>
+       (bewusst lumora:// - Staende vor der Umbenennung kennen nur dieses Schema, neue registrieren beide)
        (Protokoll registriert die App selbst). Nur auf Windows-Desktops eingeblendet
-       (Lumora gibt es nur fuer Windows); ohne installierte App passiert beim Klick
+       (K-Toolz gibt es nur fuer Windows); ohne installierte App passiert beim Klick
        nichts - der Tooltip nennt die Download-Adresse. -->
   <a class="ctl" id="lumoraJoinBtn" style="display:none; text-decoration:none"
-     title="Öffnet deine installierte Lumora-App und tritt der Gruppe bei – dein Stream startet automatisch mit. Noch kein Lumora? Kostenlos auf lumora-streaming.de" href="#">
-    🎮 <span>Mit Lumora mitstreamen</span>
+     title="Öffnet deine installierte K-Toolz-App und tritt der Gruppe bei – dein Stream startet automatisch mit. Noch kein K-Toolz? Kostenlos auf k-toolz.de" href="#">
+    🎮 <span>Mit K-Toolz mitstreamen</span>
   </a>
   <button class="ctl" id="gridPipBtn" style="display:none" title="Das GANZE Grid als schwebendes Mini-Fenster über allen Programmen – ideal, um nebenbei selbst zu zocken. Ton und Klick-Bedienung funktionieren auch im Mini-Fenster.">
     ⧉ <span>Abdocken</span>
@@ -633,8 +634,8 @@ echo <<<'HTMLJS'
     emptyBig: 'Noch niemand im Grid…', emptySub: 'Wartet auf Mitglieder der Gruppe.',
     pipBig: '⧉ Das Grid läuft als Mini-Fenster', pipSub: 'Hier klicken, um es zurückzuholen.',
     soundHint: 'Auf eine Kachel tippen, um deren Ton zu hören',
-    join: 'Mit Lumora mitstreamen',
-    joinTitle: 'Öffnet deine installierte Lumora-App und tritt der Gruppe bei – dein Stream startet automatisch mit. Noch kein Lumora? Kostenlos auf lumora-streaming.de',
+    join: 'Mit K-Toolz mitstreamen',
+    joinTitle: 'Öffnet deine installierte K-Toolz-App und tritt der Gruppe bei – dein Stream startet automatisch mit. Noch kein K-Toolz? Kostenlos auf k-toolz.de',
     dockTitle: 'Das GANZE Grid als schwebendes Mini-Fenster über allen Programmen – ideal, um nebenbei selbst zu zocken. Ton und Klick-Bedienung funktionieren auch im Mini-Fenster.',
     layoutTitle: 'Ansicht umschalten: Raster (alle gleich groß) / Spotlight (einer groß, Rest als Leiste)',
     fsTitle: 'Vollbild (F) – Doppelklick auf eine Kachel für Einzelbild',
@@ -647,8 +648,8 @@ echo <<<'HTMLJS'
     emptyBig: 'Nobody in the grid yet…', emptySub: 'Waiting for group members.',
     pipBig: '⧉ The grid is running as a mini window', pipSub: 'Click here to bring it back.',
     soundHint: 'Tap a tile to hear its sound',
-    join: 'Join with Lumora',
-    joinTitle: 'Opens your installed Lumora app and joins the group – your own stream starts along automatically. No Lumora yet? Free at lumora-streaming.de',
+    join: 'Join with K-Toolz',
+    joinTitle: 'Opens your installed K-Toolz app and joins the group – your own stream starts along automatically. No K-Toolz yet? Free at k-toolz.de',
     dockTitle: 'Pops the WHOLE grid out as a floating always-on-top mini window – perfect for gaming on the side. Sound and click controls keep working in the mini window.',
     layoutTitle: 'Switch the view: grid (all equal) / spotlight (one large, the rest as a strip)',
     fsTitle: 'Fullscreen (F) – double-click a tile for single view',
@@ -1168,7 +1169,7 @@ echo <<<'HTMLJS'
     if (t.video && t.video.webkitEnterFullscreen) { try { t.video.webkitEnterFullscreen() } catch (e) {} }   // iPhone: natives Video-Vollbild
   }
   document.getElementById('fsBtn').onclick = toggleFullscreen
-  // "Mit Lumora mitstreamen" nur auf Windows-Desktops zeigen (Lumora ist Windows-
+  // "Mit K-Toolz mitstreamen" nur auf Windows-Desktops zeigen (K-Toolz ist Windows-
   // only; auf iPhone/Android waere der Protokoll-Link eine Sackgasse).
   if (/Windows NT/.test(navigator.userAgent) && !/Mobile/.test(navigator.userAgent)) {
     var jb = document.getElementById('lumoraJoinBtn')

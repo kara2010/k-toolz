@@ -1,7 +1,7 @@
-// lumora-capture (C++, Phase 2 v2): echter Helfer mit Encoder-Abstraktion.
+// k-toolz-capture (C++, Phase 2 v2): echter Helfer mit Encoder-Abstraktion.
 // WGC-Monitor -> VideoProcessor NV12 -> Encoder (NVENC ODER AMF, GPU-Auto-Auswahl,
 // Zero-Copy) -> eigener MPEG-TS-Mux -> UDP an mediamtx. LIVE, OHNE FFmpeg.
-// Aufruf: lumora-capture [--encoder auto|nvenc|amf|qsv] [--codec auto|h264|av1] [--fps N] [--bitrate MBIT]
+// Aufruf: k-toolz-capture [--encoder auto|nvenc|amf|qsv] [--codec auto|h264|av1] [--fps N] [--bitrate MBIT]
 //                        [--mtx-host IP] [--mtx-port P] [--frames N] [--tsout DATEI]
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
@@ -65,7 +65,7 @@ static const int PID_PMT = 0x1000, PID_VIDEO = 0x0100, PID_AUDIO = 0x0101, PID_V
 static uint8_t g_ccVideo = 0, g_ccPat = 0, g_ccPmt = 0, g_ccAudio = 0, g_ccVideoAv1 = 0;
 static bool g_withAudio = false;
 // Bedarfsgesteuert: es laeuft genau die Codec-Menge, die die aktuellen Zuschauer brauchen
-// (Shell -> lumora-codec.txt). g_h264/g_av1 steuern PMT-Deklaration UND Mux. Mindestens
+// (Shell -> k-toolz-codec.txt). g_h264/g_av1 steuern PMT-Deklaration UND Mux. Mindestens
 // einer ist immer an; der jeweils primaere (H.264 wenn an, sonst AV1) traegt den PCR.
 static bool g_h264 = true;            // H.264 auf PID_VIDEO aktiv
 static bool g_av1 = false;            // AV1 zusaetzlich/alternativ auf PID_VIDEO_AV1 aktiv
@@ -731,7 +731,7 @@ struct TonemapStage {
         if (FAILED(dev->CreateRenderTargetView(sdrTex.get(), nullptr, rtv.put()))) return false;
         D3D11_BUFFER_DESC bd{}; bd.ByteWidth = 16; bd.Usage = D3D11_USAGE_DYNAMIC; bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER; bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         if (FAILED(dev->CreateBuffer(&bd, nullptr, cb.put()))) return false;
-        char* tmp = getenv("TEMP"); ctlPath = std::string(tmp ? tmp : ".") + "\\lumora-hdr.txt";
+        char* tmp = getenv("TEMP"); ctlPath = std::string(tmp ? tmp : ".") + "\\k-toolz-hdr.txt";
         return true;
     }
     void updateBuffer(ID3D11DeviceContext* ctx) {
@@ -740,7 +740,7 @@ struct TonemapStage {
             memcpy(m.pData, &p, sizeof(p)); ctx->Unmap(cb.get(), 0);
         }
     }
-    // Steuerdatei %TEMP%\lumora-hdr.txt ("<mode> <exposure>") live einlesen (alle 15 Frames).
+    // Steuerdatei %TEMP%\k-toolz-hdr.txt ("<mode> <exposure>") live einlesen (alle 15 Frames).
     void readControl(ID3D11DeviceContext* ctx, bool force) {
         if (!force && (++ctlCtr % 15) != 0) return;
         WIN32_FILE_ATTRIBUTE_DATA fa{}; uint64_t mt = 0;
@@ -770,7 +770,7 @@ struct TonemapStage {
 };
 
 // =============== Fensterliste (--list) + HDR-Status (--hdr-check) fuer die UI ===============
-// main.js ruft "lumora-capture --list" und erwartet je sichtbarem Fenster: HWND \t Titel \t
+// Die Shell ruft "k-toolz-capture --list" und erwartet je sichtbarem Fenster: HWND \t Titel \t
 // Icon-PNG-Base64 (UTF-8). Ohne diese Ausgabe bliebe die Fensterauswahl in der App leer.
 static std::string b64encode(const uint8_t* d, size_t n) {
     static const char* t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -1028,7 +1028,7 @@ int main(int argc, char** argv) {
     Encoder* encoder = nullptr;      // H.264 (PID_VIDEO) - bedarfsgesteuert, aber Warm-Default
     Encoder* encoderAv1 = nullptr;   // AV1 (PID_VIDEO_AV1) - nur wenn ein AV1-Zuschauer verbunden ist
     // Bedarfsgesteuertes Encoding: Der Relay meldet der Shell, welche Codecs die aktuellen
-    // Zuschauer brauchen; die Shell schreibt die Zielmenge nach %TEMP%\lumora-codec.txt.
+    // Zuschauer brauchen; die Shell schreibt die Zielmenge nach %TEMP%\k-toolz-codec.txt.
     // Doppel-Encode (H.264 + AV1) laeuft nur im echten Mischfall. av1Capable = HW kann AV1
     // ueberhaupt (NVENC ab RTX 40, AMF ab RX 7000, QSV ab Arc/Xe) - sonst bleibt es bei H.264.
     bool av1Capable = false;
@@ -1054,9 +1054,9 @@ int main(int argc, char** argv) {
         // sonst bleibt g_h264 auf dem Startwert true, obwohl gar kein H.264-Encoder existiert.
         g_h264 = (encoder != nullptr); g_av1 = (encoderAv1 != nullptr);
     };
-    // Startmenge: aus lumora-codec.txt, falls die Shell sie schon geschrieben hat; sonst aus
+    // Startmenge: aus k-toolz-codec.txt, falls die Shell sie schon geschrieben hat; sonst aus
     // --codec (Standalone-Test: auto/av1 -> beide, h264 -> nur H.264). H.264 immer warm.
-    std::string codecPath = std::string(getenv("TEMP") ? getenv("TEMP") : ".") + "\\lumora-codec.txt";
+    std::string codecPath = std::string(getenv("TEMP") ? getenv("TEMP") : ".") + "\\k-toolz-codec.txt";
     bool wantH264 = true, wantAv1 = (codecName == "av1" || codecName == "auto") && av1Capable;
     { FILE* cf = nullptr; fopen_s(&cf, codecPath.c_str(), "r"); if (cf) { char buf[32] = { 0 }; fread(buf, 1, 31, cf); fclose(cf); std::string cs = buf; wantH264 = cs.find("h264") != std::string::npos; wantAv1 = av1Capable && cs.find("av1") != std::string::npos; if (!wantH264 && !wantAv1) wantH264 = true; } }
     reconcile(wantH264, wantAv1, mbit * 1000);
@@ -1067,14 +1067,14 @@ int main(int argc, char** argv) {
     WSADATA wsa; WSAStartup(MAKEWORD(2, 2), &wsa); SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     sockaddr_in dst{}; dst.sin_family = AF_INET; dst.sin_port = htons((u_short)port); inet_pton(AF_INET, host.c_str(), &dst.sin_addr);
     DXGI_ADAPTER_DESC1 gd; pick->GetDesc1(&gd);
-    printf("lumora-capture: Aufnahme %dx%d -> Ausgabe %dx%d @ %dfps, %d Mbit | %s | Encoder %s auf %ls -> mediamtx %s:%d (ohne FFmpeg)\n", W, H, outW, outH, fps, mbit, hdr ? "HDR->SDR (Tonemap)" : "SDR", encoder ? encoder->name() : (encoderAv1 ? encoderAv1->name() : "-"), gd.Description, host.c_str(), port);
+    printf("k-toolz-capture: Aufnahme %dx%d -> Ausgabe %dx%d @ %dfps, %d Mbit | %s | Encoder %s auf %ls -> mediamtx %s:%d (ohne FFmpeg)\n", W, H, outW, outH, fps, mbit, hdr ? "HDR->SDR (Tonemap)" : "SDR", encoder ? encoder->name() : (encoderAv1 ? encoderAv1->name() : "-"), gd.Description, host.c_str(), port);
 
     static const uint8_t AUD[6] = { 0,0,0,1, 0x09, 0xF0 };
     FILE* tsf = nullptr; if (!tsout.empty()) fopen_s(&tsf, tsout.c_str(), "wb");
     const uint64_t basePts = 90000;                            // 1 s Vorlauf, gemeinsame Zeitbasis fuer Bild + Ton
-    // Live-Bitrate: Lumora schreibt die Ziel-kbit in %TEMP%\lumora-bitrate.txt; der Helfer stellt
+    // Live-Bitrate: die Shell schreibt die Ziel-kbit in %TEMP%\k-toolz-bitrate.txt; der Helfer stellt
     // den Encoder ohne Neustart um (nahtlos, kein Stream-Abriss bei adaptiver Bitrate).
-    std::string brPath = std::string(getenv("TEMP") ? getenv("TEMP") : ".") + "\\lumora-bitrate.txt";
+    std::string brPath = std::string(getenv("TEMP") ? getenv("TEMP") : ".") + "\\k-toolz-bitrate.txt";
     uint64_t brMtime = ~0ull; int curKbit = mbit * 1000;
     uint64_t inFrame = 0, outFrame = 0, frameTick = 0; int tries = 0; auto t0 = std::chrono::steady_clock::now();
     // Ton als Pointer: beim Quellwechsel (Monitor<->Fenster) wird die Aufnahme-Seite neu
@@ -1093,7 +1093,7 @@ int main(int argc, char** argv) {
     }
     // Quellwechsel-Steuerdatei: "monitor" oder "hwnd <id>". Beim Start nur den Stand merken
     // (NICHT anwenden - ein alter Eintrag darf die per Argument gewaehlte Quelle nicht kippen).
-    std::string srcPath = std::string(getenv("TEMP") ? getenv("TEMP") : ".") + "\\lumora-source.txt";
+    std::string srcPath = std::string(getenv("TEMP") ? getenv("TEMP") : ".") + "\\k-toolz-source.txt";
     uint64_t srcMtime = 0;
     { WIN32_FILE_ATTRIBUTE_DATA fa{}; if (GetFileAttributesExA(srcPath.c_str(), GetFileExInfoStandard, &fa)) srcMtime = ((uint64_t)fa.ftLastWriteTime.dwHighDateTime << 32) | fa.ftLastWriteTime.dwLowDateTime; }
     // Quelle live wechseln: Capture+Scaler neu, Ton-Seite passend neu - Encoder/Muxer laufen durch.

@@ -79,7 +79,7 @@ inline luart::HttpResp soap(const std::string& controlURL, const std::string& se
     URL_COMPONENTS uc{ sizeof(uc) }; wchar_t host[256] = {}, path[2048] = {};
     uc.lpszHostName = host; uc.dwHostNameLength = 255; uc.lpszUrlPath = path; uc.dwUrlPathLength = 2047;
     if (!WinHttpCrackUrl(url.c_str(), 0, 0, &uc)) return r;
-    HINTERNET ses = WinHttpOpen(L"Lumora/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET ses = WinHttpOpen(L"K-Toolz/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     HINTERNET con = ses ? WinHttpConnect(ses, host, uc.nPort, 0) : nullptr;
     HINTERNET req = con ? WinHttpOpenRequest(con, L"POST", path, nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0) : nullptr;
     if (req) {

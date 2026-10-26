@@ -25,9 +25,9 @@ BEGIN
             VALUE "CompanyName", "Karsten Radermacher"
             VALUE "FileDescription", "K-Toolz"
             VALUE "FileVersion", "3.2.10.0"
-            VALUE "InternalName", "lumora-shell"
+            VALUE "InternalName", "k-toolz"
             VALUE "LegalCopyright", "\xA9 Karsten Radermacher"
-            VALUE "OriginalFilename", "lumora-shell.exe"
+            VALUE "OriginalFilename", "k-toolz.exe"
             VALUE "ProductName", "K-Toolz"
             VALUE "ProductVersion", "3.2.10.0"
         END

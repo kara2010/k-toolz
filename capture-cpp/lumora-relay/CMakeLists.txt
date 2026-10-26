@@ -30,6 +30,7 @@ add_executable(lumora_relay
   main.cpp relay_core.cpp ts_demux.cpp ingest.cpp whep_server.cpp ctrl_server.cpp
   app.rc)
 lumora_relay_link(lumora_relay)
+set_target_properties(lumora_relay PROPERTIES OUTPUT_NAME "k-toolz-relay")
 
 # BAU-SPERRE: AV1-RTP-Packetizer-Test (test/av1_packetizer_test.cpp). Prueft die Invarianten,
 # auf die libwebrtc beim Zusammensetzen eines Bildes angewiesen ist - fuer BEIDE erlaubten

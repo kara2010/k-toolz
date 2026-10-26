@@ -1949,7 +1949,7 @@ const I18N_EN = {
 }
 function lumoraLangEffective() {
   try {
-    const c = localStorage.getItem('lumoraLang')
+    const c = localStorage.getItem('ktoolzLang')
     if (c === 'de' || c === 'en') return c
   } catch (e) {}
   return (navigator.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en'
@@ -2591,10 +2591,10 @@ function applyI18n() {
       // media0.lumora = alter hdr-launcher-Ordner). Electron behaelt den file://-Weg.
       if (window.chrome && window.chrome.webview) {
         const p = v.replace(/\\/g, '/')
-        let m = p.match(/\/lumora\/media\/(.+)$/i)
-        if (m) return 'https://media.lumora/' + encodeURIComponent(m[1]).replace(/%2F/gi, '/')
+        let m = p.match(/\/(?:K-Toolz|lumora)\/media\/(.+)$/i)   // lumora = Pfade vor dem Datenordner-Umzug
+        if (m) return 'https://media.k-toolz/' + encodeURIComponent(m[1]).replace(/%2F/gi, '/')
         m = p.match(/\/hdr-launcher\/media\/(.+)$/i)
-        if (m) return 'https://media0.lumora/' + encodeURIComponent(m[1]).replace(/%2F/gi, '/')
+        if (m) return 'https://media0.k-toolz/' + encodeURIComponent(m[1]).replace(/%2F/gi, '/')
         return ''
       }
       return 'file:///' + v.replace(/\\/g, '/').replace(/ /g, '%20').replace(/#/g, '%23')
@@ -4013,7 +4013,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     function onLanguageChange() {
       const v = document.getElementById('setLanguage').value
       const eff = v === 'auto' ? ((navigator.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en') : v
-      try { localStorage.setItem('lumoraLang', eff) } catch (e) {}
+      try { localStorage.setItem('ktoolzLang', eff) } catch (e) {}
       ipcRenderer.invoke('set-app-settings', { language: v }).then(() => location.reload())
     }
     function onAppSettingChange() {
@@ -6613,7 +6613,7 @@ try {
   ipcRenderer.invoke('get-app-settings').then((s) => {
     const v = (s && s.language) || 'auto'
     const eff = v === 'auto' ? ((navigator.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en') : v
-    try { localStorage.setItem('lumoraLang', eff) } catch (e) {}
+    try { localStorage.setItem('ktoolzLang', eff) } catch (e) {}
     if (eff !== window.LANG) { window.LANG = eff; applyI18n() }
   }).catch(() => {})
 } catch (e) {}

@@ -11,7 +11,7 @@
 //          2) H.264 (Modus h264) -> Bild da, Codec H264
 //          3) --negative: Relay beschaedigt AV1 absichtlich -> der AV1-Waechter muss auf
 //             H.264 umschalten und der Browser danach Bild bekommen
-// Voraussetzung: PC mit Encoder-GPU, Lumora beendet (Ports 8558/8889/9997/8189 frei), Edge.
+// Voraussetzung: PC mit Encoder-GPU, K-Toolz beendet (Ports 8558/8889/9997/8189 frei), Edge.
 // Aufruf: node capture-cpp/lumora-relay/selftest/stream-e2e.js [--relay <exe>] [--capture <exe>]
 //         [--nur av1|h264|negative] [--sichtbar]      Exit 0 = alle Laeufe gruen.
 const { spawn, execSync } = require('child_process');
@@ -20,8 +20,8 @@ const fs = require('fs'), path = require('path'), http = require('http'), net = 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(k); return i >= 0 && args[i + 1] ? args[i + 1] : d; };
-const RELAY = path.resolve(arg('--relay', path.join(ROOT, 'bin', 'lumora-media-relay.exe')));
-const CAPTURE = path.resolve(arg('--capture', path.join(ROOT, 'bin', 'lumora-capture-native.exe')));
+const RELAY = path.resolve(arg('--relay', path.join(ROOT, 'bin', 'k-toolz-relay.exe')));
+const CAPTURE = path.resolve(arg('--capture', path.join(ROOT, 'bin', 'k-toolz-capture.exe')));
 const NUR = arg('--nur', null);
 const SICHTBAR = args.includes('--sichtbar');
 const EDGE = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
@@ -39,13 +39,13 @@ const kill = (p) => { if (p && p.pid && p.exitCode === null) try { execSync('tas
 
 async function lauf(name, relayArgs, dauer, bewerte) {
   log('--- Lauf ' + name + ' ---');
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lumora-e2e-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'k-toolz-e2e-'));
   const relayLog = []; let relay, capture, browser, server;
   try {
     relay = spawn(RELAY, relayArgs, { cwd: path.dirname(RELAY) });
     relay.stdout.on('data', d => relayLog.push(d.toString()));
     await warteAuf(relay, 'relay bereit', 10000);
-    // TEMP umleiten: %TEMP%\lumora-codec.txt der Shell wuerde sonst den Codec ueberstimmen
+    // TEMP umleiten: %TEMP%\k-toolz-codec.txt der Shell wuerde sonst den Codec ueberstimmen
     capture = spawn(CAPTURE, ['--encoder', 'auto', '--fps', '60', '--bitrate', '12', '--mtx-host', '127.0.0.1', '--mtx-port', '8558',
                               '--codec', 'auto', '--monitor', '0', '--frames', String(60 * (dauer + 30))],
                     { cwd: path.dirname(CAPTURE), env: { ...process.env, TEMP: tmp, TMP: tmp } });
@@ -84,7 +84,7 @@ const bildDa = (p) => p && p.framesDekodiert > 30 && p.lumaMax > 40 && p.w > 0;
   if (!fs.existsSync(RELAY)) { log('Relay fehlt: ' + RELAY); process.exit(2); }
   if (!fs.existsSync(CAPTURE)) { log('Capture fehlt: ' + CAPTURE); process.exit(2); }
   if (!EDGE) { log('Kein Edge/Chrome gefunden'); process.exit(2); }
-  for (const p of [8558, 8889, 9997, 8189]) if (!(await portFrei(p))) { log('Port ' + p + ' belegt - laeuft Lumora/ein Stream? Erst beenden.'); process.exit(2); }
+  for (const p of [8558, 8889, 9997, 8189]) if (!(await portFrei(p))) { log('Port ' + p + ' belegt - laeuft K-Toolz/ein Stream? Erst beenden.'); process.exit(2); }
   log('Relay: ' + RELAY); log('Capture: ' + CAPTURE); log('Browser: ' + EDGE);
   const ergebnisse = [];
   if (!NUR || NUR === 'av1') ergebnisse.push(await lauf('AV1', ['--codec', 'auto'], 10, (erg) => {

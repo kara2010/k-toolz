@@ -160,7 +160,7 @@
   let LANG = 'de';
   try {
     const q = new URLSearchParams(location.search).get('lang');
-    LANG = (q === 'en' || q === 'de') ? q : (localStorage.getItem('lumoraLang') || ((navigator.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en'));
+    LANG = (q === 'en' || q === 'de') ? q : (localStorage.getItem('ktoolzLang') || ((navigator.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en'));
   } catch (e) {}
   const tr = (t) => (LANG === 'en' && Object.prototype.hasOwnProperty.call(I18N_EN, t)) ? I18N_EN[t] : t;
   document.querySelectorAll('.title, .stat .k, #hint').forEach((el) => { el.textContent = tr(el.textContent); });

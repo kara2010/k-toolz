@@ -1,4 +1,4 @@
-# Architektur-Notizen Lumora (nativ)
+# Architektur-Notizen K-Toolz (nativ)
 
 Stand: 2026-08-03. Ergebnis einer vollstaendigen Durchsicht nach der Fehlerserie
 Ende Juli / Anfang August 2026.
@@ -6,11 +6,11 @@ Ende Juli / Anfang August 2026.
 ## Wie das Projekt aufgebaut ist
 
 ```
-Shell (UI + Orchestrierung)  ->  lumora-shell.exe
-  ├─ Capture (Encode)         ->  bin/lumora-capture-native.exe   eigener Prozess
-  ├─ Relay (WebRTC/WHEP)      ->  bin/lumora-media-relay.exe      eigener Prozess
-  ├─ Rechte-Helfer            ->  bin/lumora-elevate.exe          eigener Prozess
-  └─ Broker (FPS/Sensor/Analyse) -> lumora-shell.exe --*-broker   geplante Aufgaben
+Shell (UI + Orchestrierung)  ->  k-toolz.exe
+  ├─ Capture (Encode)         ->  bin/k-toolz-capture.exe   eigener Prozess
+  ├─ Relay (WebRTC/WHEP)      ->  bin/k-toolz-relay.exe     eigener Prozess
+  ├─ Rechte-Helfer            ->  bin/k-toolz-elevate.exe   eigener Prozess
+  └─ Broker (FPS/Sensor/Analyse) -> k-toolz.exe --*-broker  geplante Aufgaben
 ```
 
 **Diese Trennung ist bewusst und hat sich bewaehrt.** Ein Relay-Absturz reisst die
@@ -19,8 +19,8 @@ Nahtstellen sind wenige und explizit:
 
 | Vertrag | Konkret |
 |---|---|
-| Steuerdateien (%TEMP%) | lumora-bitrate.txt, lumora-codec.txt, lumora-hdr.txt, lumora-source.txt |
-| Shared Memory | LumoraOSDFps, LumoraOSDSense, LumoraOSDAnalyze, LumoraShellSingleton |
+| Steuerdateien (%TEMP%) | k-toolz-bitrate.txt, k-toolz-codec.txt, k-toolz-hdr.txt, k-toolz-source.txt |
+| Shared Memory | KToolzOSDFps, KToolzOSDSense, KToolzOSDAnalyze (Einzelinstanz: Mutex KToolzSingleton) |
 | HTTP-Kontrolle (Relay) | /v3/paths/get/live, /v3/webrtcsessions/list, /v3/webrtcsessions/kick/, /v3/config/codec, /v3/config/ice |
 | UI <-> Shell | 82 IPC-Kanaele ueber WebMessage (SHIM_JS emuliert ipcRenderer) |
 
@@ -85,9 +85,8 @@ Neubau. Ablauf beim naechsten Mal:
 ```
 # Capture nach Aenderung:
 cmake --build capture-cpp/lumora-capture/build-vs22 --config Release
-cp bin/lumora-capture-native.exe bin/lumora-capture-native.vor-<grund>.exe   # sichern
-cp capture-cpp/lumora-capture/build-vs22/Release/lumora_capture.exe bin/lumora-capture-native.exe
-# (Umbenennung capture -> capture-native macht der Kopierschritt, nicht der Build)
+cp bin/k-toolz-capture.exe bin/k-toolz-capture.vor-<grund>.exe   # sichern
+cp capture-cpp/lumora-capture/build-vs22/Release/k-toolz-capture.exe bin/k-toolz-capture.exe
 ```
 
 Der Zeitstempel-Check aus RELEASE.md Schritt 6 faengt das ab - aber nur, wenn man ihn

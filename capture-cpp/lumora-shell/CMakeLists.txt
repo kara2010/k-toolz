@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(lumora_shell WIN32 main.cpp app.rc app.manifest
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/ViGEmClient/src/ViGEmClient.cpp")
 target_compile_definitions(lumora_shell PRIVATE UNICODE _UNICODE)
+# Ausgabedatei k-toolz.exe (Task-Manager, Firewall, Aufgabenplanung zeigen den Dateinamen)
+set_target_properties(lumora_shell PROPERTIES OUTPUT_NAME "k-toolz")
 # Quelle + narrow-Literale als UTF-8 (nur CXX, nicht die .rc). Ohne das interpretiert
 # MSVC direkte UTF-8-Zeichen in WIDE-Literalen (z.B. L"• ...") als CP1252 -> Kauderwelsch.
 target_compile_options(lumora_shell PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/utf-8>)

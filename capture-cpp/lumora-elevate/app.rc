@@ -1,4 +1,4 @@
-// Lumora-Logo + VersionInfo fuer den Rechte-Helfer: erscheinen im UAC-Dialog
+// K-Toolz-Logo + VersionInfo fuer den Rechte-Helfer: erscheinen im UAC-Dialog
 // (Name/Icon) neben dem verifizierten Herausgeber aus der Certum-Signatur.
 #include <windows.h>
 
@@ -18,12 +18,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Karsten Radermacher"
-            VALUE "FileDescription", "Lumora Einrichtungshelfer"
+            VALUE "FileDescription", "K-Toolz Einrichtungshelfer"
             VALUE "FileVersion", "2.2.21.0"
-            VALUE "InternalName", "lumora-elevate"
+            VALUE "InternalName", "k-toolz-elevate"
             VALUE "LegalCopyright", "\xA9 Karsten Radermacher"
-            VALUE "OriginalFilename", "lumora-elevate.exe"
-            VALUE "ProductName", "Lumora"
+            VALUE "OriginalFilename", "k-toolz-elevate.exe"
+            VALUE "ProductName", "K-Toolz"
             VALUE "ProductVersion", "2.2.21.0"
         END
     END

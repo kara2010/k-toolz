@@ -1,99 +1,91 @@
-# Lumora
+# K-Toolz
 
 🇬🇧 [English version](README.md)
 
-Ein nativer, store-übergreifender Game-Launcher für Windows mit Game-Streaming,
-einer Eingabe-Brücke, automatischem HDR und Gaming-OSD. Lumora findet
-installierte Spiele aus mehreren Stores, zeigt sie in einer einheitlichen,
-kuratierten Bibliothek und streamt auf Wunsch ein laufendes Spiel per Link an
-jeden Browser. Seit Version 3.0.0 läuft es durchgängig auf eigenem, nativem
-C++-Code – ohne Electron, ohne FFmpeg, ohne fremden Streaming-Server – bei
-einem Download von rund 3,5 MB.
+Kostenlose Gaming-Werkzeuge für Windows, früher **Lumora**. Ein Download enthält
+vier Werkzeuge und einen Spiele-Launcher. Jedes Werkzeug lässt sich einzeln
+ein- und ausschalten.
 
-Download & Infos: <https://lumora-streaming.de/>
+| Werkzeug | Was es macht |
+|---|---|
+| **[PlainOSD](https://k-toolz.de/plainosd/)** | FPS, Frametimes, GPU- und CPU-Temperaturen, Last und Leistung über dem laufenden Spiel, ohne Afterburner |
+| **[StreamToFriend](https://k-toolz.de/streamtofriend/)** | Link verschicken, Freunde schauen dein Spiel im Browser (Peer-to-Peer per WebRTC) |
+| **[StutterHunter](https://k-toolz.de/stutterhunter/)** | Misst beim Spielen mit und nennt zu jedem Ruckler die wahrscheinliche Ursache in Klartext |
+| **[WheelToPad](https://k-toolz.de/wheeltopad/)** | Macht aus Lenkrad, Joystick oder Flightstick einen virtuellen Xbox-Controller |
+| **[Launcher](https://k-toolz.de/launcher/)** | Spiele aller Stores in einer Cover-Bibliothek, mit automatischem HDR und Gamepad-Steuerung |
 
-[![Lumora – Listenansicht mit Details, Beschreibung und HDR-Schalter pro Spiel](https://lumora-streaming.de/1.webp)](https://lumora-streaming.de/)
+Download & Infos: <https://k-toolz.de/>
 
 <table>
 <tr>
-<td width="50%"><a href="https://lumora-streaming.de/gaming-osd.html"><img src="https://lumora-streaming.de/3.webp" alt="Gaming-OSD mit GPU-, CPU- und FPS-Werten über einem laufenden Spiel"></a><br><sub><b><a href="https://lumora-streaming.de/gaming-osd.html">Gaming-OSD</a></b> – GPU, CPU & FPS live über dem Spiel, ohne Afterburner</sub></td>
-<td width="50%"><a href="https://lumora-streaming.de/streaming.html"><img src="https://lumora-streaming.de/stream.webp" alt="Stream-Tab mit Live-Vorschau und Teilen-Link"></a><br><sub><b><a href="https://lumora-streaming.de/streaming.html">Streaming</a></b> – Link verschicken, Freunde schauen im Browser zu (P2P)</sub></td>
+<td width="50%"><a href="https://k-toolz.de/plainosd/"><img src="https://k-toolz.de/overlay-einstellungen.webp" alt="PlainOSD-Einstellungen mit Overlay-Vorschau"></a><br><sub><b><a href="https://k-toolz.de/plainosd/">PlainOSD</a></b> – GPU, CPU & FPS live über dem Spiel</sub></td>
+<td width="50%"><a href="https://k-toolz.de/streamtofriend/"><img src="https://k-toolz.de/stream.webp" alt="StreamToFriend mit Live-Vorschau und Teilen-Link"></a><br><sub><b><a href="https://k-toolz.de/streamtofriend/">StreamToFriend</a></b> – Link verschicken, Freunde schauen im Browser zu</sub></td>
 </tr>
 <tr>
-<td><a href="https://lumora-streaming.de/ruckler-analyse.html"><img src="https://lumora-streaming.de/analyse.webp" alt="Ruckler-Bericht mit Klartext-Urteil, Kennzahlen und Frametime-Kurve"></a><br><sub><b><a href="https://lumora-streaming.de/ruckler-analyse.html">Ruckler-Analyse</a></b> – findet in Klartext heraus, <i>warum</i> ein Spiel ruckelt</sub></td>
-<td><a href="https://lumora-streaming.de/eingabe-bruecke.html"><img src="https://lumora-streaming.de/eingabe-bruecke.webp" alt="Eingabe-Brücke: Lenkrad als virtueller Xbox-Controller"></a><br><sub><b><a href="https://lumora-streaming.de/eingabe-bruecke.html">Eingabe-Brücke</a></b> – Lenkrad, Joystick oder Flightstick als Xbox-Pad</sub></td>
+<td><a href="https://k-toolz.de/stutterhunter/"><img src="https://k-toolz.de/analyse.webp" alt="StutterHunter-Bericht mit Klartext-Urteil, Kennzahlen und Frametime-Kurve"></a><br><sub><b><a href="https://k-toolz.de/stutterhunter/">StutterHunter</a></b> – findet heraus, <i>warum</i> ein Spiel ruckelt</sub></td>
+<td><a href="https://k-toolz.de/wheeltopad/"><img src="https://k-toolz.de/eingabe-bruecke.webp" alt="WheelToPad: Lenkrad als virtueller Xbox-Controller"></a><br><sub><b><a href="https://k-toolz.de/wheeltopad/">WheelToPad</a></b> – Lenkrad, Joystick oder Flightstick als Xbox-Pad</sub></td>
 </tr>
 </table>
 
-## Features
+## Funktionen
 
-- **Store-übergreifend** – findet Spiele von Steam, Microsoft Store / Xbox,
-  EA, Epic, GOG u. a. und scannt automatisch alle Laufwerke.
-- **[Game-Streaming per Link](https://lumora-streaming.de/streaming.html)** – ein laufendes Spiel direkt an jeden Browser
-  streamen (eigene C++-Aufnahme + Hardware-Encoder → eigenes WebRTC/WHEP-Relay).
-  Standardmäßig Full HD (1080p60), auf Wunsch bis 4K; AV1 oder H.264 je nach
-  Decoder des Zuschauers; direkte Peer-to-Peer-Verbindung (inklusive
-  IPv6-Direktweg); Gruppen-Streams mit Raumcodes; auf Wunsch Zutrittsschutz,
-  der vor jedem Zuschauer erst fragt. Dazu die
-  [Portfreigabe-Anleitung](https://lumora-streaming.de/portfreigabe.html) und
-  Lumora als [Discord-Alternative fürs Screen-Sharing](https://lumora-streaming.de/discord-alternative.html).
-- **[Eingabe-Brücke](https://lumora-streaming.de/eingabe-bruecke.html)** – macht aus Joystick, Lenkrad oder Flightstick einen
-  virtuellen Xbox-360-Controller (über den signierten Open-Source-Treiber
-  ViGEmBus), damit Geräte, die sich als DirectInput melden, auch in Spielen
-  funktionieren, die nur XInput akzeptieren. Visuelle Zuordnung, Live-Monitor
-  der Eingaben, Auto-Kalibrierung, Achse↔Trigger und Knopf↔Achse, getrennte
-  Geräte (Lenkrad + Pedale) und Profile pro Spiel.
-- **Automatisches HDR** – aktiviert HDR beim Spielstart und schaltet danach
-  zurück (nativ, ohne externes Werkzeug).
-- **[Gaming-OSD](https://lumora-streaming.de/gaming-osd.html)** – FPS, GPU- und CPU-Werte im Spiel, ohne Afterburner & Co.
-  (eigene ETW-basierte Frame-Messung).
-- **[Ruckler-Analyse](https://lumora-streaming.de/ruckler-analyse.html)** – zeichnet während einer Sitzung
-  Frametimes, Hintergrundprogramme, Treiber-Latenzen und GPU-Zustand auf und
-  benennt zu jedem Ruckler die wahrscheinliche Ursache in Klartext.
-- **[Gamepad-Steuerung](https://lumora-streaming.de/gamepad.html)** – die gesamte Oberfläche ist per Xbox-Controller
-  bedienbar (Couch-Gaming am TV).
-- **Cover & Artwork** – Cover, Hero-Banner, Beschreibung, Genre und
-  Release-Jahr werden automatisch geladen (Steam, Microsoft Store, optional
-  [SteamGridDB](https://www.steamgriddb.com)); passt etwas nicht, wählst du
-  selbst aus mehreren Quellen oder legst ein eigenes Bild ab.
-- **Bibliothek** – Favoriten anpinnen, Poster- oder Hero-Ansicht, sortieren
-  nach Name, Spielzeit oder zuletzt gespielt.
-- **Spielzeit-Tracking** – zuverlässige Erfassung pro Spiel, launcher-übergreifend.
-- **Komfort** – Autostart, Start im Infobereich (Tray), Akzentfarbe.
+- **[PlainOSD](https://k-toolz.de/plainosd/)** – FPS, Frametimes, GPU- und CPU-Werte
+  im Spiel (eigene ETW-basierte Frame-Messung), mehrere Designs, per Hotkey schaltbar.
+- **[StreamToFriend](https://k-toolz.de/streamtofriend/)** – ein laufendes Spiel direkt
+  an jeden Browser streamen (eigene C++-Aufnahme + Hardware-Encoder → eigenes
+  WebRTC/WHEP-Relay). Standardmäßig Full HD (1080p60), auf Wunsch bis 4K; AV1 oder
+  H.264 je nach Decoder des Zuschauers; direkte Peer-to-Peer-Verbindung (inklusive
+  IPv6-Direktweg); Gruppen-Streams mit Raumcodes; auf Wunsch Zutrittsschutz, der vor
+  jedem Zuschauer erst fragt. Dazu die [Portfreigabe-Anleitung](https://k-toolz.de/streamtofriend/portfreigabe/)
+  und StreamToFriend als [Discord-Alternative fürs Screen-Sharing](https://k-toolz.de/streamtofriend/discord-alternative/).
+- **[StutterHunter](https://k-toolz.de/stutterhunter/)** – zeichnet während einer
+  Sitzung Frametimes, Hintergrundprogramme, Treiber-Latenzen und GPU-Zustand auf und
+  nennt zu jedem Ruckler die wahrscheinliche Ursache.
+- **[WheelToPad](https://k-toolz.de/wheeltopad/)** – macht aus Joystick, Lenkrad oder
+  Flightstick einen virtuellen Xbox-360-Controller (über den signierten
+  Open-Source-Treiber ViGEmBus), damit Geräte, die sich als DirectInput melden, auch in
+  Spielen funktionieren, die nur XInput akzeptieren. Visuelle Belegung, Live-Monitor,
+  Auto-Kalibrierung, Achse↔Trigger und Taste↔Achse, getrennte Geräte (Lenkrad +
+  Pedale) und Profile pro Spiel.
+- **[Launcher](https://k-toolz.de/launcher/)** – findet Spiele von Steam,
+  Microsoft Store / Xbox, EA, Epic, GOG u. a.; Cover und Artwork kommen automatisch;
+  automatisches HDR pro Spiel; Spielzeit-Erfassung; die ganze Oberfläche lässt sich
+  mit einem Xbox-Controller bedienen ([Couch-Gaming](https://k-toolz.de/launcher/couch-gaming/)).
 - **Signiert** – alle Programmdateien und der Installer sind digital signiert
   (Certum Code Signing).
 
 ## Technik
 
-Seit 3.0.0 besteht Lumora aus nativen C++-Helfern (siehe [`capture-cpp/`](capture-cpp/)):
+K-Toolz besteht aus nativen C++-Programmen (siehe [`capture-cpp/`](capture-cpp/)):
 
-- **lumora-shell** – die App selbst; bettet die Web-Oberfläche (`index.html` /
-  `styles.css`) in ein WebView2-Fenster ein und übernimmt Tray, Hotkeys,
-  Autostart, Launcher-Scan und Orchestrierung.
-- **lumora-capture-native** – Bildschirmaufnahme, Skalierung / HDR und
-  Hardware-Encoding (NVENC / AMF / QSV, AV1 & H.264, Opus-Audio), ausgegeben
-  als MPEG-TS über UDP.
-- **lumora-media-relay** – das eingebaute WebRTC/WHEP-Relay (libdatachannel),
-  das den früheren mediamtx-Server ersetzt.
-- **lumora-elevate** – ein kleiner Einmal-Helfer für die wenigen Vorgänge,
-  die erhöhte Rechte brauchen.
+- **k-toolz.exe** (`capture-cpp/lumora-shell`) – die App selbst; zeigt die
+  Web-Oberfläche (`index.html` / `styles.css`) in einem WebView2-Fenster und
+  übernimmt Tray, Hotkeys, Autostart, Launcher-Scan und Steuerung.
+- **k-toolz-capture.exe** (`capture-cpp/lumora-capture`) – Bildschirmaufnahme,
+  Skalierung / HDR und Hardware-Encoding (NVENC / AMF / QSV, AV1 & H.264, Opus-Ton),
+  ausgegeben als MPEG-TS über UDP.
+- **k-toolz-relay.exe** (`capture-cpp/lumora-relay`) – das eingebaute
+  WebRTC/WHEP-Relay (libdatachannel).
+- **k-toolz-elevate.exe** (`capture-cpp/lumora-elevate`) – ein kleiner Einmal-Helfer
+  für die wenigen Vorgänge, die erhöhte Rechte brauchen.
 
-Die Eingabe-Brücke nutzt einen systemweiten virtuellen Controller über
-[ViGEmBus](https://github.com/nefarius/ViGEmBus) (auf Wunsch von der offiziellen
-Quelle installiert, Signatur geprüft). Nutzerdaten liegen unter
-`%APPDATA%\lumora\`. Den signierten NSIS-Installer erzeugt
-[`capture-cpp/lumora-shell/build-installer.ps1`](capture-cpp/lumora-shell/build-installer.ps1).
+Der Installer bringt zwei signierte Treiber mit, die nur auf Wunsch und nach einer
+Signaturprüfung installiert werden: [ViGEmBus](https://github.com/nefarius/ViGEmBus)
+1.22.0 für WheelToPad und [PawnIO](https://pawnio.eu) 2.2.0 für CPU-Temperatur und
+-Leistung in PlainOSD. Nutzerdaten liegen unter `%APPDATA%\K-Toolz\`; ein vorhandenes
+`%APPDATA%\lumora\` wird einmalig dorthin verschoben. Den signierten NSIS-Installer
+erzeugt [`capture-cpp/lumora-shell/build-installer.ps1`](capture-cpp/lumora-shell/build-installer.ps1).
 
 ### Entwicklung
 
-Jeder Helfer baut mit CMake (Visual Studio 2022, x64), z. B. die Shell:
+Jedes Programm baut mit CMake (Visual Studio 2022, x64), z. B. die Shell:
 
 ```powershell
 cmake -S capture-cpp/lumora-shell -B capture-cpp/lumora-shell/build -G "Visual Studio 17 2022" -A x64
 cmake --build capture-cpp/lumora-shell/build --config Release
 ```
 
-Den vollständigen signierten Installer (Shell + gestagete Helfer) baut:
+Den vollständigen signierten Installer (Shell + gestagte Helfer) baut:
 
 ```powershell
 cd capture-cpp/lumora-shell
@@ -101,46 +93,34 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./build-installer.ps1
 ```
 
 Hilfs- und Diagnose-Skripte liegen in [`_testlab/`](_testlab/) und sind vom
-Build ausgeschlossen. Die gebündelten Helfer-Binaries unter `bin/` sind nicht
-im Repo – sie werden aus [`capture-cpp/`](capture-cpp/) gebaut. Die früheren
-Electron-Einstiegspunkte (`main.js`, electron-builder) bleiben als Alt-Pfad im
-Baum, den 3.0.0 ablöst.
-
-## Website
-
-Der Ordner [`website/`](website/) enthält die Downloadseite
-(lumora-streaming.de/). Themenseiten:
-[Streaming](https://lumora-streaming.de/streaming.html) ·
-[Gaming-OSD](https://lumora-streaming.de/gaming-osd.html) ·
-[Ruckler-Analyse](https://lumora-streaming.de/ruckler-analyse.html) ·
-[Eingabe-Brücke](https://lumora-streaming.de/eingabe-bruecke.html) ·
-[Gamepad](https://lumora-streaming.de/gamepad.html) ·
-[Portfreigabe](https://lumora-streaming.de/portfreigabe.html) ·
-[Discord-Alternative](https://lumora-streaming.de/discord-alternative.html)
-— Englisch: [lumora-streaming.de/en/](https://lumora-streaming.de/en/).
+Build ausgeschlossen. Die Helfer-Binaries unter `bin/` sind nicht im Repo – sie
+werden aus [`capture-cpp/`](capture-cpp/) gebaut. Die früheren
+Electron-Einstiegspunkte (`main.js`, electron-builder) liegen noch als Alt-Pfad im
+Baum, werden aber nicht mehr ausgeliefert.
 
 ## Autor
 
-Lumora wird entwickelt und gepflegt von **Karsten Radermacher**
+K-Toolz wird entwickelt und gepflegt von **Karsten Radermacher**
 (GitHub: [kara2010](https://github.com/kara2010)).
 Copyright © 2026 Karsten Radermacher.
 
 ## Lizenz
 
-Lumora ist freie Software unter der **GNU Affero General Public License v3.0**
+K-Toolz ist freie Software unter der **GNU Affero General Public License v3.0**
 ([LICENSE](LICENSE)). Das bedeutet: Du darfst den Code nutzen, verändern und
 weitergeben – aber jede abgeleitete oder darauf aufbauende Software (auch als
 Netzwerkdienst betrieben) muss ihren vollständigen Quellcode unter derselben
 Lizenz offenlegen.
 
-**Marke:** Der Name „Lumora", das Logo und das Erscheinungsbild sind **nicht**
-Teil der Lizenz. Forks müssen unter eigenem Namen und Branding auftreten und
-dürfen nicht den Eindruck erwecken, das offizielle Lumora zu sein oder mit ihm
-in Verbindung zu stehen.
+**Marke:** Die Namen „K-Toolz", „PlainOSD", „StreamToFriend", „StutterHunter",
+„WheelToPad" und „Lumora", die Logos und das Erscheinungsbild sind **nicht** Teil
+der Lizenz. Forks müssen unter eigenem Namen und Branding auftreten und dürfen
+nicht den Eindruck erwecken, das offizielle K-Toolz zu sein oder mit ihm in
+Verbindung zu stehen.
 
 ## Beiträge
 
 Fehlerberichte und Vorschläge sind als GitHub-Issues willkommen!
-**Pull Requests werden derzeit nicht angenommen** – Lumora bleibt bewusst ein
+**Pull Requests werden derzeit nicht angenommen** – K-Toolz bleibt bewusst ein
 Ein-Personen-Projekt, damit der Autor die alleinige Urheberschaft (und damit
 volle Lizenzhoheit über künftige Versionen) behält.

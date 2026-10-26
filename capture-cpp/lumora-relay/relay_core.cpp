@@ -235,12 +235,12 @@ string RelayCore::createSession(const string& offerSdp, const string& userAgent,
             if (av1Pt >= 0) {
                 s->vAv1 = true;
                 s->vCfg = make_shared<rtc::RtpPacketizationConfig>(
-                    (rtc::SSRC)0x4C4D5257, "lumora-video", (uint8_t)av1Pt, rtc::AV1RtpPacketizer::ClockRate);
+                    (rtc::SSRC)0x4C4D5257, "k-toolz-video", (uint8_t)av1Pt, rtc::AV1RtpPacketizer::ClockRate);
                 s->vCfg->midId = findMidId(&desc); s->vCfg->mid = desc.mid();
                 // Sende-SSRC signalisieren: nur dann ordnet libdatachannel eingehendes
                 // RTCP (NACK/PLI/RR) unserem Track zu - sonst wird es verworfen und es
                 // findet KEINE Paketwiederholung statt (jeder Verlust bleibt sichtbar).
-                desc.addSSRC((uint32_t)0x4C4D5257, "lumora-video");
+                desc.addSSRC((uint32_t)0x4C4D5257, "k-toolz-video");
                 track->setDescription(desc);
                 auto pk = make_shared<rtc::AV1RtpPacketizer>(rtc::AV1RtpPacketizer::Packetization::TemporalUnit, s->vCfg);
                 pk->addToChain(make_shared<rtc::RtcpSrReporter>(s->vCfg));
@@ -254,9 +254,9 @@ string RelayCore::createSession(const string& offerSdp, const string& userAgent,
             }
             int pt = pickH264Pt(&desc); if (pt < 0) return;
             s->vCfg = make_shared<rtc::RtpPacketizationConfig>(
-                (rtc::SSRC)0x4C4D5256, "lumora-video", (uint8_t)pt, rtc::H264RtpPacketizer::ClockRate);
+                (rtc::SSRC)0x4C4D5256, "k-toolz-video", (uint8_t)pt, rtc::H264RtpPacketizer::ClockRate);
             s->vCfg->midId = findMidId(&desc); s->vCfg->mid = desc.mid();
-            desc.addSSRC((uint32_t)0x4C4D5256, "lumora-video");   // s.o. - ohne SSRC kein NACK
+            desc.addSSRC((uint32_t)0x4C4D5256, "k-toolz-video");   // s.o. - ohne SSRC kein NACK
             track->setDescription(desc);
             auto pk = make_shared<rtc::H264RtpPacketizer>(rtc::NalUnit::Separator::StartSequence, s->vCfg);
             pk->addToChain(make_shared<rtc::RtcpSrReporter>(s->vCfg));
@@ -268,7 +268,7 @@ string RelayCore::createSession(const string& offerSdp, const string& userAgent,
         } else if (type == "audio") {
             int pt = pickOpusPt(&desc); if (pt < 0) return;
             s->aCfg = make_shared<rtc::RtpPacketizationConfig>(
-                (rtc::SSRC)0x4C4D5241, "lumora-audio", (uint8_t)pt, rtc::OpusRtpPacketizer::DefaultClockRate);
+                (rtc::SSRC)0x4C4D5241, "k-toolz-audio", (uint8_t)pt, rtc::OpusRtpPacketizer::DefaultClockRate);
             s->aCfg->midId = findMidId(&desc); s->aCfg->mid = desc.mid();
             auto pk = make_shared<rtc::OpusRtpPacketizer>(s->aCfg);
             pk->addToChain(make_shared<rtc::RtcpSrReporter>(s->aCfg));

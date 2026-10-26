@@ -74,7 +74,7 @@ struct ProxyResult { int status = 0; std::string body; std::map<std::string, std
 inline ProxyResult proxyLocal(int port, const std::string& method, const std::string& pathQuery,
                               const std::string& contentType, const std::string& userAgent, const std::string& body) {
     ProxyResult r;
-    HINTERNET ses = WinHttpOpen(L"Lumora/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET ses = WinHttpOpen(L"K-Toolz/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!ses) return r;
     // Kurze Timeouts statt der WinHTTP-Defaults (bis 60s): haengt mediamtx, soll der
     // Zuschauer-Thread nicht eine Minute festhaengen - localhost antwortet sonst sofort.

@@ -73,7 +73,7 @@ inline void threadFn() {
             std::string self;
             { std::lock_guard<std::mutex> lk(g_selfMx); self = g_id; }
             json d = json::parse(std::string(buf, n), nullptr, false);
-            if (d.is_object() && d.value("lumora", 0) == 1 && d.contains("group")) {
+            if (d.is_object() && (d.value("ktoolz", 0) == 1 || d.value("lumora", 0) == 1) && d.contains("group")) {   // Uebergang: auch noch nicht aktualisierte Instanzen erkennen
                 std::string id = d.value("id", "");
                 std::string code = d.value("group", "");
                 for (auto& ch : code) ch = (char)toupper((unsigned char)ch);
@@ -92,7 +92,7 @@ inline void threadFn() {
             std::string code, name, id;
             { std::lock_guard<std::mutex> lk(g_selfMx); code = g_code; name = g_name; id = g_id; }
             if (!code.empty()) {
-                json m = { {"lumora", 1}, {"group", code}, {"name", name}, {"id", id} };
+                json m = { {"ktoolz", 1}, {"lumora", 1}, {"group", code}, {"name", name}, {"id", id} };   // Uebergang: alte Instanzen lesen nur "lumora"
                 std::string s = m.dump();
                 for (auto& addr : broadcastAddrs()) {
                     sockaddr_in dst{}; dst.sin_family = AF_INET; dst.sin_port = htons(LAN_PORT);

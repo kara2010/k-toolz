@@ -1,4 +1,4 @@
-# Baut den Lumora-Native-Installer (Phase 4): Shell bauen -> Staging -> NSIS -> signieren.
+# Baut den K-Toolz-Installer: Shell bauen -> Staging -> NSIS -> signieren.
 # Reproduzierbar; laeuft neben der Electron-App (eigener Ordner/Uninstall-Eintrag).
 $ErrorActionPreference = "Stop"
 # Repo-Root aus der Script-Lage ableiten (PC-unabhaengig; frueher hartkodiert).
@@ -152,7 +152,7 @@ if ($LASTEXITCODE -ne 0) { throw "Uebersetzungs-Check fehlgeschlagen (s. Liste o
 & $node "$root\_testlab\i18n-check.js" "$root\analyze-werkbank.html" "$root\_testlab\i18n-ignore.txt" 5
 if ($LASTEXITCODE -ne 0) { throw "Uebersetzungs-Check (Werkbank) fehlgeschlagen - Bau abgebrochen" }
 # Analyse-OSD (StutterHunter-Mess-OSD) hat seit dem K-Toolz-Umbau ebenfalls ein eigenes I18N_EN
-& $node "$root_testlabi18n-check.js" "$rootanalyze-osd.html" "$root_testlabi18n-ignore.txt" 5
+& $node "$root\_testlab\i18n-check.js" "$root\analyze-osd.html" "$root\_testlab\i18n-ignore.txt" 5
 if ($LASTEXITCODE -ne 0) { throw "Uebersetzungs-Check (Analyse-OSD) fehlgeschlagen - Bau abgebrochen" }
 
 # 0b) OSD-Rauchtest: baut jedes der sechs Designs mit allen Wertegruppen in einer
@@ -212,17 +212,17 @@ Write-Output "app.rc auf $verDot gepatcht"
 # Compile-Fehler (Out-Null verschluckt die Meldung) unbemerkt die ALTE exe weiter, und der
 # Installer wird faelschlich als "erfolgreich" mit unveraendertem Inhalt neu gebaut (real
 # passiert: neuer Code kompilierte nicht, Installer war bit-identisch zum vorherigen Stand).
-Remove-Item "$shell\build\Release\lumora_shell.exe" -ErrorAction SilentlyContinue
+Remove-Item "$shell\build\Release\k-toolz.exe" -ErrorAction SilentlyContinue
 & $cmake --build "$shell\build" --config Release
 if ($LASTEXITCODE -ne 0) { throw "Shell-Build fehlgeschlagen (cmake/msbuild Exit-Code $LASTEXITCODE) - siehe Ausgabe oben" }
-if (-not (Test-Path "$shell\build\Release\lumora_shell.exe")) { throw "Shell-Build fehlgeschlagen (keine exe erzeugt)" }
+if (-not (Test-Path "$shell\build\Release\k-toolz.exe")) { throw "Shell-Build fehlgeschlagen (keine exe erzeugt)" }
 
 # 2) Staging aufbauen
 Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $stage | Out-Null
-Copy-Item "$shell\build\Release\lumora_shell.exe" "$stage\lumora-shell.exe"
+Copy-Item "$shell\build\Release\k-toolz.exe" "$stage\k-toolz.exe"
 
-# UI-Assets (was das WebView2 laedt) - genau die Dateien, die die Shell via app.lumora mappt
+# UI-Assets (was das WebView2 laedt) - genau die Dateien, die die Shell via app.k-toolz mappt
 # analyze-report.js MUSS mit: index.html laedt es synchron (<script src>) und greift
 # direkt danach auf LumoraReport zu. Fehlt die Datei, wirft die Seite beim Laden und
 # bleibt im Boot-Screen haengen (3.3.0 genau so ausgeliefert). Es ist die gemeinsame
@@ -242,13 +242,14 @@ Copy-Item "$shell\icons\*.ico" "$stage\icons"
 Copy-Item "$shell\app.ico" "$stage\icons\k-toolz.ico"
 
 # Native Binaries (nur die, die die Shell wirklich startet - FFmpeg/C#-Helfer entfallen).
-# lumora-media-relay.exe ist der EIGENE C++-Relay (capture-cpp/lumora-relay).
+# k-toolz-relay.exe ist der EIGENE C++-Relay (capture-cpp/lumora-relay).
 # KEIN mediamtx.exe im Paket (52 MB -> Installer waere doppelt so gross); der Fallback
 # liegt archiviert auf dem NAS (Fileshare) und greift via useLegacyRelay nur, wenn er
 # manuell in bin\ gelegt wird. libvpl.dll entfaellt (statisch gelinkt).
 New-Item -ItemType Directory -Force "$stage\bin" | Out-Null
-foreach ($b in "lumora-capture-native.exe","lumora-media-relay.exe","lumora-elevate.exe") {
-  if (Test-Path "$root\bin\$b") { Copy-Item "$root\bin\$b" "$stage\bin" }
+foreach ($b in "k-toolz-capture.exe","k-toolz-relay.exe","k-toolz-elevate.exe") {
+  if (-not (Test-Path "$root\bin\$b")) { throw "bin\$b fehlt - Helfer bauen (BUILD.md)" }
+  Copy-Item "$root\bin\$b" "$stage\bin"
 }
 # Visual-C++-Laufzeit APP-LOKAL mitliefern (vcruntime140/msvcp140). Die EXEs sind /MD
 # gebaut und haengen an diesen DLLs - sie sind NICHT Teil von Windows, sondern kommen mit
@@ -321,10 +322,10 @@ Write-Output "Staging: $stageSize MB"
 
 # 2b) EIGENE EXE signieren - PFLICHT: Smart App Control / SmartScreen verlangen einen
 # bestaetigten Herausgeber PRO ausfuehrbarer Datei, nicht nur fuer den Installer.
-# Fremd-Binaries (lumora-elevate, lumora-media-relay, PresentMon, HDRCmd) sind bereits signiert.
+# Fremd-Binaries (Treiber-Setups, WebView2-Bootstrapper) sind bereits vom Hersteller signiert.
 $signtool = "$root\_testlab\tools\signtool\signtool.exe"
 if (Test-Path $signtool) {
-  foreach ($exe in "$stage\lumora-shell.exe", "$stage\bin\lumora-capture-native.exe", "$stage\bin\lumora-media-relay.exe", "$stage\bin\lumora-elevate.exe") {
+  foreach ($exe in "$stage\k-toolz.exe", "$stage\bin\k-toolz-capture.exe", "$stage\bin\k-toolz-relay.exe", "$stage\bin\k-toolz-elevate.exe") {
     if (Test-Path $exe) {
       $st = (Get-AuthenticodeSignature $exe).Status
       if ($st -ne "Valid") {
@@ -375,8 +376,11 @@ $feed = @{ version = $version
 [IO.File]::WriteAllText("$updDir\native-update.json", $feed, (New-Object Text.UTF8Encoding($false)))   # BOM-frei (Feed-Parser!)
 Write-Output "Update-Feed: $updDir\native-update.json (v$version)"
 
-# 6) Komponenten-Manifest (components.json) + Dateiablage fuer den Komponenten-Updater
-#    (update_components.h): SHA-256 je Staging-Datei; Rollout = updates\components.json
+# 6) Komponenten-Manifest (k-toolz-components.json) + Dateiablage fuer den Komponenten-Updater
+#    (update_components.h): SHA-256 je Staging-Datei; Rollout = updates\k-toolz-components.json
+#    ACHTUNG: updates\components.json NIE mehr ueberschreiben - Staende vor der Umbenennung (lumora-shell.exe)
+#    lesen sie; mit neuen Dateinamen darin wuerden sie sich fuer aktuell halten und nie den Voll-Installer holen,
+#    der den Umzug erledigt. Eingefroren lassen, dann bekommen sie ueber native-update.json den Installer.
 #    + updates\components\<version>\ hochladen. Bestandskunden tauschen dann nur die
 #    geaenderten Dateien (atomar, signaturgeprueft) - der Basis-Installer bleibt unberuehrt.
 $compDir = "$updDir\components\$version"
@@ -395,8 +399,8 @@ foreach ($f in Get-ChildItem $stage -Recurse -File) {
 $manifest = @{ version = $version
                baseUrl = "https://k-toolz.de/updates/components/$version/"
                files = $files } | ConvertTo-Json -Depth 4
-[IO.File]::WriteAllText("$updDir\components.json", $manifest, (New-Object Text.UTF8Encoding($false)))
-Write-Output "Komponenten-Manifest: $updDir\components.json ($($files.Count) Dateien)"
+[IO.File]::WriteAllText("$updDir\k-toolz-components.json", $manifest, (New-Object Text.UTF8Encoding($false)))
+Write-Output "Komponenten-Manifest: $updDir\k-toolz-components.json ($($files.Count) Dateien) - components.json bleibt eingefroren"
 
 # 7) latest.yml (electron-updater-Format) - Auto-Update-Pfad der ALTEN Electron-Linie
 #    (2.2.x, main.js). Bestandsnutzer, die noch nicht auf nativ umgestiegen sind, holen

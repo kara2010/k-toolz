@@ -41,7 +41,7 @@ static bool pmIgnore(const std::string& app);       // (unten definiert; Ziel-PI
 inline std::wstring analyzeDir() {   // %APPDATA%\lumora\analyze (elevated: KnownFolder, nicht Env)
     PWSTR p = nullptr; std::wstring d;
     if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &p)) && p) { d = p; CoTaskMemFree(p); }
-    d += L"\\lumora\\analyze";
+    d += (GetFileAttributesW((d + L"\\K-Toolz").c_str()) == INVALID_FILE_ATTRIBUTES && GetFileAttributesW((d + L"\\lumora").c_str()) != INVALID_FILE_ATTRIBUTES) ? L"\\lumora\\analyze" : L"\\K-Toolz\\analyze";   // wie dataDir(): alter Ordner nur bis zum Umzug
     CreateDirectoryW((d.substr(0, d.find_last_of(L'\\'))).c_str(), nullptr);
     CreateDirectoryW(d.c_str(), nullptr);
     return d;
@@ -54,7 +54,7 @@ inline std::string readSmallFile(const std::wstring& p) {
 }
 
 inline int runAnalyzeBroker() {
-    HANDLE shm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 256, "Local\\LumoraOSDAnalyze");
+    HANDLE shm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 256, "Local\\KToolzOSDAnalyze");
     if (!shm) return 1;
     uint32_t* mem = (uint32_t*)MapViewOfFile(shm, FILE_MAP_ALL_ACCESS, 0, 0, 0);
     if (!mem) { CloseHandle(shm); return 1; }
@@ -122,7 +122,7 @@ inline int runAnalyzeBroker() {
     // aktivster Praesentierer der letzten Sekunde (ohne Shell/DWM & Co.), sofern die
     // App keinen festen Ziel-PID vorgibt.
     std::mutex electMx; std::map<uint32_t, uint32_t> presentsByPid;
-    luetw::PresentTrace pres(L"LumoraAnalyzePresent");
+    luetw::PresentTrace pres(L"KToolzAnalyzePresent");
     bool presOk = pres.start([&](uint32_t pid, double t) {
         ana.pushFrame(pid, t);
         if (!pid) return;
@@ -372,12 +372,12 @@ inline int runAnalyzeDump() {
     auto out = [](const std::string& s) {
         printf("%s\n", s.c_str());
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        FILE* f = nullptr; _wfopen_s(&f, (std::wstring(tmp) + L"\\lumora-analyze-dump.txt").c_str(), L"ab");
+        FILE* f = nullptr; _wfopen_s(&f, (std::wstring(tmp) + L"\\k-toolz-analyze-dump.txt").c_str(), L"ab");
         if (f) { fwrite(s.data(), 1, s.size(), f); fwrite("\n", 1, 1, f); fclose(f); }
     };
     {   // alte Dump-Datei leeren
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        DeleteFileW((std::wstring(tmp) + L"\\lumora-analyze-dump.txt").c_str());
+        DeleteFileW((std::wstring(tmp) + L"\\k-toolz-analyze-dump.txt").c_str());
     }
     {   // Analyzer-Selbstcheck mit synthetischen Daten (braucht KEINE Elevation)
         std::string msg;
@@ -462,7 +462,7 @@ inline int runAnalyzeDump() {
 static const uint32_t FPS_MAGIC = 0x4C4F5344;   // 'LOSD'
 // PresentMon-Prozesse, die kein Spiel sind (1:1 aus main.js PM_IGNORE)
 static bool pmIgnore(const std::string& app) {
-    static const std::set<std::string> ig = { "dwm.exe","explorer.exe","lumora.exe","lumora_shell.exe","presentmon.exe",
+    static const std::set<std::string> ig = { "dwm.exe","explorer.exe","k-toolz.exe","presentmon.exe",
         "searchhost.exe","textinputhost.exe","shellexperiencehost.exe","startmenuexperiencehost.exe","applicationframehost.exe",
         // WebView2-Renderer: praesentiert fuer UNSERE Overlays (Analyse-/Gaming-OSD) - ohne
         // diesen Eintrag koennte die Ziel-PID-Wahl der Ruckler-Blackbox das eigene OSD
@@ -476,7 +476,7 @@ static bool pmIgnore(const std::string& app) {
 // ersetzt PresentMon.exe), FPS des aktivsten Praesentierers ins SHM.
 inline int runFpsBroker(const std::wstring& binDir) {
     (void)binDir;   // frueher: PresentMon.exe-Suche
-    HANDLE shm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 64, "Local\\LumoraOSDFps");
+    HANDLE shm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 64, "Local\\KToolzOSDFps");
     if (!shm) return 1;
     uint32_t* mem = (uint32_t*)MapViewOfFile(shm, FILE_MAP_ALL_ACCESS, 0, 0, 0);
     if (!mem) { CloseHandle(shm); return 1; }
@@ -585,7 +585,7 @@ inline int runFpsBroker(const std::wstring& binDir) {
                 diagTick = now; diagZeilen++;
                 PWSTR ad = nullptr; std::wstring dp;
                 if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &ad)) && ad) { dp = ad; CoTaskMemFree(ad); }
-                dp += L"\\lumora\\net-diagnose.txt";
+                dp += (GetFileAttributesW((dp + L"\\K-Toolz").c_str()) == INVALID_FILE_ATTRIBUTES && GetFileAttributesW((dp + L"\\lumora").c_str()) != INVALID_FILE_ATTRIBUTES) ? L"\\lumora\\net-diagnose.txt" : L"\\K-Toolz\\net-diagnose.txt";
                 // Erste Zeile eines Laufs ueberschreibt die Datei: sie wuchs sonst mit jedem Start weiter (real 1,2 MB)
                 FILE* f = nullptr; _wfopen_s(&f, dp.c_str(), diagZeilen == 1 ? L"w" : L"a");
                 if (f) {
@@ -636,7 +636,7 @@ inline const wchar_t* cpuSensorModule() {
 // Ein Sensor-Broker-Lauf: PawnIO oeffnen, Modul laden, 2x/s CPU-Temp/-Power ins
 // SHM schreiben. Beendet sich selbst, sobald der App-Heartbeat ausbleibt.
 inline int runSensorBroker(const std::wstring& binDir) {
-    HANDLE shm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 64, "Local\\LumoraOSDSense");
+    HANDLE shm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 64, "Local\\KToolzOSDSense");
     if (!shm) return 1;
     uint32_t* mem = (uint32_t*)MapViewOfFile(shm, FILE_MAP_ALL_ACCESS, 0, 0, 0);
     if (!mem) { CloseHandle(shm); return 1; }

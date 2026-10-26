@@ -138,7 +138,7 @@ inline int cmpVer3(const std::string& a, const std::string& b) {
 inline std::string runOnce(const Deps& d, const std::wstring& appDir, const std::string& currentVer, bool* restartRequired = nullptr) {
     if (restartRequired) *restartRequired = false;
     json s = d.loadSettings();
-    std::string feed = s.value("componentFeed", std::string("https://k-toolz.de/updates/components.json"));
+    std::string feed = s.value("componentFeed", std::string("https://k-toolz.de/updates/k-toolz-components.json"));
 
     std::string body = d.httpGetBody(feed);
     if (body.empty()) return "";
@@ -165,7 +165,7 @@ inline std::string runOnce(const Deps& d, const std::wstring& appDir, const std:
 
     // --- 2) STAGE: alles herunterladen ---
     wchar_t tmp[MAX_PATH] = {}; GetTempPathW(MAX_PATH, tmp);
-    ufs::path stage = ufs::path(tmp) / L"lumora-comp-stage";
+    ufs::path stage = ufs::path(tmp) / L"k-toolz-comp-stage";
     std::error_code ec;
     ufs::remove_all(stage, ec); ufs::create_directories(stage, ec);
     for (auto& it : todo) {
@@ -221,7 +221,7 @@ inline std::string runOnce(const Deps& d, const std::wstring& appDir, const std:
     }
     ufs::remove_all(stage, ec);
     // Wurde die Shell selbst getauscht? -> Neustart noetig, damit die neue Version laeuft.
-    if (restartRequired) for (auto& it : todo) { ufs::path p(it.path); if (_wcsicmp(p.filename().wstring().c_str(), L"lumora-shell.exe") == 0) { *restartRequired = true; break; } }
+    if (restartRequired) for (auto& it : todo) { ufs::path p(it.path); if (_wcsicmp(p.filename().wstring().c_str(), L"k-toolz.exe") == 0) { *restartRequired = true; break; } }
     d.log("comp-update: " + mver + " angewendet (" + std::to_string(todo.size()) + " Datei(en))");
     d.notify("component-update-done", { {"version", mver}, {"files", (int)todo.size()} });
     return mver;

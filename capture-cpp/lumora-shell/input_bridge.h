@@ -533,11 +533,11 @@ inline LRESULT CALLBACK bridgeWndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 inline void bridgeThreadProc() {
     static bool reg = false;
     if (!reg) {
-        WNDCLASSW wc{}; wc.lpfnWndProc = bridgeWndProc; wc.lpszClassName = L"LumoraInputBridge";
+        WNDCLASSW wc{}; wc.lpfnWndProc = bridgeWndProc; wc.lpszClassName = L"KToolzInputBridge";
         wc.hInstance = GetModuleHandleW(nullptr);
         RegisterClassW(&wc); reg = true;
     }
-    HWND h = CreateWindowExW(0, L"LumoraInputBridge", L"", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, GetModuleHandleW(nullptr), nullptr);
+    HWND h = CreateWindowExW(0, L"KToolzInputBridge", L"", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!h) { g_running = false; return; }
     g_bridgeWnd = h;
     // RawInput fuer Joystick/Gamepad/Multi-Axis; INPUTSINK = auch ohne Fokus (Spiel im Vordergrund).

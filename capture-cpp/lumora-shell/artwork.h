@@ -53,7 +53,7 @@ inline HttpResp httpGet(const std::string& url8, const std::wstring& extraHeader
     URL_COMPONENTS uc{ sizeof(uc) }; wchar_t host[256] = {}, path[4096] = {};
     uc.lpszHostName = host; uc.dwHostNameLength = 255; uc.lpszUrlPath = path; uc.dwUrlPathLength = 4095;
     if (!WinHttpCrackUrl(url.c_str(), 0, 0, &uc)) return r;
-    HINTERNET ses = WinHttpOpen(L"Lumora/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET ses = WinHttpOpen(L"K-Toolz/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!ses) return r;
     HINTERNET con = WinHttpConnect(ses, host, uc.nPort, 0);
     HINTERNET req = con ? WinHttpOpenRequest(con, L"GET", path, nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
@@ -79,7 +79,7 @@ inline HttpResp httpPost(const std::string& url8, const std::string& body, int t
     URL_COMPONENTS uc{ sizeof(uc) }; wchar_t host[256] = {}, path[4096] = {};
     uc.lpszHostName = host; uc.dwHostNameLength = 255; uc.lpszUrlPath = path; uc.dwUrlPathLength = 4095;
     if (!WinHttpCrackUrl(url.c_str(), 0, 0, &uc)) return r;
-    HINTERNET ses = WinHttpOpen(L"Lumora/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET ses = WinHttpOpen(L"K-Toolz/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     HINTERNET con = ses ? WinHttpConnect(ses, host, uc.nPort, 0) : nullptr;
     HINTERNET req = con ? WinHttpOpenRequest(con, L"POST", path, nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
         (uc.nScheme == INTERNET_SCHEME_HTTPS) ? WINHTTP_FLAG_SECURE : 0) : nullptr;

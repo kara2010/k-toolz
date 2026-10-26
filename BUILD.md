@@ -80,28 +80,29 @@ Voraussetzung: **VS 2022 Build Tools** mit „Desktop development with C++"
 #    nach capture-cpp\third_party\ und baut sie statisch - NICHT im Repo, ~270 MB)
 ._testlab\build-relay-deps.ps1
 
-# 1b) Einmalig: ViGEmClient fuer die Eingabe-Bruecke (MIT, wird in die Shell einkompiliert;
+# 1b) Einmalig: ViGEmClient fuer WheelToPad (MIT, wird in die Shell einkompiliert;
 #     third_party\ ist gitignored, auf frischem Checkout also erneut noetig):
 git clone --depth 1 https://github.com/nefarius/ViGEmClient.git capture-cpp\third_party\ViGEmClient
 Remove-Item -Recurse -Force capture-cpp\third_party\ViGEmClient\.git
 
-# 2) Die drei Exes bauen (je: cmake -S <dir> -B <dir>\build -G "Visual Studio 17 2022" -A x64,
+# 2) Die vier Exes bauen (je: cmake -S <dir> -B <dir>\build -G "Visual Studio 17 2022" -A x64,
 #    dann cmake --build <dir>\build --config Release). Build-Caches sind PC-spezifisch -
 #    bei "CMakeCache directory"-Fehlern build\ loeschen und neu konfigurieren.
-#    capture-cpp\lumora-capture  -> build\Release\lumora_capture.exe -> bin\lumora-capture-native.exe
-#    capture-cpp\lumora-relay    -> build\Release\lumora_relay.exe   -> bin\lumora-media-relay.exe
-#    capture-cpp\lumora-shell    -> build\Release\lumora_shell.exe
+#    capture-cpp\lumora-capture  -> build\Release\k-toolz-capture.exe -> bin\k-toolz-capture.exe
+#    capture-cpp\lumora-relay    -> build\Release\k-toolz-relay.exe   -> bin\k-toolz-relay.exe
+#    capture-cpp\lumora-elevate  -> build\Release\k-toolz-elevate.exe -> bin\k-toolz-elevate.exe
+#    capture-cpp\lumora-shell    -> build\Release\k-toolz.exe (staged build-installer.ps1 selbst)
 
 # 3) Installer bauen (staged bin\-Exes + UI-Assets, signiert, NSIS):
 .\capture-cpp\lumora-shell\build-installer.ps1
 ```
 
-- **lumora-media-relay.exe** ist seit der mediamtx-Abloesung unser EIGENER C++-Relay
+- **k-toolz-relay.exe** ist seit der mediamtx-Abloesung unser EIGENER C++-Relay
   (`capture-cpp/lumora-relay`, libdatachannel/WHEP, ~2 MB). `bin\mediamtx.exe` wird
   uebergangsweise als Fallback mitgeliefert (Einstellung `useLegacyRelay: true`).
 - Test-Client fuer den Relay ohne Shell: `capture-cpp\lumora-relay\test_whep.html`
-  (Relay + `lumora-capture-native.exe --mtx-port 8558` starten, Seite oeffnen).
-- Stream-Log: `%TEMP%\lumora-stream.log` (`mtx:` = Relay, `nat:` = Capture-Helfer).
+  (Relay + `k-toolz-capture.exe --mtx-port 8558` starten, Seite oeffnen).
+- Stream-Log: `%TEMP%\k-toolz-stream.log` (`mtx:` = Relay, `nat:` = Capture-Helfer).
 
 ## Projektstruktur (Kurz)
 - `main.js` – Electron-Hauptprozess (Launcher, OSD, **Streaming**: `bcDetectEncoder`,

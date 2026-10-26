@@ -31,7 +31,7 @@ public:
     // Eigener Sessionname erlaubt eine ZWEITE Present-Session parallel zum FPS-Broker
     // (User-Mode-Provider duerfen von mehreren Sessions gleichzeitig gelesen werden) -
     // die Ruckler-Blackbox misst so unabhaengig, ohne dem OSD die Session wegzunehmen.
-    explicit PresentTrace(const wchar_t* sessionName = L"LumoraOSDTrace") : name_(sessionName) {}
+    explicit PresentTrace(const wchar_t* sessionName = L"KToolzOSDTrace") : name_(sessionName) {}
 
     // Gemeinsame QPC-Basis mit anderen Quellen (0 = eigenes t0 beim ersten Event)
     void setT0(int64_t t0) { t0_ = t0; }

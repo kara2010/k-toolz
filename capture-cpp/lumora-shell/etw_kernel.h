@@ -210,7 +210,7 @@ public:
     }
 
 private:
-    static constexpr const wchar_t* SESSION_NAME = L"LumoraAnalyzeTrace";
+    static constexpr const wchar_t* SESSION_NAME = L"KToolzAnalyzeTrace";
     static constexpr uint32_t TIDMAP_SLOTS = 16384;   // 2er-Potenz (Maske)
 
     void stopSessionByName() {

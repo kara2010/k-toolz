@@ -9,11 +9,13 @@
 ; ersten Start aus HKCU\Software\K-Toolz uebernimmt (InstallModules = Erstinstallation,
 ; AddModules = Produkt-Installer auf bestehender Installation fuegt nur das Werkzeug hinzu).
 ; Modi (automatisch erkannt):
-;   UPDATE   -> Installation vorhanden (k-toolz / lumora-native / lumora): gleiches Verzeichnis,
-;               keine Fragen, Modulwahl bleibt (Basis fuer das stille Auto-Update /S).
+;   UPDATE   -> Installation vorhanden: keine Fragen, Modulwahl bleibt (Basis fuer das stille Auto-Update /S).
+;               Ziel ist IMMER $LOCALAPPDATA\Programs\k-toolz. Staende vor der Umbenennung (lumora-shell.exe in
+;               k-toolz / lumora-native / lumora) werden dorthin umgezogen, der alte Ordner entfernt und
+;               Verknuepfungen auf die neue k-toolz.exe umgebogen (installer-links.ps1).
 ;   FRISCH   -> nach $LOCALAPPDATA\Programs\k-toolz.
 ; Eine Electron-Altinstallation (Lumora.exe) wird ueber ihren Uninstaller sauber abgeloest.
-; Deinstallation: fragt (ausser bei /S), ob Einstellungen (%APPDATA%\lumora) mit weg sollen.
+; Deinstallation: fragt (ausser bei /S), ob Einstellungen (%APPDATA%\K-Toolz) mit weg sollen.
 ; Aufruf: makensis /DVERSION=x.y.z /DSRCDIR=<Staging> installer.nsi
 Unicode true
 !include "MUI2.nsh"
@@ -46,6 +48,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}.0"
 Var Migrate          ; "1" = alter Electron-Namensraum (Ordner lumora, Uninstall-Key lumora)
 Var IsUpdate         ; "1" = Installation war schon da (Update-Lauf)
 Var WasLumora        ; "1" = Bestandsinstallation aus Lumora-Zeiten (Ordner lumora-native/lumora)
+Var OldDir           ; Ordner einer Installation vor der Umbenennung (lumora-shell.exe), "" wenn keine
 Var Mode             ; Produktschluessel aus dem Dateinamen: osd/stream/stutter/wheel - oder "all"
 Var ProdName         ; Anzeigename fuer Willkommen/Finish: Produktname oder "K-Toolz"
 Var RunArgs          ; Startargumente fuer "jetzt starten" (--mode=<modul> im Produktmodus)
@@ -80,7 +83,7 @@ Page custom modPage modPageLeave
 !define MUI_PAGE_CUSTOMFUNCTION_PRE dirPre
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
-!define MUI_FINISHPAGE_RUN "$INSTDIR\lumora-shell.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\k-toolz.exe"
 !define MUI_FINISHPAGE_RUN_PARAMETERS "$RunArgs"
 !define MUI_FINISHPAGE_RUN_TEXT "$(S_RunNow)"
 !insertmacro MUI_PAGE_FINISH
@@ -126,8 +129,8 @@ LangString S_ModNone ${LANG_GERMAN} "Bitte mindestens ein Werkzeug auswählen."
 LangString S_ModNone ${LANG_ENGLISH} "Please select at least one tool."
 LangString S_RunNow ${LANG_GERMAN} "$ProdName jetzt starten"
 LangString S_RunNow ${LANG_ENGLISH} "Launch $ProdName now"
-LangString S_RemoveData ${LANG_GERMAN} "Sollen auch deine Einstellungen, Spielzeiten und die Spiele-Bibliothek entfernt werden?$\n$\nJa = alles restlos entfernen ($APPDATA\lumora)$\nNein = Einstellungen behalten (empfohlen, falls du K-Toolz später erneut installierst)"
-LangString S_RemoveData ${LANG_ENGLISH} "Also remove your settings, playtimes and game library?$\n$\nYes = remove everything ($APPDATA\lumora)$\nNo = keep settings (recommended if you might reinstall K-Toolz later)"
+LangString S_RemoveData ${LANG_GERMAN} "Sollen auch deine Einstellungen, Spielzeiten und die Spiele-Bibliothek entfernt werden?$\n$\nJa = alles restlos entfernen ($APPDATA\K-Toolz)$\nNein = Einstellungen behalten (empfohlen, falls du K-Toolz später erneut installierst)"
+LangString S_RemoveData ${LANG_ENGLISH} "Also remove your settings, playtimes and game library?$\n$\nYes = remove everything ($APPDATA\K-Toolz)$\nNo = keep settings (recommended if you might reinstall K-Toolz later)"
 LangString S_VcMissing ${LANG_GERMAN} "K-Toolz benötigt die Microsoft Visual C++ Laufzeit, die auf diesem PC fehlt und gerade nicht geladen werden konnte (keine Internetverbindung?).$\n$\nBitte einmal 'Microsoft Visual C++ Redistributable (x64)' installieren - danach startet K-Toolz normal."
 LangString S_VcMissing ${LANG_ENGLISH} "K-Toolz needs the Microsoft Visual C++ runtime, which is missing on this PC and could not be downloaded right now (no internet connection?).$\n$\nPlease install 'Microsoft Visual C++ Redistributable (x64)' once - K-Toolz will then start normally."
 
@@ -195,26 +198,35 @@ Function .onInit
     ${EndIf}
   ${EndIf}
 
-  ; --- 1) UPDATE-Erkennung: Installation schon da? (lumora-shell.exe = Marker) ---
+  ; --- 1) UPDATE-Erkennung: Installation schon da? (k-toolz.exe = Marker; lumora-shell.exe = Stand vor der Umbenennung) ---
   StrCpy $IsUpdate "0"
   StrCpy $Migrate "0"
   StrCpy $WasLumora "0"
+  StrCpy $OldDir ""
+  ${If} ${FileExists} "$LOCALAPPDATA\Programs\k-toolz\k-toolz.exe"
+    StrCpy $IsUpdate "1"
+    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\k-toolz"
+    Goto lbl_done
+  ${EndIf}
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\k-toolz\lumora-shell.exe"
     StrCpy $IsUpdate "1"
+    StrCpy $OldDir "$LOCALAPPDATA\Programs\k-toolz"
     StrCpy $INSTDIR "$LOCALAPPDATA\Programs\k-toolz"
     Goto lbl_done
   ${EndIf}
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\lumora-native\lumora-shell.exe"
     StrCpy $IsUpdate "1"
     StrCpy $WasLumora "1"
-    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\lumora-native"
+    StrCpy $OldDir "$LOCALAPPDATA\Programs\lumora-native"
+    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\k-toolz"
     Goto lbl_done
   ${EndIf}
   ${If} ${FileExists} "$LOCALAPPDATA\Programs\lumora\lumora-shell.exe"
     StrCpy $IsUpdate "1"
     StrCpy $Migrate "1"
     StrCpy $WasLumora "1"
-    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\lumora"
+    StrCpy $OldDir "$LOCALAPPDATA\Programs\lumora"
+    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\k-toolz"
     Goto lbl_done
   ${EndIf}
 
@@ -334,16 +346,33 @@ FunctionEnd
 
 ; Startmenue-Eintrag eines Werkzeugs: $0 = Name, $1 = Modulschluessel, $2 = Icon-Datei
 !macro ToolShortcut name key icofile
-  CreateShortCut "$SMPROGRAMS\${name}.lnk" "$INSTDIR\lumora-shell.exe" "--mode=${key}" "$INSTDIR\icons\${icofile}.ico" 0
+  CreateShortCut "$SMPROGRAMS\${name}.lnk" "$INSTDIR\k-toolz.exe" "--mode=${key}" "$INSTDIR\icons\${icofile}.ico" 0
 !macroend
 
 Section "K-Toolz"
-  ; Laufende App IMMER beenden (sonst sperrt lumora-shell.exe das Kopieren)
+  ; Laufende App IMMER beenden (sonst sperrt die exe das Kopieren). Neue und alte Namen (Stand vor der Umbenennung).
   DetailPrint "Beende laufende K-Toolz-Prozesse..."
+  nsExec::Exec 'taskkill /F /IM k-toolz.exe'
+  nsExec::Exec 'taskkill /F /IM k-toolz-capture.exe'
+  nsExec::Exec 'taskkill /F /IM k-toolz-relay.exe'
   nsExec::Exec 'taskkill /F /IM lumora-shell.exe'
   nsExec::Exec 'taskkill /F /IM lumora-capture-native.exe'
   nsExec::Exec 'taskkill /F /IM lumora-media-relay.exe'
   Sleep 400
+  ; Erhoeht laufende Broker (geplante Aufgaben) kann der Installer ohne Rechte nicht beenden - sie beenden sich
+  ; aber selbst, spaetestens 5 s nachdem die App kein Lebenszeichen mehr schreibt (osd_broker.h). Bis zu 10 s warten,
+  ; damit danach keine Datei des alten Ordners mehr gesperrt ist.
+  StrCpy $R9 0
+  waitBroker:
+    nsExec::ExecToStack 'cmd /c tasklist /NH /FI "IMAGENAME eq lumora-shell.exe" | find /I "lumora-shell.exe" & tasklist /NH /FI "IMAGENAME eq k-toolz.exe" | find /I "k-toolz.exe"'
+    Pop $R8
+    Pop $R7
+    StrCmp $R7 "" brokerGone
+    IntOp $R9 $R9 + 1
+    IntCmp $R9 10 brokerGone
+    Sleep 1000
+    Goto waitBroker
+  brokerGone:
 
   ; Geplante Aufgaben (Broker) entfernen - GEMESSEN: ohne Erhoehung "Zugriff verweigert", die Zeilen
   ; wirken also nur, wenn jemand den Installer als Administrator startet. Der verlaessliche Weg ist
@@ -369,22 +398,28 @@ Section "K-Toolz"
   ${EndIf}
   ${If} $Migrate == "1"
     nsExec::Exec 'taskkill /F /IM Lumora.exe'
-    Sleep 700
-    ${If} ${FileExists} "$INSTDIR\Uninstall Lumora.exe"
-      DetailPrint "Deinstalliere die vorhandene Electron-Version..."
-      ExecWait '"$INSTDIR\Uninstall Lumora.exe" /S _?=$INSTDIR'
-      Sleep 500
-      Delete "$INSTDIR\Uninstall Lumora.exe"
-      RMDir /r "$INSTDIR\resources"
-      RMDir /r "$INSTDIR\locales"
-      Delete "$INSTDIR\Lumora.exe"
-      Delete "$INSTDIR\*.pak"
-    ${EndIf}
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "com.lumora.app"
   ${EndIf}
 
   SetOutPath "$INSTDIR"
   File /r "${SRCDIR}\*.*"
+
+  ; Stand vor der Umbenennung: alte Programmdateien (im selben Ordner) bzw. den alten Ordner entfernen,
+  ; Verknuepfungen (Desktop, Startmenue, Taskleiste) auf k-toolz.exe umbiegen, altes WebView2-Profil (nur Cache) loeschen.
+  Delete "$INSTDIR\lumora-shell.exe"
+  Delete "$INSTDIR\bin\lumora-capture-native.exe"
+  Delete "$INSTDIR\bin\lumora-media-relay.exe"
+  Delete "$INSTDIR\bin\lumora-elevate.exe"
+  ${If} $OldDir != ""
+    InitPluginsDir
+    File "/oname=$PLUGINSDIR\installer-links.ps1" "installer-links.ps1"
+    DetailPrint "Stelle Verknuepfungen auf K-Toolz um..."
+    nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\installer-links.ps1" -NewDir "$INSTDIR"'
+    ${If} $OldDir != $INSTDIR
+      RMDir /r "$OldDir"
+    ${EndIf}
+  ${EndIf}
+  RMDir /r "$LOCALAPPDATA\lumora-shell"
 
   ; WebView2-Runtime pruefen (Evergreen, per-machine ODER per-user); fehlt sie, installiert
   ; der mitgelieferte Microsoft-Bootstrapper sie nach (Win10-Absicherung).
@@ -444,10 +479,10 @@ wv2ok:
     ${EndIf}
     ${If} $ModCount == 1
       ; ein Werkzeug: Desktop heisst wie das Werkzeug, startet im Modus
-      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\lumora-shell.exe" "$RunArgs" "$INSTDIR\icons\$Mode.ico" 0
+      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\k-toolz.exe" "$RunArgs" "$INSTDIR\icons\$Mode.ico" 0
     ${Else}
-      CreateShortCut "$SMPROGRAMS\K-Toolz.lnk" "$INSTDIR\lumora-shell.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
-      CreateShortCut "$DESKTOP\K-Toolz.lnk" "$INSTDIR\lumora-shell.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
+      CreateShortCut "$SMPROGRAMS\K-Toolz.lnk" "$INSTDIR\k-toolz.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
+      CreateShortCut "$DESKTOP\K-Toolz.lnk" "$INSTDIR\k-toolz.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
     ${EndIf}
   ${Else}
     ; Update: Modulwahl bleibt. Produkt-Installer auf bestehender Installation fuegt sein
@@ -465,15 +500,15 @@ wv2ok:
   ${If} $IsUpdate == "0"
   ${AndIf} $ModCount == 1
     ${If} $Mode == "osd"
-      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\lumora-shell.exe" "$RunArgs" "$INSTDIR\icons\plainosd.ico" 0
+      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\k-toolz.exe" "$RunArgs" "$INSTDIR\icons\plainosd.ico" 0
     ${ElseIf} $Mode == "stream"
-      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\lumora-shell.exe" "$RunArgs" "$INSTDIR\icons\streamtofriend.ico" 0
+      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\k-toolz.exe" "$RunArgs" "$INSTDIR\icons\streamtofriend.ico" 0
     ${ElseIf} $Mode == "stutter"
-      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\lumora-shell.exe" "$RunArgs" "$INSTDIR\icons\stutterhunter.ico" 0
+      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\k-toolz.exe" "$RunArgs" "$INSTDIR\icons\stutterhunter.ico" 0
     ${ElseIf} $Mode == "wheel"
-      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\lumora-shell.exe" "$RunArgs" "$INSTDIR\icons\wheeltopad.ico" 0
+      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\k-toolz.exe" "$RunArgs" "$INSTDIR\icons\wheeltopad.ico" 0
     ${Else}
-      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\lumora-shell.exe" "$RunArgs" "$INSTDIR\icons\k-toolz.ico" 0
+      CreateShortCut "$DESKTOP\$ProdName.lnk" "$INSTDIR\k-toolz.exe" "$RunArgs" "$INSTDIR\icons\k-toolz.ico" 0
     ${EndIf}
   ${EndIf}
 
@@ -482,10 +517,10 @@ wv2ok:
   ;     Desktop "Lumora" wird zu "K-Toolz". Apps & Features sagt "(frueher Lumora)". ---
   ${If} $WasLumora == "1"
     Delete "$SMPROGRAMS\Lumora.lnk"
-    CreateShortCut "$SMPROGRAMS\Lumora (jetzt K-Toolz).lnk" "$INSTDIR\lumora-shell.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
+    CreateShortCut "$SMPROGRAMS\Lumora (jetzt K-Toolz).lnk" "$INSTDIR\k-toolz.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
     ${If} ${FileExists} "$DESKTOP\Lumora.lnk"
       Delete "$DESKTOP\Lumora.lnk"
-      CreateShortCut "$DESKTOP\K-Toolz.lnk" "$INSTDIR\lumora-shell.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
+      CreateShortCut "$DESKTOP\K-Toolz.lnk" "$INSTDIR\k-toolz.exe" "" "$INSTDIR\icons\k-toolz.ico" 0
     ${EndIf}
   ${EndIf}
 
@@ -499,11 +534,14 @@ wv2ok:
   ${EndIf}
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "Publisher" "Karsten Radermacher"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayIcon" "$INSTDIR\lumora-shell.exe"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "DisplayIcon" "$INSTDIR\k-toolz.exe"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\k-toolz" "URLInfoAbout" "https://k-toolz.de/"
 
+  ${If} $WasLumora == "0"
+    Delete "$SMPROGRAMS\Lumora (jetzt K-Toolz).lnk"
+  ${EndIf}
   ; Tote Verknuepfungen aus der Umstiegszeit (Electron-AUMID, Beta-Namen)
   Delete "$SMPROGRAMS\Electron.lnk"
   Delete "$DESKTOP\Electron.lnk"
@@ -514,11 +552,14 @@ wv2ok:
 
   ; Silent-Install = Auto-Update-Kontext: die App danach IMMER wieder starten
   ${If} ${Silent}
-    Exec '"$INSTDIR\lumora-shell.exe"'
+    Exec '"$INSTDIR\k-toolz.exe"'
   ${EndIf}
 SectionEnd
 
 Section "Uninstall"
+  nsExec::Exec 'taskkill /F /IM k-toolz.exe'
+  nsExec::Exec 'taskkill /F /IM k-toolz-capture.exe'
+  nsExec::Exec 'taskkill /F /IM k-toolz-relay.exe'
   nsExec::Exec 'taskkill /F /IM lumora-shell.exe'
   nsExec::Exec 'taskkill /F /IM lumora-capture-native.exe'
   nsExec::Exec 'taskkill /F /IM lumora-media-relay.exe'
@@ -539,11 +580,14 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\Lumora (jetzt K-Toolz).lnk"
   Delete "$SMPROGRAMS\Lumora Native (Beta).lnk"
   Delete "$DESKTOP\Lumora Native (Beta).lnk"
-  ; Autostart (neuer und alter Name), lumora://-Protokoll, Uebergabe-Schluessel
+  ; Autostart (neuer und alter Name), ktoolz:// und lumora:// (alte Einladungslinks), Uebergabe-Schluessel
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "K-Toolz"
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Lumora"
+  DeleteRegKey HKCU "Software\Classes\ktoolz"
   DeleteRegKey HKCU "Software\Classes\lumora"
   DeleteRegKey HKCU "Software\K-Toolz"
+  RMDir /r "$LOCALAPPDATA\K-Toolz"
+  RMDir /r "$LOCALAPPDATA\lumora-shell"
   ; von der App angelegte geplante Aufgaben (Broker) entfernen
   ; Erhoeht (eine UAC-Abfrage): die von der App angelegten Aufgaben lassen sich nur so entfernen.
   ; Lehnt der Nutzer ab, bleiben sie liegen - sie starten nichts von selbst (kein Ausloeser).
@@ -556,6 +600,7 @@ Section "Uninstall"
   ; Einstellungen: fragen (ausser Silent - dort IMMER behalten)
   ${IfNot} ${Silent}
     MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 "$(S_RemoveData)" IDNO keepData
+    RMDir /r "$APPDATA\K-Toolz"
     RMDir /r "$APPDATA\lumora"
 keepData:
   ${EndIf}

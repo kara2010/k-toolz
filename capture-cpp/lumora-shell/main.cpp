@@ -91,9 +91,9 @@ static const wchar_t* SHIM_JS = LR"JS(
     send: (channel, ...args) => window.chrome.webview.postMessage({ id: 0, channel, args }),
     // sendSync-Emulation: Datendateien synchron ueber das data.lumora-Mapping (lokal).
     sendSync: (channel) => {
-      if (channel === 'load-games-sync') return syncGet('https://data.lumora/games.json');
-      if (channel === 'load-prefs-sync') return syncGet('https://data.lumora/prefs.json');
-      if (channel === 'get-app-identity-sync') return syncGet('https://data.lumora/identity.json');   // Module + Anzeigename synchron: Reiter stehen vor dem ersten Bild
+      if (channel === 'load-games-sync') return syncGet('https://data.k-toolz/games.json');
+      if (channel === 'load-prefs-sync') return syncGet('https://data.k-toolz/prefs.json');
+      if (channel === 'get-app-identity-sync') return syncGet('https://data.k-toolz/identity.json');   // Module + Anzeigename synchron: Reiter stehen vor dem ersten Bild
       if (channel === 'get-version-sync') return '%SHELL_VERSION%';
       return null;
     },
@@ -184,9 +184,21 @@ static std::wstring knownFolder(const wchar_t* envName, REFKNOWNFOLDERID fid) {
     }
     return L"";   // beide Wege gescheitert (praktisch unmoeglich) - Aufrufer schreibt nichts nach ""
 }
+// Datenordner: %APPDATA%\K-Toolz. Bis der einmalige Umzug aus dem alten Ordner %APPDATA%\lumora
+// gelungen ist (migrateDataDir beim Start), bleibt der alte in Gebrauch - nie zwei halbe Staende.
 static std::wstring dataDir() {
     std::wstring appdata = knownFolder(L"APPDATA", FOLDERID_RoamingAppData);
-    return appdata.empty() ? L"" : appdata + L"\\lumora";   // "" -> ensureParentDir/writeFile brechen sauber ab statt ins Laufwerks-Root zu schreiben
+    if (appdata.empty()) return L"";   // "" -> ensureParentDir/writeFile brechen sauber ab statt ins Laufwerks-Root zu schreiben
+    std::wstring neu = appdata + L"\\K-Toolz", alt = appdata + L"\\lumora";
+    if (GetFileAttributesW(neu.c_str()) == INVALID_FILE_ATTRIBUTES && GetFileAttributesW(alt.c_str()) != INVALID_FILE_ATTRIBUTES) return alt;
+    return neu;
+}
+// WebView2-Profil aller Fenster der App (vorher %LOCALAPPDATA%\lumora-shell; der Installer raeumt den alten Ordner).
+// Inhalt ist nur Browser-Cache + Sprach-Zwischenspeicher - die Sprache selbst steht in app-settings.json.
+static std::wstring webviewDataDir() {
+    std::wstring p = knownFolder(L"LOCALAPPDATA", FOLDERID_LocalAppData) + L"\\K-Toolz\\WebView2";
+    SHCreateDirectoryExW(nullptr, p.c_str(), nullptr);
+    return p;
 }
 static std::wstring settingsPath() { return dataDir() + L"\\app-settings.json"; }
 // Letzter fehlerfrei gelesener Stand. Ohne ihn wurde ein LESE-Aussetzer (Virenscanner
@@ -834,7 +846,7 @@ static std::map<std::string, QosEntry> g_qosMap;   // Zuschauer-QoS fuer die ada
 
 static void bcLogStream(const std::string& msg) {   // gleiches Log wie die Electron-App
     wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-    FILE* f = nullptr; _wfopen_s(&f, (std::wstring(tmp) + L"\\lumora-stream.log").c_str(), L"ab");
+    FILE* f = nullptr; _wfopen_s(&f, (std::wstring(tmp) + L"\\k-toolz-stream.log").c_str(), L"ab");
     if (!f) return;
     SYSTEMTIME st; GetLocalTime(&st);
     fprintf(f, "%02d:%02d:%02d  %s\n", st.wHour, st.wMinute, st.wSecond, msg.c_str());
@@ -1023,19 +1035,19 @@ static LRESULT CALLBACK doorWndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 static void createDoormanWindow() {
     if (g_doorHwnd) return;
     static bool reg = false;
-    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = doorWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"LumoraDoor"; wc.hbrBackground = CreateSolidBrush(RGB(15, 15, 15)); RegisterClassW(&wc); reg = true; }
+    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = doorWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"KToolzDoor"; wc.hbrBackground = CreateSolidBrush(RGB(15, 15, 15)); RegisterClassW(&wc); reg = true; }
     HMONITOR hm = MonitorFromPoint({ 0,0 }, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFO mi{ sizeof(mi) }; GetMonitorInfoW(hm, &mi);
     UINT dpi = GetDpiForSystem(); if (!dpi) dpi = 96;
     int w = MulDiv(360, dpi, 96), hgt = MulDiv(220, dpi, 96);
     g_doorHwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-        L"LumoraDoor", L"StreamToFriend", WS_POPUP, mi.rcWork.right - w - 16, mi.rcWork.top + 16, w, hgt, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+        L"KToolzDoor", L"StreamToFriend", WS_POPUP, mi.rcWork.right - w - 16, mi.rcWork.top + 16, w, hgt, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!g_doorHwnd) return;
     // Runde Ecken vom Fenstermanager - dadurch kann die Karte randlos sitzen (kein
     // sichtbarer Fensterhintergrund mehr) und der blaue Rahmen bildet die Kontur.
     { DWM_WINDOW_CORNER_PREFERENCE cp = DWMWCP_ROUND;
       DwmSetWindowAttribute(g_doorHwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cp, sizeof(cp)); }
-    std::wstring userData = knownFolder(L"LOCALAPPDATA", FOLDERID_LocalAppData) + L"\\lumora-shell";   // robust: env ODER SHGetKnownFolderPath
+    std::wstring userData = webviewDataDir();
     CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
@@ -1053,7 +1065,7 @@ static void createDoormanWindow() {
                             { ComPtr<ICoreWebView2Controller2> c2; g_doorCtrl.As(&c2);
                               if (c2) { COREWEBVIEW2_COLOR clr{ 255, 15, 15, 15 }; c2->put_DefaultBackgroundColor(clr); } }
                             ComPtr<ICoreWebView2_3> wv3; g_doorWv.As(&wv3);
-                            if (wv3) wv3->SetVirtualHostNameToFolderMapping(L"app.lumora", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                            if (wv3) wv3->SetVirtualHostNameToFolderMapping(L"app.k-toolz", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                             std::wstring shim = SHIM_JS; size_t vp = shim.find(L"%SHELL_VERSION%");
                             if (vp != std::wstring::npos) shim.replace(vp, 15, widen(shellVersion()));
                             g_doorWv->AddScriptToExecuteOnDocumentCreated(shim.c_str(), nullptr);
@@ -1085,7 +1097,7 @@ static void createDoormanWindow() {
                                     PostMessageW(g_hwnd, WM_SHELL_DOORSYNC, 0, 0);   // DOORSYNC gehoert dem Hauptfenster!
                                     return S_OK;
                                 }).Get(), nullptr);
-                            g_doorWv->Navigate(L"https://app.lumora/doorman.html");
+                            g_doorWv->Navigate(L"https://app.k-toolz/doorman.html");
                             return S_OK;
                         }).Get());
                 return S_OK;
@@ -1163,7 +1175,7 @@ static lusrv::Response handleStreamHttp(const lusrv::Request& rq) {
         if (turnOn) {   // WebRTC verlangt bei turn: IMMER username+credential (Platzhalter bei auth-los)
             if (turl.rfind("turn:", 0) != 0 && turl.rfind("turns:", 0) != 0) turl = "turn:" + turl;
             std::string tu = s.value("streamTurnUser", ""), tp = s.value("streamTurnPass", "");
-            ice.push_back({ {"urls", turl}, {"username", tu.empty() ? "lumora" : tu}, {"credential", tp.empty() ? "lumora" : tp} });
+            ice.push_back({ {"urls", turl}, {"username", tu.empty() ? "k-toolz" : tu}, {"credential", tp.empty() ? "k-toolz" : tp} });
         }
         json cfg = { {"buffer", (std::max)(0, s.value("streamBufferMs", 120))}, {"iceServers", ice},
                      {"forceRelay", turnOn && s.value("streamTurnForce", false)} };
@@ -1173,7 +1185,7 @@ static lusrv::Response handleStreamHttp(const lusrv::Request& rq) {
     }
     if (rq.method == "GET" && rq.path == "/instanz") {
         extern std::string instanzId(); extern std::string instanzGroup();
-        json r = { {"lumora", true}, {"id", instanzId()}, {"group", instanzGroup().empty() ? json(nullptr) : json(instanzGroup())} };
+        json r = { {"ktoolz", true}, {"lumora", true}, {"id", instanzId()}, {"group", instanzGroup().empty() ? json(nullptr) : json(instanzGroup())} };
         rs.status = 200; rs.body = r.dump();
         rs.headers["Content-Type"] = "application/json"; rs.headers["Cache-Control"] = "no-store";
         return rs;
@@ -1285,16 +1297,16 @@ static std::wstring bundledSetup(const wchar_t* name) {
     return GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES ? p : L"";
 }
 static std::wstring tempPath(const wchar_t* name) { wchar_t t[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", t, MAX_PATH); return std::wstring(t) + L"\\" + name; }
-static void bcWriteBitrateControl(int kbit) { writeFile(tempPath(L"lumora-bitrate.txt"), std::to_string((std::max)(500, kbit))); }
+static void bcWriteBitrateControl(int kbit) { writeFile(tempPath(L"k-toolz-bitrate.txt"), std::to_string((std::max)(500, kbit))); }
 static void bcWriteSourceControl(const json& cfg) {
-    writeFile(tempPath(L"lumora-source.txt"), (cfg.value("mode", "") == "window" && cfg.value("hwnd", 0) != 0) ? ("hwnd " + std::to_string(cfg.value("hwnd", 0))) : ("monitor " + std::to_string(cfg.value("outputIdx", 0))));
+    writeFile(tempPath(L"k-toolz-source.txt"), (cfg.value("mode", "") == "window" && cfg.value("hwnd", 0) != 0) ? ("hwnd " + std::to_string(cfg.value("hwnd", 0))) : ("monitor " + std::to_string(cfg.value("outputIdx", 0))));
 }
 static void bcWriteHdrControl() {
     json s = loadSettings();
     int mode = (std::max)(0, (std::min)(3, s.value("streamHdrMode", 0)));
     double exp = (std::max)(0.05, (std::min)(3.0, s.value("streamHdrExposure", 0.3937)));
     char buf[32]; sprintf_s(buf, "%d %.4f", mode, exp);
-    writeFile(tempPath(L"lumora-hdr.txt"), buf);
+    writeFile(tempPath(L"k-toolz-hdr.txt"), buf);
 }
 static std::string bcLanIp() {
     // bevorzugte lokale IPv4 ueber einen (nie gesendeten) UDP-connect ermitteln
@@ -1437,7 +1449,7 @@ static std::wstring bcWriteMtxConfig(const std::vector<std::string>& hosts) {
     y += "paths:\n  "; y += MTX_PATH; y += ":\n";
     y += "    source: udp+mpegts://127.0.0.1:" + std::to_string(MTX_TS_UDP) + "\n";   // nativer Helfer publisht per UDP/MPEG-TS
     y += "    alwaysAvailable: yes\n    alwaysAvailableTracks:\n      - codec: H264\n      - codec: Opus\n";
-    std::wstring p = tempPath(L"lumora-mediamtx.yml");
+    std::wstring p = tempPath(L"k-toolz-mediamtx.yml");
     writeFile(p, y);
     return p;
 }
@@ -1445,7 +1457,7 @@ static std::wstring bcWriteMtxConfig(const std::vector<std::string>& hosts) {
 // Einstellung useLegacyRelay=true erzwingt mediamtx (Uebergangs-Fallback, ein Release lang).
 static bool bcNativeRelay() {
     if (loadSettings().value("useLegacyRelay", false)) return false;
-    return GetFileAttributesW((binDir() + L"\\lumora-media-relay.exe").c_str()) != INVALID_FILE_ATTRIBUTES;
+    return GetFileAttributesW((binDir() + L"\\k-toolz-relay.exe").c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 // ICE-Konfiguration (oeffentliche Hosts + TURN) an den nativen Relay pushen - ersetzt den
 // mediamtx-YAML-Hot-Reload. Wirkt nur auf NEUE Zuschauer-Sessions, bestehende bleiben verbunden.
@@ -1483,7 +1495,7 @@ static void bcPushCodecConfig() {
 // Inhalt: "h264" | "av1" | "h264+av1". Nie leer (Warm-Default h264).
 static void bcWriteCodecControl(bool h264, bool av1) {
     std::string v = av1 ? (h264 ? "h264+av1" : "av1") : "h264";
-    writeFile(tempPath(L"lumora-codec.txt"), v);
+    writeFile(tempPath(L"k-toolz-codec.txt"), v);
 }
 // Bedarfs-Zustand (bcViewerTick). MUSS bei jedem Stream-Start zurueckgesetzt werden,
 // sonst glaubt die Shell noch den Stand des VORIGEN Streams, schreibt nichts Neues und
@@ -1518,7 +1530,7 @@ static void bcMtxExitWatch(HANDLE proc) {
 bool bcStartMtx(const std::wstring& cfgPath) {
     g_mtxCfgPath = cfgPath;
     bool native = bcNativeRelay();
-    std::wstring relay = binDir() + (native ? L"\\lumora-media-relay.exe" : L"\\mediamtx.exe");
+    std::wstring relay = binDir() + (native ? L"\\k-toolz-relay.exe" : L"\\mediamtx.exe");
     if (GetFileAttributesW(relay.c_str()) == INVALID_FILE_ATTRIBUTES) { native = false; relay = binDir() + L"\\mediamtx.exe"; }
     // nativer Relay: keine Config-Datei (ICE kommt per Push nach dem Ready-Check). Der
     // Codec-Modus geht als CLI-Argument mit - ab dem ALLERERSTEN Lauschen korrekt, damit
@@ -1620,7 +1632,7 @@ static void bcStartNative(const json& cfg) {
     g_bcNatKbit = cfg.value("kbit", 8000);
     bcWriteSourceControl(cfg);
     ChildProc cp;
-    if (!spawnChild(cp, L"\"" + binDir() + L"\\lumora-capture-native.exe\" " + args, "nat: ")) { bcLogStream("nat: Start fehlgeschlagen"); return; }
+    if (!spawnChild(cp, L"\"" + binDir() + L"\\k-toolz-capture.exe\" " + args, "nat: ")) { bcLogStream("nat: Start fehlgeschlagen"); return; }
     { std::lock_guard<std::mutex> lk(g_launchMx); g_cap = cp; }
     bcNativeExitWatch(cp.proc, GetTickCount64());
 }
@@ -1635,7 +1647,7 @@ static json bcMtxReaders() {
         if (s.value("path", "") != MTX_PATH || s.value("state", "") != "read") continue;
         std::string rc = s.value("remoteCandidate", "");
         if (rc.find("127.0.0.1") != std::string::npos || rc.find("::1") != std::string::npos) continue;   // eigene Vorschau
-        if (s.value("userAgent", "").find("LumoraPreview") != std::string::npos) continue;                // markierte Vorschau-Session
+        if (s.value("userAgent", "").find("KToolzPreview") != std::string::npos) continue;                // markierte Vorschau-Session
         out.push_back(s);
     }
     return out;
@@ -1834,8 +1846,8 @@ static json startBroadcast() {
     for (auto& h : s.value("streamLastHosts", json::array())) if (h.is_string()) hosts.push_back(h.get<std::string>());
     std::wstring cfgPath = bcWriteMtxConfig(hosts);
     if (!bcStartMtx(cfgPath)) {
-        bcLogStream("start: FEHLGESCHLAGEN (Relay startet nicht - Port belegt? Electron-Lumora aktiv?)");
-        sendToUi("stream-error", "Stream-Start fehlgeschlagen: Relay startet nicht. Laeuft die App doppelt (alte Lumora-Version streamt)?");
+        bcLogStream("start: FEHLGESCHLAGEN (Relay startet nicht - Port belegt? Aeltere Version aktiv?)");
+        sendToUi("stream-error", "Stream-Start fehlgeschlagen: Relay startet nicht. Läuft die App doppelt oder streamt noch eine ältere Version?");
         g_bcCopyPending.clear();   // Start fehlgeschlagen - nichts zu kopieren
         g_bcState = { {"active", false} }; bcPushState();
         { std::lock_guard<std::mutex> lk(g_launchMx); killChild(g_mtx); }
@@ -1887,7 +1899,7 @@ static json startBroadcast() {
             // ANDERE Lumora-Instanz, deren Mapping NICHT stehlen (Hairpin-Check, 1.5s wie Electron).
             auto r = luart::httpGet("http://" + pubIp + ":" + std::to_string(BROADCAST_PORT) + "/instanz", L"", 1500);
             json j = json::parse(r.body, nullptr, false);
-            if (r.status == 200 && j.is_object() && j.value("lumora", false) && !j.value("id", json()).is_null()) {
+            if (r.status == 200 && j.is_object() && (j.value("ktoolz", false) || j.value("lumora", false)) && !j.value("id", json()).is_null()) {
                 v4Occupied = true;   // fremde (Electron-/Zweit-)Instanz mit Identitaet
                 if (j.contains("group") && j["group"].is_string()) v4Group = j["group"].get<std::string>();
             }
@@ -2010,7 +2022,7 @@ static json enumSources() {
         return TRUE;
     }, (LPARAM)&mc);
     // Fenster: Helfer --list (Zeilen "hwnd\ttitel\ticonDataUrl")
-    std::string raw = runCaptureOutput(L"\"" + binDir() + L"\\lumora-capture-native.exe\" --list", 15000);
+    std::string raw = runCaptureOutput(L"\"" + binDir() + L"\\k-toolz-capture.exe\" --list", 15000);
     std::istringstream ls(raw); std::string line;
     while (std::getline(ls, line)) {
         while (!line.empty() && (line.back() == '\r')) line.pop_back();
@@ -2021,7 +2033,9 @@ static json enumSources() {
         std::string icon = t2 == std::string::npos ? "" : line.substr(t2 + 1);
         if (hwnd.empty() || title.empty()) continue;
         std::string tl = title; for (auto& c : tl) c = (char)tolower((unsigned char)c);
-        if (tl == "lumora" || title == "Program Manager") continue;   // eigene App/Desktop ausblenden (wie Electron)
+        if (title == "Program Manager") continue;   // Desktop ausblenden
+        { DWORD pid = 0; GetWindowThreadProcessId((HWND)(intptr_t)_strtoi64(hwnd.c_str(), nullptr, 10), &pid);
+          if (pid == GetCurrentProcessId()) continue; }   // eigene Fenster (Haupt-, OSD-, Werkbank-Fenster) nie als Quelle anbieten
         // Helfer liefert ROHES PNG-Base64 - das data-URL-Praefix ergaenzt die App (User-Befund: Icons kaputt)
         out.push_back({ {"value", "window:" + hwnd}, {"label", title}, {"icon", icon.empty() ? "" : "data:image/png;base64," + icon}, {"kind", "window"} });
     }
@@ -2769,6 +2783,42 @@ static bool registerHotkeys() {
 // loeschen + eigenen Key "K-Toolz" -> "<exe>" [--minimized] setzen/entfernen.
 // Seit dem K-Toolz-Umbau heisst der Key "K-Toolz" (sichtbar in Task-Manager > Autostart);
 // der alte Key "Lumora" wandert in die Aufraeum-Liste.
+// Einmaliger Umzug %APPDATA%\lumora -> %APPDATA%\K-Toolz (Rename auf demselben Laufwerk). Danach werden in den
+// JSON-Dateien des Ordners alle gespeicherten absoluten Pfade in den alten Ordner auf den neuen gezogen
+// (gemessen: games.json speichert Cover/Icon/Hero als "...\AppData\Roaming\lumora\media\..."). Schlaegt der
+// Umzug fehl (Datei gesperrt), bleibt der alte Ordner in Gebrauch (dataDir) und der naechste Start versucht es erneut.
+static void migrateDataDir() {
+    std::wstring ad = knownFolder(L"APPDATA", FOLDERID_RoamingAppData);
+    if (ad.empty()) return;
+    std::wstring neu = ad + L"\\K-Toolz", alt = ad + L"\\lumora";
+    if (GetFileAttributesW(neu.c_str()) != INVALID_FILE_ATTRIBUTES || GetFileAttributesW(alt.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+    if (!MoveFileExW(alt.c_str(), neu.c_str(), 0)) {
+        bcLogStream("datenordner: Umzug nach K-Toolz fehlgeschlagen (Fehler " + std::to_string(GetLastError()) + ") - alter Ordner bleibt in Gebrauch");
+        return;
+    }
+    const std::wstring altPre = alt + L"\\";
+    int pfade = 0, dateien = 0;
+    std::function<bool(json&)> walk = [&](json& v) -> bool {
+        bool ch = false;
+        if (v.is_string()) {
+            std::wstring s = widen(v.get<std::string>());
+            if (s.size() > altPre.size() && _wcsnicmp(s.c_str(), altPre.c_str(), altPre.size()) == 0) { v = narrow(neu + L"\\" + s.substr(altPre.size())); ++pfade; ch = true; }
+        } else if (v.is_array() || v.is_object()) {
+            for (auto& e : v) if (walk(e)) ch = true;
+        }
+        return ch;
+    };
+    WIN32_FIND_DATAW fd; HANDLE h = FindFirstFileW((neu + L"\\*.json").c_str(), &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            std::wstring p = neu + L"\\" + fd.cFileName;
+            json j = json::parse(readFile(p), nullptr, false);
+            if (!j.is_discarded() && walk(j)) { writeFile(p, j.dump(2)); ++dateien; }
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+    bcLogStream("datenordner: nach K-Toolz umgezogen, " + std::to_string(pfade) + " Pfade in " + std::to_string(dateien) + " Datei(en) angepasst");
+}
 static void applyAutostart() {
     // 1:1 aus main.js cleanupLegacyAutostart+applyAutostart. Umstiegs-scharf: entfernt die
     // Electron-/Rebrand-Autostart-Keys (Doppelstart-Bug) und setzt EINEN eigenen Key.
@@ -2788,20 +2838,25 @@ static void applyAutostart() {
 }
 // lumora://-Protokoll auf die native exe registrieren (HKCU, kein Admin). Uebernimmt
 // den Handler beim Umstieg von der Electron-App. Idempotent, bei jedem Start aufgerufen.
+// ktoolz:// ist das Protokoll; lumora:// bleibt registriert, damit bereits verschickte Einladungslinks
+// (Gruppen-Seite aelterer Stände) weiter die App oeffnen.
 static void registerProtocol() {
     wchar_t exe[MAX_PATH] = {}; GetModuleFileNameW(nullptr, exe, MAX_PATH);
-    HKEY k;
-    if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Classes\\lumora", 0, nullptr, 0, KEY_WRITE, nullptr, &k, nullptr) == ERROR_SUCCESS) {
-        const wchar_t* desc = L"URL:K-Toolz Protocol";
-        RegSetValueExW(k, nullptr, 0, REG_SZ, (const BYTE*)desc, (DWORD)((wcslen(desc) + 1) * sizeof(wchar_t)));
-        RegSetValueExW(k, L"URL Protocol", 0, REG_SZ, (const BYTE*)L"", sizeof(wchar_t));
-        RegCloseKey(k);
-    }
-    HKEY c;
-    if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Classes\\lumora\\shell\\open\\command", 0, nullptr, 0, KEY_WRITE, nullptr, &c, nullptr) == ERROR_SUCCESS) {
-        std::wstring cmd = std::wstring(L"\"") + exe + L"\" \"%1\"";
-        RegSetValueExW(c, nullptr, 0, REG_SZ, (const BYTE*)cmd.c_str(), (DWORD)((cmd.size() + 1) * sizeof(wchar_t)));
-        RegCloseKey(c);
+    for (const wchar_t* scheme : { L"ktoolz", L"lumora" }) {
+        std::wstring base = std::wstring(L"Software\\Classes\\") + scheme;
+        HKEY k;
+        if (RegCreateKeyExW(HKEY_CURRENT_USER, base.c_str(), 0, nullptr, 0, KEY_WRITE, nullptr, &k, nullptr) == ERROR_SUCCESS) {
+            const wchar_t* desc = L"URL:K-Toolz Protocol";
+            RegSetValueExW(k, nullptr, 0, REG_SZ, (const BYTE*)desc, (DWORD)((wcslen(desc) + 1) * sizeof(wchar_t)));
+            RegSetValueExW(k, L"URL Protocol", 0, REG_SZ, (const BYTE*)L"", sizeof(wchar_t));
+            RegCloseKey(k);
+        }
+        HKEY c;
+        if (RegCreateKeyExW(HKEY_CURRENT_USER, (base + L"\\shell\\open\\command").c_str(), 0, nullptr, 0, KEY_WRITE, nullptr, &c, nullptr) == ERROR_SUCCESS) {
+            std::wstring cmd = std::wstring(L"\"") + exe + L"\" \"%1\"";
+            RegSetValueExW(c, nullptr, 0, REG_SZ, (const BYTE*)cmd.c_str(), (DWORD)((cmd.size() + 1) * sizeof(wchar_t)));
+            RegCloseKey(c);
+        }
     }
 }
 // Deep-Link (lumora://...) verarbeiten. Die PROTOKOLL-Registrierung uebernimmt erst der
@@ -2811,11 +2866,11 @@ static void registerProtocol() {
 static std::string g_coldDeepLink;   // Kaltstart-Deep-Link, wird per TIMER_COLDLINK nachgereicht (s. wWinMain)
 static void handleDeepLink(const std::string& url) {
     std::smatch m;
-    if (std::regex_search(url, m, std::regex("^lumora://join/([A-Za-z0-9]+)", std::regex::icase))) {
+    if (std::regex_search(url, m, std::regex("^(?:ktoolz|lumora)://join/([A-Za-z0-9]+)", std::regex::icase))) {
         std::string code = m[1]; for (auto& c : code) c = (char)toupper((unsigned char)c);
         showMainWindow();
         sendToUi("deep-join", { {"code", code} });
-    } else if (url.rfind("lumora://forward-help", 0) == 0) {
+    } else if (url.rfind("ktoolz://forward-help", 0) == 0 || url.rfind("lumora://forward-help", 0) == 0) {
         showMainWindow();
         sendToUi("show-forward-help", nullptr);
     }
@@ -2939,7 +2994,7 @@ static bool runTask(const wchar_t* task) {   // geplante Broker-Aufgabe starten 
 // FPS lesen (Frische: magic + brokerTick-Alter <= 1500ms; 1,5s-Ueberbrueckung wie main.js)
 static json g_lastFps = nullptr; static ULONGLONG g_lastFpsAt = 0;
 static json readBrokerFps() {
-    if (!shmOpen(g_fpsShm, "Local\\LumoraOSDFps")) return nullptr;
+    if (!shmOpen(g_fpsShm, "Local\\KToolzOSDFps")) return nullptr;
     uint32_t now = GetTickCount();
     shmWriteApp(g_fpsShm, 1);
     FpsShmFull s{};
@@ -2972,7 +3027,7 @@ static bool shmPeek16(ShmMap& m, uint32_t out[16]) {
     return true;
 }
 static bool fpsBrokerAlive() {
-    if (!shmOpen(g_fpsShm, "Local\\LumoraOSDFps")) return false;
+    if (!shmOpen(g_fpsShm, "Local\\KToolzOSDFps")) return false;
     FpsShmFull s{};
     return shmRead(g_fpsShm, s) && s.magic == FPS_MAGIC && (uint32_t)(GetTickCount() - s.brokerTick) <= 3000;
 }
@@ -2999,7 +3054,7 @@ static uint32_t netPidByExe(const std::string& exeLow) {
 static uint64_t g_netNullIn = 0, g_netNullOut = 0;
 static bool netRawRead(uint64_t& in, uint64_t& out, bool& an) {
     uint32_t w[16] = {};
-    if (!shmOpen(g_fpsShm, "Local\\LumoraOSDFps") || !shmPeek16(g_fpsShm, w)) return false;
+    if (!shmOpen(g_fpsShm, "Local\\KToolzOSDFps") || !shmPeek16(g_fpsShm, w)) return false;
     in = ((uint64_t)w[10] << 32) | w[9];
     out = ((uint64_t)w[12] << 32) | w[11];
     an = w[13] != 0;
@@ -3036,7 +3091,7 @@ static void netStatTick() {
     }
     if (!pid) pid = netPidByExe(exe);
     if (!pid) return;                      // Prozess (noch) nicht auffindbar -> naechster Tick
-    if (!shmOpen(g_fpsShm, "Local\\LumoraOSDFps")) return;
+    if (!shmOpen(g_fpsShm, "Local\\KToolzOSDFps")) return;
     shmWriteApp(g_fpsShm, 1);              // Heartbeat: Broker lebt, solange gezaehlt wird
     shmPoke(g_fpsShm, 8, pid);
     // Neues Spiel: der Broker faengt bei 0 an, also muss auch der Nullpunkt weg.
@@ -3110,7 +3165,7 @@ static json readMahm() {
     return g_mahmVal;
 }
 static json readSenseCpu() {   // CPU-Temp/-Watt vom PawnIO-Broker
-    if (!shmOpen(g_senseShm, "Local\\LumoraOSDSense")) return nullptr;
+    if (!shmOpen(g_senseShm, "Local\\KToolzOSDSense")) return nullptr;
     uint32_t now = GetTickCount();
     shmWriteApp(g_senseShm, 1);
     SenseShmFull s{};
@@ -3120,7 +3175,7 @@ static json readSenseCpu() {   // CPU-Temp/-Watt vom PawnIO-Broker
 }
 // Laeuft der Sensor-Broker gerade (frischer brokerTick)? Fuer die Quellen-Anzeige.
 static bool senseBrokerAlive() {
-    if (!shmOpen(g_senseShm, "Local\\LumoraOSDSense")) return false;
+    if (!shmOpen(g_senseShm, "Local\\KToolzOSDSense")) return false;
     SenseShmFull s{}; uint32_t now = GetTickCount();
     return shmRead(g_senseShm, s) && s.magic == SENSE_MAGIC && (uint32_t)(now - s.brokerTick) <= 3000;
 }
@@ -3130,8 +3185,8 @@ static void brokersEnsure() {   // beide Aufgaben anstossen (idempotent, 4s-Spaw
     // das Wiederherstellen uebersprang. Nur der (teure) TASK-Start bleibt gedrosselt.
     // WICHTIG (wie Electrons startBroker): Sections App-first erstellen UND wanted=1 VOR dem
     // Task-Start schreiben - der Broker prueft das Flag beim Hochkommen und beendet sich sonst sofort.
-    shmOpen(g_fpsShm, "Local\\LumoraOSDFps"); shmWriteApp(g_fpsShm, 1);
-    shmOpen(g_senseShm, "Local\\LumoraOSDSense"); shmWriteApp(g_senseShm, 1);
+    shmOpen(g_fpsShm, "Local\\KToolzOSDFps"); shmWriteApp(g_fpsShm, 1);
+    shmOpen(g_senseShm, "Local\\KToolzOSDSense"); shmWriteApp(g_senseShm, 1);
     if (GetTickCount64() - g_brokerSpawnAt < 4000) return;   // nur der Task-Start ist gedrosselt
     g_brokerSpawnAt = GetTickCount64();
     std::thread([]() { runTask(L"K-Toolz-FPS"); runTask(L"K-Toolz-Sensors"); }).detach();
@@ -3141,7 +3196,7 @@ static void brokersEnsure() {   // beide Aufgaben anstossen (idempotent, 4s-Spaw
 // Beim OSD-Einschalten das einrichten, was fuer die Vollausstattung fehlt: FPS-Task
 // (PresentMon), PawnIO-Treiber (Download + Authenticode-Pruefung von der offiziellen
 // Quelle + Silent-Install) und Sensor-Task. Alles Elevated in EINEM Aufruf ueber
-// lumora-elevate.exe -> genau EIN UAC-Dialog (zeigt Lumora, nicht "PowerShell").
+// k-toolz-elevate.exe -> genau EIN UAC-Dialog (zeigt Lumora, nicht "PowerShell").
 // 1:1 aus main.js ensureOsdSetup portiert.
 static std::atomic<bool> g_osdSetupRunning{ false };
 static std::atomic<bool> g_osdSetupChecked{ false };   // die (teuren) schtask-Checks pro Sitzung nur EINMAL
@@ -3206,7 +3261,8 @@ static bool fpsTaskPresent()   { return schtaskPresent(L"K-Toolz-FPS"); }
 // Registrierungslauf (OSD, Netzwerk-Statistik, Analyse) die alten Namen gleich mit (kUnregisterLegacy);
 // hier wird nur festgehalten, dass noch alte Aufgaben vorhanden sind.
 static const wchar_t* const kUnregisterLegacy =
-    L"Get-ScheduledTask -TaskName 'LumoraOSD-FPS','LumoraOSD-Sensors','LumoraOSD-Analyze' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue; ";
+    L"Get-ScheduledTask -TaskName 'LumoraOSD-FPS','LumoraOSD-Sensors','LumoraOSD-Analyze' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue; "
+    L"Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue | Where-Object { $_.Program -match '\\\\lumora-(shell|capture-native|media-relay|elevate)\\.exe$' } | Get-NetFirewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue; ";
 static void migrateLegacyTasks() {
     std::thread([]() {
         for (const wchar_t* alt : { L"LumoraOSD-FPS", L"LumoraOSD-Sensors", L"LumoraOSD-Analyze" })
@@ -3252,7 +3308,7 @@ static void netEnsureTask() {
             L"Register-ScheduledTask -TaskName 'K-Toolz-FPS' -Description 'K-Toolz (PlainOSD / Netzwerk-Statistik): FPS- und Netzwerk-Messung über Windows-ETW. Startet nur auf Anforderung der App, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);
         std::wstring b64w = widen(b64);
-        std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
+        std::wstring elevExe = binDir() + L"\\k-toolz-elevate.exe";
         std::wstring outer = (GetFileAttributesW(elevExe.c_str()) != INVALID_FILE_ATTRIBUTES)
             ? L"Start-Process -FilePath '" + q(elevExe) + L"' -Verb RunAs -WindowStyle Hidden -ArgumentList '--ps-encoded','" + b64w + L"'"
             : L"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -EncodedCommand " + b64w + L"'";
@@ -3338,7 +3394,7 @@ static void ensureOsdSetup() {
         std::wstring inner; for (size_t i = 0; i < ps.size(); ++i) { if (i) inner += L"; "; inner += ps[i]; }
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);   // UTF-16LE wie PowerShell -EncodedCommand
         std::wstring b64w = widen(b64);
-        std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
+        std::wstring elevExe = binDir() + L"\\k-toolz-elevate.exe";
         std::wstring outer = (GetFileAttributesW(elevExe.c_str()) != INVALID_FILE_ATTRIBUTES)
             ? L"Start-Process -FilePath '" + q(elevExe) + L"' -Verb RunAs -WindowStyle Hidden -ArgumentList '--ps-encoded','" + b64w + L"'"
             : L"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -EncodedCommand " + b64w + L"'";
@@ -3387,7 +3443,7 @@ static bool g_osdPreview = false;                // Gaming-OSD-Vorschau aktiv (R
 static std::wstring analyzeDirW() { return dataDir() + L"\\analyze"; }
 static bool anShmOpen() {
     if (g_anShm) return true;
-    g_anShm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 256, "Local\\LumoraOSDAnalyze");
+    g_anShm = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 256, "Local\\KToolzOSDAnalyze");
     return g_anShm != nullptr;
 }
 static void anShmWriteApp(uint32_t wanted, uint32_t targetPid, uint32_t mode) {
@@ -3426,7 +3482,7 @@ static void analyzeWriteContext() {
     RTL_OSVERSIONINFOW vi{ sizeof(vi) };
     { auto f = (LONG(WINAPI*)(RTL_OSVERSIONINFOW*))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
       if (f && f(&vi) == 0) ctx["winBuild"] = (int)vi.dwBuildNumber; }
-    ctx["lumora"] = shellVersion();
+    ctx["appVersion"] = shellVersion();
     CreateDirectoryW(analyzeDirW().c_str(), nullptr);
     CreateDirectoryW((analyzeDirW() + L"\\current").c_str(), nullptr);
     writeFile(analyzeDirW() + L"\\current\\context.json", ctx.dump());
@@ -3551,7 +3607,7 @@ static void ensureAnalyzeSetup() {
             L"Register-ScheduledTask -TaskName 'K-Toolz-Analyze' -Description 'K-Toolz (StutterHunter): Mess-Broker von StutterHunter (Frametimes, Treiber-Latenzen, Prozesslast über Windows-ETW). Startet nur für eine Messung, kein Autostart.' -Action $a -Principal $p -Settings $s -Force";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);
         std::wstring b64w = widen(b64);
-        std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
+        std::wstring elevExe = binDir() + L"\\k-toolz-elevate.exe";
         std::wstring outer = (GetFileAttributesW(elevExe.c_str()) != INVALID_FILE_ATTRIBUTES)
             ? L"Start-Process -FilePath '" + q(elevExe) + L"' -Verb RunAs -WindowStyle Hidden -ArgumentList '--ps-encoded','" + b64w + L"'"
             : L"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -EncodedCommand " + b64w + L"'";
@@ -3675,7 +3731,7 @@ static void ensureVigemSetup() {
         std::wstring inner = L"Start-Process -FilePath '" + q(setupExe) + L"' -ArgumentList '/exenoui','/qn','/norestart' -Wait";
         std::string b64 = b64encode((const uint8_t*)inner.data(), inner.size() * 2);   // UTF-16LE wie PowerShell -EncodedCommand
         std::wstring b64w = widen(b64);
-        std::wstring elevExe = binDir() + L"\\lumora-elevate.exe";
+        std::wstring elevExe = binDir() + L"\\k-toolz-elevate.exe";
         std::wstring outer = (GetFileAttributesW(elevExe.c_str()) != INVALID_FILE_ATTRIBUTES)
             ? L"Start-Process -FilePath '" + q(elevExe) + L"' -Verb RunAs -WindowStyle Hidden -ArgumentList '--ps-encoded','" + b64w + L"'"
             : L"Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile -EncodedCommand " + b64w + L"'";
@@ -4062,7 +4118,7 @@ static LRESULT CALLBACK osdWndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 static void createOsdWindow() {
     if (g_osdHwnd) return;
     static bool reg = false;
-    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = osdWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"LumoraOsd"; RegisterClassW(&wc); reg = true; }
+    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = osdWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"KToolzOsd"; RegisterClassW(&wc); reg = true; }
     // Hauptmonitor-Flaeche minus 1px unten (bricht die Vollbild-Erkennung von Windows nicht).
     // WS_EX_NOREDIRECTIONBITMAP: keine eigene Redirection-Surface -> DirectComposition scheint
     // per-pixel-transparent durch (Voraussetzung fuer echte WebView2-Transparenz). KEIN
@@ -4077,10 +4133,10 @@ static void createOsdWindow() {
     // Aufruf hatte frueher das HWND-Controller-Rendering gekillt) - der DComp-
     // Visual-Baum wird unabhaengig composited (Standard-Overlay-Kombi).
     g_osdHwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOREDIRECTIONBITMAP | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
-        L"LumoraOsd", L"", WS_POPUP, mi.rcMonitor.left, mi.rcMonitor.top, w, hgt, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+        L"KToolzOsd", L"", WS_POPUP, mi.rcMonitor.left, mi.rcMonitor.top, w, hgt, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!g_osdHwnd) { bcLogStream("osd: CreateWindowExW fehlgeschlagen err=" + std::to_string(GetLastError())); return; }
     bcLogStream("osd: Overlay-Fenster erstellt (Composition)");
-    std::wstring userData = knownFolder(L"LOCALAPPDATA", FOLDERID_LocalAppData) + L"\\lumora-shell";   // robust: env ODER SHGetKnownFolderPath
+    std::wstring userData = webviewDataDir();
     CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
@@ -4107,7 +4163,7 @@ static void createOsdWindow() {
                             RECT rc; GetClientRect(g_osdHwnd, &rc); g_osdCtrl->put_Bounds(rc);
                             g_osdCtrl->put_IsVisible(TRUE);
                             ComPtr<ICoreWebView2_3> wv3; g_osdWv.As(&wv3);
-                            if (wv3) wv3->SetVirtualHostNameToFolderMapping(L"app.lumora", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                            if (wv3) wv3->SetVirtualHostNameToFolderMapping(L"app.k-toolz", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                             std::wstring shim = SHIM_JS; size_t vp = shim.find(L"%SHELL_VERSION%");
                             if (vp != std::wstring::npos) shim.replace(vp, 15, widen(shellVersion()));
                             g_osdWv->AddScriptToExecuteOnDocumentCreated(shim.c_str(), nullptr);
@@ -4122,7 +4178,7 @@ static void createOsdWindow() {
                                 }).Get(), nullptr);
                             g_osdWv->add_NavigationCompleted(Callback<ICoreWebView2NavigationCompletedEventHandler>(
                                 [](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*) -> HRESULT { g_osdLoaded = true; bcLogStream("osd: osd.html geladen"); applyOsdConfig(); osdMakeChildrenClickThrough(); return S_OK; }).Get(), nullptr);
-                            g_osdWv->Navigate(L"https://app.lumora/osd.html");
+                            g_osdWv->Navigate(L"https://app.k-toolz/osd.html");
                             osdMakeChildrenClickThrough();   // Chromium-Eingabe-Kinder existieren ab jetzt - sofort durchlaessig machen
                             return S_OK;
                         }).Get());
@@ -4205,14 +4261,14 @@ static LRESULT CALLBACK anOsdWndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 static void createAnalyzeOsdWindow() {
     if (g_anOsdHwnd) return;
     static bool reg = false;
-    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = anOsdWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"LumoraAnalyzeOsd"; RegisterClassW(&wc); reg = true; }
+    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = anOsdWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"KToolzAnalyzeOsd"; RegisterClassW(&wc); reg = true; }
     RECT mon = osdMonitorRect();
     g_anOsdHwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOREDIRECTIONBITMAP | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
-        L"LumoraAnalyzeOsd", L"", WS_POPUP, mon.left, mon.top, 520, 300, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+        L"KToolzAnalyzeOsd", L"", WS_POPUP, mon.left, mon.top, 520, 300, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!g_anOsdHwnd) { bcLogStream("analyze-osd: CreateWindowExW err=" + std::to_string(GetLastError())); return; }
     applyAnalyzeOsdGeometry();   // SOFORT an die gewaehlte Ecke (Default oben rechts) - nie ueber dem Gaming-OSD stehen bleiben
     bcLogStream("analyze-osd: Overlay-Fenster erstellt");
-    std::wstring userData = knownFolder(L"LOCALAPPDATA", FOLDERID_LocalAppData) + L"\\lumora-shell";   // robust: env ODER SHGetKnownFolderPath
+    std::wstring userData = webviewDataDir();
     CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
@@ -4241,7 +4297,7 @@ static void createAnalyzeOsdWindow() {
                               double z = (std::max)(0.5, (std::min)(2.5, s.value("analyzeOsdScale", 1.0)));
                               g_anOsdCtrl->put_ZoomFactor(z); }
                             ComPtr<ICoreWebView2_3> wv3; g_anOsdWv.As(&wv3);
-                            if (wv3) wv3->SetVirtualHostNameToFolderMapping(L"app.lumora", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                            if (wv3) wv3->SetVirtualHostNameToFolderMapping(L"app.k-toolz", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                             std::wstring shim = SHIM_JS; size_t vp = shim.find(L"%SHELL_VERSION%");
                             if (vp != std::wstring::npos) shim.replace(vp, 15, widen(shellVersion()));
                             g_anOsdWv->AddScriptToExecuteOnDocumentCreated(shim.c_str(), nullptr);
@@ -4261,7 +4317,7 @@ static void createAnalyzeOsdWindow() {
                                     if (g_anPreview.load()) sendToAnalyzeOsd("an-preview", true);   // Demo-Inhalt nachreichen
                                     anMakeChildrenClickThrough(); return S_OK;
                                 }).Get(), nullptr);
-                            g_anOsdWv->Navigate((L"https://app.lumora/analyze-osd.html?lang=" + uiLang()).c_str());   // Sprache mitgeben (Seite hat keine Settings-Anbindung)
+                            g_anOsdWv->Navigate((L"https://app.k-toolz/analyze-osd.html?lang=" + uiLang()).c_str());   // Sprache mitgeben (Seite hat keine Settings-Anbindung)
                             anMakeChildrenClickThrough();
                             return S_OK;
                         }).Get());
@@ -4458,17 +4514,17 @@ static LRESULT CALLBACK osdEditWndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 static void createOsdEditWindow() {
     if (g_osdEditHwnd) return;
     static bool reg = false;
-    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = osdEditWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"LumoraOsdEdit"; wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH); RegisterClassW(&wc); reg = true; }
+    if (!reg) { WNDCLASSW wc{}; wc.lpfnWndProc = osdEditWndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"KToolzOsdEdit"; wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH); RegisterClassW(&wc); reg = true; }
     // Desktop-Schnappschuss VOR dem Fenster (sonst ist das Edit-Fenster selbst im Bild).
     captureDesktopBmp(dataDir() + L"\\osd-edit-bg.bmp");
     RECT mon = osdMonitorRect();
     g_osdEditHwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        L"LumoraOsdEdit", L"PlainOSD", WS_POPUP | WS_VISIBLE,
+        L"KToolzOsdEdit", L"PlainOSD", WS_POPUP | WS_VISIBLE,
         mon.left, mon.top, mon.right - mon.left, mon.bottom - mon.top - 1,
         nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!g_osdEditHwnd) { bcLogStream("osd-edit: CreateWindowExW fehlgeschlagen err=" + std::to_string(GetLastError())); return; }
     SetForegroundWindow(g_osdEditHwnd);   // best effort; Fenster ist topmost + klickbar, erster Klick aktiviert sonst
-    std::wstring userData = knownFolder(L"LOCALAPPDATA", FOLDERID_LocalAppData) + L"\\lumora-shell";   // robust: env ODER SHGetKnownFolderPath
+    std::wstring userData = webviewDataDir();
     CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
@@ -4485,8 +4541,8 @@ static void createOsdEditWindow() {
                               g_osdEditCtrl->put_ZoomFactor(z); }
                             ComPtr<ICoreWebView2_3> wv3; g_osdEditWv.As(&wv3);
                             if (wv3) {
-                                wv3->SetVirtualHostNameToFolderMapping(L"app.lumora", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
-                                wv3->SetVirtualHostNameToFolderMapping(L"data.lumora", dataDir().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);   // liefert osd-edit-bg.bmp
+                                wv3->SetVirtualHostNameToFolderMapping(L"app.k-toolz", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                                wv3->SetVirtualHostNameToFolderMapping(L"data.k-toolz", dataDir().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);   // liefert osd-edit-bg.bmp
                             }
                             std::wstring shim = SHIM_JS; size_t vp = shim.find(L"%SHELL_VERSION%");
                             if (vp != std::wstring::npos) shim.replace(vp, 15, widen(shellVersion()));
@@ -4505,7 +4561,7 @@ static void createOsdEditWindow() {
                                     if (g_osdEditCtrl) g_osdEditCtrl->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
                                     return S_OK;
                                 }).Get(), nullptr);
-                            g_osdEditWv->Navigate(L"https://app.lumora/osd.html?editbg=1");
+                            g_osdEditWv->Navigate(L"https://app.k-toolz/osd.html?editbg=1");
                             return S_OK;
                         }).Get());
                 return S_OK;
@@ -4591,7 +4647,7 @@ static void createWerkbankWindow(const std::string& file) {
     static bool reg = false;
     if (!reg) {
         WNDCLASSW wc{}; wc.lpfnWndProc = wbWndProc; wc.hInstance = GetModuleHandleW(nullptr);
-        wc.lpszClassName = L"LumoraWerkbank"; wc.hbrBackground = CreateSolidBrush(RGB(8, 9, 14));
+        wc.lpszClassName = L"KToolzWerkbank"; wc.hbrBackground = CreateSolidBrush(RGB(8, 9, 14));
         wc.hIcon = LoadIconW(GetModuleHandleW(nullptr), L"IDI_MOD_STUTTER");   // Werkbank gehoert zu StutterHunter wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
         RegisterClassW(&wc); reg = true;
     }
@@ -4600,7 +4656,7 @@ static void createWerkbankWindow(const std::string& file) {
     { HMONITOR mon = MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTOPRIMARY);
       MONITORINFO mi{ sizeof(mi) }; if (GetMonitorInfoW(mon, &mi)) wa = mi.rcWork; }
     int w = (std::min)(1280L, wa.right - wa.left), h = (std::min)(800L, wa.bottom - wa.top);
-    g_wbHwnd = CreateWindowExW(0, L"LumoraWerkbank", L"StutterHunter Analyse-Werkbank",
+    g_wbHwnd = CreateWindowExW(0, L"KToolzWerkbank", L"StutterHunter Analyse-Werkbank",
         WS_OVERLAPPEDWINDOW,
         wa.left + (wa.right - wa.left - w) / 2, wa.top + (wa.bottom - wa.top - h) / 2, w, h,
         nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
@@ -4614,7 +4670,7 @@ static void createWerkbankWindow(const std::string& file) {
     // (Nutzer-Befund: "kleines unbrauchbares Fenster"). Verkleinern bleibt moeglich.
     ShowWindow(g_wbHwnd, SW_MAXIMIZE);
     SetForegroundWindow(g_wbHwnd);
-    std::wstring userData = knownFolder(L"LOCALAPPDATA", FOLDERID_LocalAppData) + L"\\lumora-shell";   // robust: env ODER SHGetKnownFolderPath
+    std::wstring userData = webviewDataDir();
     std::wstring navFile = widen(file);   // per Wert in den Callback (Query-Parameter beim ersten Navigate)
     CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
@@ -4634,10 +4690,10 @@ static void createWerkbankWindow(const std::string& file) {
                               if (s9) s9->put_IsNonClientRegionSupportEnabled(TRUE); }
                             ComPtr<ICoreWebView2_3> wv3; g_wbWv.As(&wv3);
                             if (wv3) {
-                                wv3->SetVirtualHostNameToFolderMapping(L"app.lumora", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                                wv3->SetVirtualHostNameToFolderMapping(L"app.k-toolz", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                                 // data.lumora: die Werkbank laedt Reports (v2 = Megabytes)
                                 // DIREKT per fetch statt ueber den IPC-Umweg.
-                                wv3->SetVirtualHostNameToFolderMapping(L"data.lumora", dataDir().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                                wv3->SetVirtualHostNameToFolderMapping(L"data.k-toolz", dataDir().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                             }
                             std::wstring shim = SHIM_JS; size_t vp = shim.find(L"%SHELL_VERSION%");
                             if (vp != std::wstring::npos) shim.replace(vp, 15, widen(shellVersion()));
@@ -4648,7 +4704,7 @@ static void createWerkbankWindow(const std::string& file) {
                                     if (SUCCEEDED(a->get_WebMessageAsJson(&j)) && j) { onWebMessage(j, g_wbHwnd); CoTaskMemFree(j); }
                                     return S_OK;
                                 }).Get(), nullptr);
-                            std::wstring url = L"https://app.lumora/analyze-werkbank.html";
+                            std::wstring url = L"https://app.k-toolz/analyze-werkbank.html";
                             if (!navFile.empty()) url += L"?file=" + navFile;   // anSafeName-geprueft, keine Sonderzeichen
                             g_wbWv->Navigate(url.c_str());
                             return S_OK;
@@ -4941,7 +4997,7 @@ static json handleChannel(const std::string& channel, const json& args) {
             luart::HttpResp r = luart::httpGet(g_updUrl, L"", 180000);   // Installer ist klein (~13 MB)
             if (r.status != 200 || r.body.empty()) { sendToUi("update-error", { {"message", "Download fehlgeschlagen"} }); g_updBusy = false; return; }
             wchar_t tmp[MAX_PATH] = {}; GetTempPathW(MAX_PATH, tmp);
-            g_updFile = narrow(tmp) + "Lumora-Native-Update.exe";
+            g_updFile = narrow(tmp) + "K-Toolz-Update.exe";
             HANDLE f = CreateFileW(widen(g_updFile).c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
             if (f != INVALID_HANDLE_VALUE) { DWORD w = 0; WriteFile(f, r.body.data(), (DWORD)r.body.size(), &w, nullptr); CloseHandle(f); }
             sendToUi("update-progress", { {"percent", 100} });
@@ -4964,7 +5020,7 @@ static json handleChannel(const std::string& channel, const json& args) {
     // Waehrend eines laufenden Streams NICHT neu starten (Zuschauer wuerden abbrechen).
     if (channel == "restart-app") {
         if (g_bcState.value("active", false)) return json{ {"ok", false}, {"streaming", true} };
-        std::wstring exe = exeDir() + L"\\lumora-shell.exe";
+        std::wstring exe = exeDir() + L"\\k-toolz.exe";
         // Der Nachfolger MUSS auf unser Prozessende warten: sonst laeuft er in die
         // Einzelinstanz-Sperre (CreateMutexW unten in wWinMain), findet uns noch am Leben,
         // reicht brav seine Kommandozeile durch und beendet sich SOFORT wieder - waehrend
@@ -5143,7 +5199,7 @@ static json handleChannel(const std::string& channel, const json& args) {
     }
     if (channel == "preview-whep" && args.size() >= 1 && args[0].is_string()) {
         // Vorschau direkt an den eigenen /whep-Weg (User-Agent markiert -> nicht als Zuschauer gezaehlt)
-        auto r = lusrv::proxyLocal(MTX_WHEP_PORT, "POST", std::string("/") + MTX_PATH + "/whep", "application/sdp", "LumoraPreview", args[0].get<std::string>());
+        auto r = lusrv::proxyLocal(MTX_WHEP_PORT, "POST", std::string("/") + MTX_PATH + "/whep", "application/sdp", "KToolzPreview", args[0].get<std::string>());
         json out = { {"ok", r.status >= 200 && r.status < 300}, {"answer", r.body}, {"session", nullptr} };
         if (r.headers.count("Location")) {
             std::string loc = r.headers["Location"]; size_t h = loc.find("//");
@@ -5950,7 +6006,8 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
     case WM_COPYDATA: {   // Zweitinstanz reicht ihre Kommandozeile durch (Deep-Link/Fokus)
         auto* cds = (COPYDATASTRUCT*)l;
         std::string arg = cds && cds->lpData ? std::string((const char*)cds->lpData, cds->cbData) : "";
-        if (arg.find("lumora://") != std::string::npos) handleDeepLink(arg.substr(arg.find("lumora://")));
+        size_t dl = arg.find("ktoolz://"); if (dl == std::string::npos) dl = arg.find("lumora://");   // lumora:// = bereits verschickte Einladungen
+        if (dl != std::string::npos) handleDeepLink(arg.substr(dl));
         else {
             size_t mp = arg.find("--mode=");   // Startmenue-Eintrag eines Werkzeugs bei laufender App
             if (mp != std::string::npos) { std::string m = arg.substr(mp + 7); m = m.substr(0, m.find(' ')); if (moduleDef(m)) sendToUi("start-mode", m); }
@@ -6053,9 +6110,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     bool isTestRun = false;
     { int tac = 0; LPWSTR* tav = CommandLineToArgvW(GetCommandLineW(), &tac);
       if (tav) { for (int i = 1; i < tac; ++i) if (wcsncmp(tav[i], L"--test-", 7) == 0) { isTestRun = true; break; } LocalFree(tav); } }
-    HANDLE mutex = isTestRun ? nullptr : CreateMutexW(nullptr, TRUE, L"Local\\LumoraShellSingleton");
+    HANDLE mutex = isTestRun ? nullptr : CreateMutexW(nullptr, TRUE, L"Local\\KToolzSingleton");
     if (!isTestRun && GetLastError() == ERROR_ALREADY_EXISTS) {
-        HWND other = FindWindowW(L"LumoraShell", nullptr);
+        HWND other = FindWindowW(L"KToolzShell", nullptr);
         if (other) {
             std::string cmd; int ac = 0; LPWSTR* av = CommandLineToArgvW(GetCommandLineW(), &ac);
             for (int i = 1; i < ac; ++i) { if (i > 1) cmd += " "; int n = WideCharToMultiByte(CP_UTF8, 0, av[i], -1, nullptr, 0, nullptr, nullptr); std::string a(n ? n - 1 : 0, 0); WideCharToMultiByte(CP_UTF8, 0, av[i], -1, &a[0], n, nullptr, nullptr); cmd += a; }
@@ -6064,6 +6121,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         }
         return 0;
     }
+    if (!isTestRun) migrateDataDir();   // einmalig %APPDATA%\lumora -> %APPDATA%\K-Toolz (vor jedem Lesen der Einstellungen)
     // App-Ordner (index.html) finden: --appdir > aktuelles Verzeichnis > exe-Ordner >
     // von dort aufwaerts (Doppelklick aus build/Release im Quellbaum). Im spaeteren
     // Installer liegt das UI direkt neben der exe - dann greift Stufe 3 sofort.
@@ -6072,7 +6130,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     // Ergebnis nach %TEMP%\lumora-shell-test.txt - automatisierte Verifikation des Dispatchers.
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-sensors") == 0) {
         // Sensor-Teil 1 am echten System: 2 Samples (Delta-Zaehler), dann Werte.
-        sensorsInit(); shmOpen(g_fpsShm, "Local\\LumoraOSDFps"); shmOpen(g_senseShm, "Local\\LumoraOSDSense"); brokersEnsure();
+        sensorsInit(); shmOpen(g_fpsShm, "Local\\KToolzOSDFps"); shmOpen(g_senseShm, "Local\\KToolzOSDSense"); brokersEnsure();
         PdhCollectQueryData(g_pdhQ); Sleep(1100);
         for (int w = 0; w < 8; ++w) { shmWriteApp(g_fpsShm, 1); shmWriteApp(g_senseShm, 1); Sleep(1000); }   // Broker hochkommen lassen
         PdhCollectQueryData(g_pdhQ);   // FRISCHES Sample direkt vor dem Lesen (wie osdDataTick)
@@ -6084,7 +6142,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             "\nshm: h=" + std::to_string(g_fpsShm.h != nullptr) + " read=" + std::to_string(rOk) + " gle=" + std::to_string(GetLastError()) +
             " magic=" + std::to_string(rawF.magic) + " brokerTick=" + std::to_string(rawF.brokerTick) + " fps=" + std::to_string(rawF.fps) + " tick=" + std::to_string(GetTickCount()) + "\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-conn") == 0) {
@@ -6094,7 +6152,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         for (auto& st : r.value("steps", json::array()))
             s += "  [" + st.value("state", "?") + "] " + st.value("label", "?") + ": " + st.value("detail", "").substr(0, 90) + "\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-doorman") == 0) {
@@ -6113,7 +6171,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         std::string s = std::string("hmac=") + (macOk ? "OK" : ("FALSCH:" + mac)) +
             " gate:" + g1 + "/" + g2 + "/" + g3 + "/" + g4 + " (erwartet pending/pending/granted/banned)\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-upnp") == 0) {
@@ -6132,7 +6190,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         s += "mapPort(48787): " + std::to_string(m) + "\n";
         if (m) { luupnp::unmapPort(48787, "TCP"); s += "unmap: ok\n"; }
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-broadcast") == 0) {
@@ -6152,7 +6210,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         stopBroadcast();
         s += "stop: ok\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-http") == 0) {
@@ -6169,9 +6227,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
                 "\nplayer=" + std::to_string(ply.status) + " " + std::to_string(ply.body.size()) + "B" +
                 "\n404=" + std::to_string(nf.status) + "\n";
             g_streamSrv.stop();
-        } else s = "SERVER-START FEHLGESCHLAGEN (Port belegt? Electron-Lumora streamt gerade?)\n";
+        } else s = "SERVER-START FEHLGESCHLAGEN (Port belegt? Eine aeltere Version streamt gerade?)\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-launch") == 0) {
@@ -6186,7 +6244,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             " procByName(explorer)=" + (pn ? "1" : "0") + " procInFolder(Windows)=" + (pf ? "1" : "0") +
             " steamRunning=" + std::to_string(sr) + "\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-art") == 0) {
@@ -6198,7 +6256,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             " cover=" + (cover.is_string() ? std::to_string(cover.get<std::string>().size()) + "B" : "FEHLT") +
             " info=" + (info.is_object() ? info.value("releaseYear", "?") + "/" + info.value("developer", "?") : "FEHLT") + "\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-scan") == 0) {
@@ -6212,7 +6270,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         std::string s = per + "gefunden=" + std::to_string(r.size()) + "\n";
         for (size_t k = 0; k < r.size() && k < 40; ++k) s += "  " + r[k].value("source", "?") + ": " + r[k].value("name", "?") + " -> " + r[k].value("path", "?") + "\n";
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", s);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", s);
         return 0;
     }
     // Selbsttest der HDR-Abfrage (Gegenstueck zum neuen Titelleisten-Schalter): meldet, ob
@@ -6220,14 +6278,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     // Dauerhaft nuetzlich, weil sich HDR-Zustaende sonst nur visuell pruefen lassen.
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-icon") == 0 && i + 1 < argc) {
         // Icon-Aufloesung fuer einen konkreten Spielpfad pruefen (Xbox/Steam/Exe).
-        // Aufruf: lumora-shell.exe --test-icon "C:\XboxGames\...\spiel.exe"
+        // Aufruf: k-toolz.exe --test-icon "C:\XboxGames\...\spiel.exe"
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
         json r = handleChannel("get-file-icon", json::array({ narrow(argv[i + 1]) }));
         std::string url = r.is_string() ? r.get<std::string>() : "";
         std::string art = url.rfind("data:image/png", 0) == 0 ? "PNG (Paketlogo)"
                         : url.rfind("data:image/jpeg", 0) == 0 ? "JPEG (Steam-Store)"
                         : url.empty() ? "KEINS" : "Exe-Icon";
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt",
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt",
             "pfad=" + narrow(argv[i + 1]) + "\nquelle=" + art +
             "\nbytes(base64)=" + std::to_string(url.size()) + "\n");
         return 0;
@@ -6246,9 +6304,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         std::string res;
         WNDCLASSW wc{}; wc.lpfnWndProc = DefWindowProcW; wc.hInstance = GetModuleHandleW(nullptr);
-        wc.lpszClassName = L"LumoraZustandTest";
+        wc.lpszClassName = L"KToolzZustandTest";
         RegisterClassW(&wc);
-        HWND h = CreateWindowExW(0, L"LumoraZustandTest", L"Zustand", WS_OVERLAPPEDWINDOW,
+        HWND h = CreateWindowExW(0, L"KToolzZustandTest", L"Zustand", WS_OVERLAPPEDWINDOW,
                                  100, 100, 900, 600, nullptr, nullptr, wc.hInstance, nullptr);
         auto zeile = [&](const char* zustand) {
             WINDOWPLACEMENT wp{ sizeof(wp) }; GetWindowPlacement(h, &wp);
@@ -6269,7 +6327,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         ShowWindow(h, SW_MINIMIZE); pumpe(); ShowWindow(h, SW_HIDE); pumpe(); zeile("minimiert -> VERSTECKT");
         DestroyWindow(h);
         res = "fensterzustand-Messung:\n(SW_SHOWNORMAL=1 SW_SHOWMINIMIZED=2 SW_SHOWMAXIMIZED=3 / WPF_RESTORETOMAXIMIZED=0x2)\n" + res;
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-fenster") == 0) {
@@ -6280,9 +6338,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             res += std::string(ok ? "OK   " : "FEHL ") + was + "\n"; if (!ok) ++fehler;
         };
         WNDCLASSW wc{}; wc.lpfnWndProc = wndProc; wc.hInstance = GetModuleHandleW(nullptr);
-        wc.lpszClassName = L"LumoraShellTest"; wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+        wc.lpszClassName = L"KToolzShellTest"; wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
         RegisterClassW(&wc);
-        HWND h = CreateWindowExW(0, L"LumoraShellTest", L"Lumora Test", WS_OVERLAPPEDWINDOW,
+        HWND h = CreateWindowExW(0, L"KToolzShellTest", L"K-Toolz Test", WS_OVERLAPPEDWINDOW,
                                  100, 100, 900, 600, nullptr, nullptr, wc.hInstance, nullptr);
         if (!h) { res += "FEHL Testfenster liess sich nicht anlegen\n"; ++fehler; }
         else {
@@ -6316,7 +6374,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             DestroyWindow(h);
         }
         res = "fenster-Selbsttest: " + std::string(fehler ? "FEHLER" : "ok") + "\n" + res;
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return fehler ? 1 : 0;
     }
     // Netzwerk-Statistik Ende-zu-Ende: eigene ETW-Netz-Session starten, sich selbst
@@ -6334,7 +6392,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         };
         luetw::NetTrace net;
         if (!net.start()) {
-            writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt",
+            writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt",
                       "netstat-Selbsttest: NICHT MOEGLICH\n"
                       "ETW-System-Logger liess sich nicht starten - der Test braucht\n"
                       "Administratorrechte (im Betrieb laeuft die Zaehlung im elevated\n"
@@ -6372,7 +6430,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         closesocket(cli); closesocket(acc); closesocket(srv); WSACleanup();
         net.stop();
         res = "netstat-Selbsttest: " + std::string(fehler ? "FEHLER" : "ok") + "\n" + res;
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return fehler ? 1 : 0;
     }
     // Loeschen der Netz-Zaehler: der Broker kennt kein Ruecksetzen und zaehlt je
@@ -6402,8 +6460,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         pruef("Teilstring loest NICHT aus (kein 'vpinballx' matcht 'vpinballx64')", !hotkeysPausedFor("vpinballx.exe", liste("vpinballx64.exe")));
 
         WNDCLASSW wc{}; wc.lpfnWndProc = DefWindowProcW; wc.hInstance = GetModuleHandleW(nullptr);
-        wc.lpszClassName = L"LumoraHkPauseTest"; RegisterClassW(&wc);
-        HWND h = CreateWindowExW(0, L"LumoraHkPauseTest", L"Test", WS_OVERLAPPEDWINDOW, 0, 0, 200, 100, nullptr, nullptr, wc.hInstance, nullptr);
+        wc.lpszClassName = L"KToolzHkPauseTest"; RegisterClassW(&wc);
+        HWND h = CreateWindowExW(0, L"KToolzHkPauseTest", L"Test", WS_OVERLAPPEDWINDOW, 0, 0, 200, 100, nullptr, nullptr, wc.hInstance, nullptr);
         std::string echterName = foregroundExeNameLow(h);
         wchar_t selbstW[MAX_PATH]; GetModuleFileNameW(nullptr, selbstW, MAX_PATH);
         std::string erwartet = narrow(selbstW);
@@ -6413,10 +6471,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         res += "  erkannt: " + echterName + " | erwartet: " + erwartet + "\n";
         pruef("echte exe wird von der eigenen Liste pausiert", hotkeysPausedFor(echterName, liste(erwartet)));
         DestroyWindow(h);
-        pruef("leeres Fenster (kein Vordergrund) pausiert nie", !hotkeysPausedFor(foregroundExeNameLow(nullptr), liste("lumora-shell")));
+        pruef("leeres Fenster (kein Vordergrund) pausiert nie", !hotkeysPausedFor(foregroundExeNameLow(nullptr), liste("k-toolz")));
 
         res = "hotkeypause-Selbsttest: " + std::string(fehler ? "FEHLER" : "ok") + "\n" + res;
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return fehler ? 1 : 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-netreset") == 0) {
@@ -6426,15 +6484,15 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             res += std::string(ok ? "OK   " : "FEHL ") + was + "\n"; if (!ok) ++fehler;
         };
         if (fpsBrokerAlive()) {
-            writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt",
+            writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt",
                       "netreset-Selbsttest: NICHT MOEGLICH\n"
                       "Der FPS-Broker laeuft gerade und ueberschreibt den gemeinsamen\n"
                       "Speicher im Sekundentakt - der Test wuerde seine echten Zaehler\n"
-                      "verfaelschen. Lumora beenden und erneut ausfuehren.\n");
+                      "verfaelschen. K-Toolz beenden und erneut ausfuehren.\n");
             return 2;
         }
-        if (!shmOpen(g_fpsShm, "Local\\LumoraOSDFps")) {
-            writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", "netreset-Selbsttest: FEHLER\nFEHL gemeinsamer Speicher liess sich nicht anlegen\n");
+        if (!shmOpen(g_fpsShm, "Local\\KToolzOSDFps")) {
+            writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", "netreset-Selbsttest: FEHLER\nFEHL gemeinsamer Speicher liess sich nicht anlegen\n");
             return 1;
         }
         // Bewusst ueber 4 GB: der Zaehler steckt in ZWEI 32-bit-Woertern, ein
@@ -6482,7 +6540,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
 
         shmPoke(g_fpsShm, 13, 0);
         res = "netreset-Selbsttest: " + std::string(fehler ? "FEHLER" : "ok") + "\n" + res;
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return fehler ? 1 : 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-datadir") == 0) {
@@ -6505,7 +6563,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         res += "ruecklesen       : " + std::string(rb ? "ok" : "FEHLER") + "\n";
         res += "danach vorhanden : " + std::string(exists(d) ? "ja" : "NEIN") + "\n";
         res += "media-Unterordner: " + std::string(exists(d + L"\\media") ? "ja" : "nein (erst beim ersten Cover)") + "\n";
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-analyze") == 0) {
@@ -6526,7 +6584,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
             char b[96]; sprintf_s(b, "live: median=%.2fms fps=%.1f %s\n", lv.medianFtMs, lv.avgFps, lvOk ? "ok" : "FEHLER");
             res += b;
         }
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-runcapture") == 0) {
@@ -6544,13 +6602,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         t0 = GetTickCount64();
         std::string c = runCaptureOutput(L"powershell -NoProfile -Command \"Start-Sleep 1; 'spaet'\"", 8000);
         res += "spaet1s: " + std::to_string(GetTickCount64() - t0) + "ms ausgabe=" + (c.find("spaet") != std::string::npos ? "ok" : "FEHLT") + "\n";
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt", res);
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
         return 0;
     }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-hdr") == 0) {
         auto st = lulaunch::hdrState();
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt",
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt",
             std::string("capable=") + (st.capable ? "1" : "0") + " enabled=" + (st.enabled ? "1" : "0") + "\n");
         return 0;
     }
@@ -6558,7 +6616,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         json s = handleChannel("get-app-settings", json::array());
         json m = s; m.update(json{ {"__testfeld", 42} });
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
-        writeFile(std::wstring(tmp) + L"\\lumora-shell-test.txt",
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt",
             "settings_keys=" + std::to_string(s.size()) + " merged_keys=" + std::to_string(m.size()) +
             " testfeld=" + std::to_string(m.value("__testfeld", 0)) + "\n");
         return 0;
@@ -6623,7 +6681,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         if (wcscmp(argv[i], L"--welcome") == 0) g_forceWelcome = true;
     }
     adoptInstallModules();   // Modulwahl des Installers (einmalig) - vor Titel/Icon/Reitern
-    WNDCLASSW wc{}; wc.lpfnWndProc = wndProc; wc.hInstance = hInst; wc.lpszClassName = L"LumoraShell";
+    WNDCLASSW wc{}; wc.lpfnWndProc = wndProc; wc.hInstance = hInst; wc.lpszClassName = L"KToolzShell";
     wc.hIcon = appIcon(loadSettings(), GetSystemMetrics(SM_CXICON)); wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);   // Anzeigename-Regel
     wc.hbrBackground = CreateSolidBrush(RGB(15, 15, 15));   // #0f0f0f wie Electron (auch Farbe der Resize-Randstreifen)
     RegisterClassW(&wc);
@@ -6647,7 +6705,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         tr.right = tr.left + wwidth; tr.bottom = tr.top + wheight;
         if (MonitorFromRect(&tr, MONITOR_DEFAULTTONULL)) { wx = tr.left; wy = tr.top; }
     }
-    HWND hwnd = CreateWindowExW(0, L"LumoraShell", appDisplayName().c_str(), WS_OVERLAPPEDWINDOW,
+    HWND hwnd = CreateWindowExW(0, L"KToolzShell", appDisplayName().c_str(), WS_OVERLAPPEDWINDOW,
         wx, wy, wwidth, wheight, nullptr, nullptr, hInst, nullptr);
     g_hwnd = hwnd;
     applyIdentity();   // Titel + kleines/grosses Icon nach Anzeigename-Regel
@@ -6696,7 +6754,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     // noch null) und die App oeffnete sich nur, ohne in den Stream-Tab/Beitritts-Flow zu
     // springen (real gemeldet). Wie Electron (bcColdLink, 1200ms nach ready): Link merken
     // und per Timer nachreichen, wenn die UI ihre Listener registriert hat.
-    for (int i = 1; i < argc; ++i) { std::string a = narrow(argv[i]); if (a.rfind("lumora://", 0) == 0) { g_coldDeepLink = a; SetTimer(hwnd, TIMER_COLDLINK, 2500, nullptr); } }
+    for (int i = 1; i < argc; ++i) { std::string a = narrow(argv[i]); if (a.rfind("ktoolz://", 0) == 0 || a.rfind("lumora://", 0) == 0) { g_coldDeepLink = a; SetTimer(hwnd, TIMER_COLDLINK, 2500, nullptr); } }
     SetTimer(hwnd, TIMER_EXTWATCH, 2000, nullptr);   // Fremdstart-Watcher (HDR-Automatik + Spielzeit fuer nicht-Lumora-Starts)
     SetTimer(hwnd, TIMER_NETSTAT, 1000, nullptr);    // Netzwerk-Statistik: Ziel-PID melden + Broker-Heartbeat (1 Hz, billig ohne Spiel)
     SetTimer(hwnd, TIMER_OSDPRELOAD, 3000, nullptr); // OSD-WebView2 ~3s nach Start vorwaermen (Browser-Prozess laeuft dann schon) -> Oeffnen sofort
@@ -6722,7 +6780,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     // Gleiches Muster in createDoormanWindow/createOsdWindow/createAnalyzeOsdWindow/
     // createOsdEditWindow/createWerkbankWindow. Ausfuehrliche Begruendung ueber createDoormanWindow.
     // WebView2-Umgebung (System-Runtime; UserData separat, stoert die Electron-App nicht).
-    std::wstring userData = knownFolder(L"LOCALAPPDATA", FOLDERID_LocalAppData) + L"\\lumora-shell";   // robust: env ODER SHGetKnownFolderPath
+    std::wstring userData = webviewDataDir();
     HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(nullptr, userData.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [hwnd](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
@@ -6742,16 +6800,16 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
                             { ComPtr<ICoreWebView2Settings> set0; g_webview->get_Settings(&set0);
                               ComPtr<ICoreWebView2Settings9> set9; if (set0) set0.As(&set9);
                               if (set9) set9->put_IsNonClientRegionSupportEnabled(TRUE); }
-                            // Projektordner als https://app.lumora/, Datenordner (%APPDATA%\lumora)
+                            // Projektordner als https://app.k-toolz/, Datenordner (%APPDATA%\lumora)
                             // als https://data.lumora/ einblenden (sendSync-Emulation + spaeter Medien)
                             ComPtr<ICoreWebView2_3> wv3; g_webview.As(&wv3);
                             if (wv3) {
-                                wv3->SetVirtualHostNameToFolderMapping(L"app.lumora", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
-                                wv3->SetVirtualHostNameToFolderMapping(L"data.lumora", dataDir().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                                wv3->SetVirtualHostNameToFolderMapping(L"app.k-toolz", g_appDir.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                                wv3->SetVirtualHostNameToFolderMapping(L"data.k-toolz", dataDir().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                                 // Cover/Hero: aktueller Medienordner + Alt-Pfad (hdr-launcher) aus aelteren games.json-Eintraegen
-                                wv3->SetVirtualHostNameToFolderMapping(L"media.lumora", (dataDir() + L"\\media").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                                wv3->SetVirtualHostNameToFolderMapping(L"media.k-toolz", (dataDir() + L"\\media").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                                 wchar_t ad[MAX_PATH] = {}; GetEnvironmentVariableW(L"APPDATA", ad, MAX_PATH);
-                                wv3->SetVirtualHostNameToFolderMapping(L"media0.lumora", (std::wstring(ad) + L"\\hdr-launcher\\media").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                                wv3->SetVirtualHostNameToFolderMapping(L"media0.k-toolz", (std::wstring(ad) + L"\\hdr-launcher\\media").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
                             }
                             std::wstring shim = SHIM_JS;   // Versions-Platzhalter fuellen
                             size_t vp = shim.find(L"%SHELL_VERSION%");
@@ -6790,7 +6848,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
                                         }
                                         return S_OK;
                                     }).Get(), nullptr);
-                            g_webview->Navigate(L"https://app.lumora/index.html");
+                            g_webview->Navigate(L"https://app.k-toolz/index.html");
                             return S_OK;
                         }).Get());
                 return S_OK;
