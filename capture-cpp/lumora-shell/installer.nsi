@@ -30,7 +30,7 @@ Unicode true
   !define SRCDIR "stage"
 !endif
 
-Name "K-Toolz ${VERSION}"
+Name "$ProdName ${VERSION}"   ; Produktname aus dem Dateinamen (.onInit/detectMode), Uninstaller: un.onInit
 BrandingText " "   ; keine "Nullsoft Install System"-Zeile im Fenster
 OutFile "K-Toolz-Setup-${VERSION}.exe"
 RequestExecutionLevel user
@@ -51,6 +51,7 @@ Var WasLumora        ; "1" = Bestandsinstallation aus Lumora-Zeiten (Ordner lumo
 Var OldDir           ; Ordner einer Installation vor der Umbenennung (lumora-shell.exe), "" wenn keine
 Var Mode             ; Produktschluessel aus dem Dateinamen: osd/stream/stutter/wheel - oder "all"
 Var ProdName         ; Anzeigename fuer Willkommen/Finish: Produktname oder "K-Toolz"
+Var Pitch            ; Willkommens-Text: Produkttext oder Gesamttext (.onInit)
 Var RunArgs          ; Startargumente fuer "jetzt starten" (--mode=<modul> im Produktmodus)
 Var ModOsd
 Var ModStream
@@ -66,14 +67,13 @@ Var CbStutter
 Var CbWheel
 Var CbLauncher
 
-; --- Optik: K-Toolz-Logo, Welcome/Finish-Bitmap (164x314), Kopfbild (150x57) ---
+; --- Optik: K-Toolz-Logo, Welcome/Finish-Bitmap (164x314); Produkt-Installer tauschen das Bild in ktGuiInit.
+;     Kein Kopfbild: das dunkle Rechteck rechts in der weissen Kopfzeile wirkte wie ein Fremdkoerper.
 !define MUI_ICON "app.ico"
 !define MUI_UNICON "app.ico"
 !define MUI_WELCOMEFINISHPAGE_BITMAP "installer-welcome.bmp"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "installer-welcome.bmp"
-!define MUI_HEADERIMAGE
-!define MUI_HEADERIMAGE_BITMAP "installer-header.bmp"
-!define MUI_HEADERIMAGE_RIGHT
+!define MUI_CUSTOMFUNCTION_GUIINIT ktGuiInit
 !define MUI_ABORTWARNING
 
 !define MUI_WELCOMEPAGE_TITLE "$(S_WelcomeTitle)"
@@ -97,20 +97,18 @@ Page custom modPage modPageLeave
 
 LangString S_WelcomeTitle ${LANG_GERMAN} "Willkommen bei $ProdName"
 LangString S_WelcomeTitle ${LANG_ENGLISH} "Welcome to $ProdName"
-LangString S_WelcomeText ${LANG_GERMAN} "$(S_Pitch)$\r$\n$\r$\nK-Toolz ist Open Source (AGPL v3), kostenlos und besteht aus eigenem, signiertem Code. Kein Konto, keine Registrierung.$\r$\n$\r$\nKlicke auf Weiter, um fortzufahren."
-LangString S_WelcomeText ${LANG_ENGLISH} "$(S_Pitch)$\r$\n$\r$\nK-Toolz is open source (AGPL v3), free and consists of our own signed code. No account, no registration.$\r$\n$\r$\nClick Next to continue."
-LangString S_PitchAll ${LANG_GERMAN} "Vier Werkzeuge und ein Launcher für PC-Gamer in einem Download: PlainOSD (FPS-Overlay), StreamToFriend (Streaming an Freunde), StutterHunter (Ruckler finden), WheelToPad (Lenkrad als Gamepad) und ein Launcher für alle deine Spiele."
-LangString S_PitchAll ${LANG_ENGLISH} "Four tools and one launcher for PC gamers in a single download: PlainOSD (FPS overlay), StreamToFriend (streaming to friends), StutterHunter (find stutters), WheelToPad (wheel as gamepad) and a launcher for all your games."
-LangString S_PitchOsd ${LANG_GERMAN} "FPS, Temperaturen und Auslastung als Overlay im Spiel - ohne Afterburner, ohne Konto. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
-LangString S_PitchOsd ${LANG_ENGLISH} "FPS, temperatures and load as an in-game overlay - no Afterburner, no account. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
-LangString S_PitchStream ${LANG_GERMAN} "Dein Spiel an Freunde streamen - direkt vom PC, ohne Konto. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
-LangString S_PitchStream ${LANG_ENGLISH} "Stream your game to friends - straight from your PC, no account. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
-LangString S_PitchStutter ${LANG_GERMAN} "Findet heraus, warum dein Spiel ruckelt: Frametimes, Treiber-Latenzen und Hintergrundprogramme mit Befund. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
-LangString S_PitchStutter ${LANG_ENGLISH} "Finds out why your game stutters: frame times, driver latencies and background programs with a verdict. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
-LangString S_PitchWheel ${LANG_GERMAN} "Lenkrad oder Joystick als Xbox-Controller für jedes Spiel. Teil von K-Toolz: die anderen Werkzeuge bleiben abgeschaltet, bis du sie in den Einstellungen einschaltest."
-LangString S_PitchWheel ${LANG_ENGLISH} "Wheel or joystick as an Xbox controller for any game. Part of K-Toolz: the other tools stay switched off until you enable them in the settings."
-LangString S_Pitch ${LANG_GERMAN} "$(S_PitchAll)"
-LangString S_Pitch ${LANG_ENGLISH} "$(S_PitchAll)"
+LangString S_WelcomeText ${LANG_GERMAN} "$Pitch$\r$\n$\r$\nKostenlos, Open Source, ohne Konto.$\r$\n$\r$\nKlicke auf Weiter, um fortzufahren."
+LangString S_WelcomeText ${LANG_ENGLISH} "$Pitch$\r$\n$\r$\nFree, open source, no account.$\r$\n$\r$\nClick Next to continue."
+LangString S_PitchAll ${LANG_GERMAN} "Vier Werkzeuge und ein Launcher für PC-Gamer. Jedes lässt sich einzeln ein- und ausschalten."
+LangString S_PitchAll ${LANG_ENGLISH} "Four tools and a launcher for PC gamers. Each one can be switched on and off on its own."
+LangString S_PitchOsd ${LANG_GERMAN} "FPS, Temperaturen und Auslastung als Overlay im Spiel – ohne Afterburner."
+LangString S_PitchOsd ${LANG_ENGLISH} "FPS, temperatures and load as an in-game overlay – no Afterburner needed."
+LangString S_PitchStream ${LANG_GERMAN} "Dein Spiel per Link an Freunde streamen – direkt von deinem PC."
+LangString S_PitchStream ${LANG_ENGLISH} "Stream your game to friends with a link – straight from your PC."
+LangString S_PitchStutter ${LANG_GERMAN} "Findet heraus, warum dein Spiel ruckelt, und nennt die wahrscheinliche Ursache."
+LangString S_PitchStutter ${LANG_ENGLISH} "Finds out why your game stutters and names the likely cause."
+LangString S_PitchWheel ${LANG_GERMAN} "Lenkrad oder Joystick als Xbox-Controller für jedes Spiel."
+LangString S_PitchWheel ${LANG_ENGLISH} "Wheel or joystick as an Xbox controller for any game."
 LangString S_ModTitle ${LANG_GERMAN} "Was möchtest du nutzen?"
 LangString S_ModTitle ${LANG_ENGLISH} "What would you like to use?"
 LangString S_ModSub ${LANG_GERMAN} "Aktiv ist nur, was du anhakst – der Rest lässt sich später in den Einstellungen einschalten."
@@ -234,22 +232,38 @@ Function .onInit
   !insertmacro MUI_LANGDLL_DISPLAY
   StrCpy $INSTDIR "$LOCALAPPDATA\Programs\k-toolz"
 lbl_done:
-  ; Willkommens-Text je Produkt (LangStrings werden erst jetzt aufgeloest)
+  ; Willkommens-Text je Produkt (LangStrings werden erst jetzt aufgeloest). Frueher landete der
+  ; Produkttext in $1 und wurde nie benutzt - jeder Produkt-Installer zeigte den langen Gesamttext.
   ${If} $Mode == "osd"
-    StrCpy $1 "$(S_PitchOsd)"
+    StrCpy $Pitch "$(S_PitchOsd)"
   ${ElseIf} $Mode == "stream"
-    StrCpy $1 "$(S_PitchStream)"
+    StrCpy $Pitch "$(S_PitchStream)"
   ${ElseIf} $Mode == "stutter"
-    StrCpy $1 "$(S_PitchStutter)"
+    StrCpy $Pitch "$(S_PitchStutter)"
   ${ElseIf} $Mode == "wheel"
-    StrCpy $1 "$(S_PitchWheel)"
+    StrCpy $Pitch "$(S_PitchWheel)"
   ${Else}
-    StrCpy $1 "$(S_PitchAll)"
+    StrCpy $Pitch "$(S_PitchAll)"
   ${EndIf}
-  ; $(S_Pitch) verweist auf $(S_PitchAll); fuer den Produkttext den Welcome-Text direkt setzen
-  ${If} $Mode != "all"
-    StrCpy $ProdName $ProdName
+FunctionEnd
+
+; Produktbild fuer Willkommen/Abschluss: MUI entpackt sein Bild in .onGUIInit VOR diesem Aufruf
+; nach $PLUGINSDIR\modern-wizard.bmp und laedt es erst beim Anzeigen der Seite - hier ueberschreiben.
+Function ktGuiInit
+  ${If} $Mode == "osd"
+    File "/oname=$PLUGINSDIR\modern-wizard.bmp" "installer-welcome-osd.bmp"
+  ${ElseIf} $Mode == "stream"
+    File "/oname=$PLUGINSDIR\modern-wizard.bmp" "installer-welcome-stream.bmp"
+  ${ElseIf} $Mode == "stutter"
+    File "/oname=$PLUGINSDIR\modern-wizard.bmp" "installer-welcome-stutter.bmp"
+  ${ElseIf} $Mode == "wheel"
+    File "/oname=$PLUGINSDIR\modern-wizard.bmp" "installer-welcome-wheel.bmp"
   ${EndIf}
+FunctionEnd
+
+; Der Uninstaller entfernt immer das ganze K-Toolz - Titel daher fest (Name nutzt $ProdName)
+Function un.onInit
+  StrCpy $ProdName "K-Toolz"
 FunctionEnd
 
 ; --- Auswahlseite: nur bei neutralem Namen, frischer Installation, nicht still ---
