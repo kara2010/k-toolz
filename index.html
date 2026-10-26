@@ -2069,10 +2069,16 @@ function applyI18n() {
     let accentHex = _prefs.accentHex || '#4f8ef7'
     let accentRgb = _prefs.accentRgb || '79, 142, 247'
     let lastSelectedId = _prefs.lastSelectedId || null
+    // Zuletzt offener Reiter ('library' oder Einstellungs-Reiter) fuer den naechsten Start. Den beim
+    // Laden gelesenen Wert festhalten: der Startablauf ruft showSettings('allgemein') auf, BEVOR der
+    // Einstieg wiederhergestellt wird, und wuerde ihn sonst ueberschreiben.
+    let lastTab = _prefs.lastTab || ''
+    const startLastTab = lastTab
 
     function savePrefs() {
-      ipcRenderer.invoke('save-prefs', JSON.stringify({ coverMode, sortMode, libView, accentHex, accentRgb, lastSelectedId }))
+      ipcRenderer.invoke('save-prefs', JSON.stringify({ coverMode, sortMode, libView, accentHex, accentRgb, lastSelectedId, lastTab }))
     }
+    function rememberTab(t) { if (t && t !== lastTab) { lastTab = t; savePrefs() } }
 
     const contextMenu = document.getElementById('contextMenu')
 
@@ -2798,6 +2804,7 @@ function applyI18n() {
       if (window.APP_MODULES && !window.APP_MODULES.includes('launcher')) { showSettings('allgemein'); return }
       // Bibliotheks-Ansicht = raus aus den Einstellungen.
       settingsTab = null
+      rememberTab('library')
       document.getElementById('settingsView').style.display = 'none'
       updateDetailNav()
       const grid = document.getElementById('gridView')
@@ -3925,6 +3932,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     async function showSettings(tab) {
       if (tab && window.APP_MODULES && typeof tabAllowed === 'function' && !tabAllowed(tab)) tab = 'allgemein'   // Modul aus -> Reiter gibt es nicht
       settingsTab = tab || 'allgemein'
+      rememberTab(settingsTab)
       document.getElementById('gridView').style.display = 'none'
       document.getElementById('gameDetail').style.display = 'none'
       document.getElementById('emptyState').style.display = 'none'
@@ -5519,6 +5527,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         if (tab === 'library') { if (settingsTab) showLibraryView() } else showSettings(tab)
       }
       window.openStartMode = openStartMode
+      window.MODE_TAB = MODE_TAB
       ipcRenderer.on('start-mode', (e, k) => openStartMode(k))
       // Modul-Sichtbarkeit: Reiter, Bibliothek und die Kachel-Schalter folgen activeModules.
       // 'eingabe' gehoert zu WheelToPad, 'library' zum Launcher; 'allgemein' bleibt immer.
@@ -5531,6 +5540,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         if (settingsTab ? !tabAllowed(settingsTab) : !tabAllowed('library')) showSettings('allgemein')
       }
       window.applyModuleVisibility = applyModuleVisibility
+      window.tabAllowed = tabAllowed
       async function onModuleToggle(cb) {
         const k = cb.dataset.module
         const list = window.APP_MODULES.filter((x) => x !== k); if (cb.checked) list.push(k)
@@ -6583,11 +6593,25 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     let startMode = ''
     try { const idj = JSON.parse(ipcRenderer.sendSync('get-app-identity-sync') || 'null'); if (idj && window.applyAppIdentity) { window.applyAppIdentity(idj); startMode = idj.startMode || '' } } catch (e) {}
     applyLibView()
-    if (startMode && window.openStartMode) window.openStartMode(startMode)   // Startmenue-Eintrag eines Werkzeugs
-    // Zuletzt gewähltes Spiel wiederherstellen (per ID, sortierungs-unabhängig)
+    // Zuletzt gewähltes Spiel wiederherstellen (per ID, sortierungs-unabhängig). VOR dem Einstieg:
+    // selectGame schaltet per applyLibView in die Bibliothek und hob einen gewaehlten Reiter wieder auf.
     if (lastSelectedId && window.APP_MODULES.includes('launcher')) {
       const idx = games.findIndex(g => g.id === lastSelectedId)
       if (idx >= 0) selectGame(idx, true)
+    }
+    // Einstieg (Befund 26.10.: PlainOSD startete nach jedem Neustart in "Allgemein"):
+    // 1) Werkzeug-Startmodus (--mode) hat Vorrang nur bei MEHREREN aktiven Werkzeugen - dort ist der
+    //    Startmenue-Eintrag eines Werkzeugs ein gezielter Sprung. Beim Einzelprodukt ist seine
+    //    Verknuepfung der normale Programmstart.
+    // 2) sonst der zuletzt offene Reiter, sofern es ihn noch gibt (Werkzeug evtl. abgeschaltet)
+    // 3) sonst der Startmodus bzw. beim Einzelprodukt dessen Werkzeug-Reiter (Erststart)
+    {
+      const mods = window.APP_MODULES || [], erlaubt = window.tabAllowed || (() => true)
+      const ziel = (t) => { if (t === 'library') { if (settingsTab) showLibraryView() } else showSettings(t) }
+      if (startMode && mods.length > 1 && window.openStartMode) window.openStartMode(startMode)
+      else if (startLastTab && erlaubt(startLastTab)) ziel(startLastTab)
+      else if (startMode && window.openStartMode) window.openStartMode(startMode)
+      else if (mods.length === 1 && window.MODE_TAB && window.MODE_TAB[mods[0]]) ziel(window.MODE_TAB[mods[0]])
     }
     migrateMedia()
     if (games.length === 0 && window.APP_MODULES.includes('launcher')) showScanDialog(true)   // ohne Launcher nichts zu scannen
