@@ -685,8 +685,7 @@
             </button>
             <div id="streamInfo" style="display:none; margin-top:14px">
               <div id="streamPreviewWrap" style="margin:0 0 12px; background:#000; border-radius:10px; overflow:hidden; aspect-ratio:16/9; position:relative">
-                <video id="streamPreview" muted autoplay playsinline style="width:100%; height:100%; object-fit:contain; display:block; background:#000"></video>
-                <canvas id="streamPreviewFreeze" style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#000; pointer-events:none"></canvas>
+                <img id="streamPreview" alt="" style="width:100%; height:100%; object-fit:contain; display:block; background:#000">
                 <span style="position:absolute; top:8px; left:8px; background:rgba(240,90,90,.92); color:#fff; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.5px; display:flex; align-items:center; gap:5px"><span style="width:7px; height:7px; border-radius:50%; background:#fff; animation:pulse 1.4s infinite"></span>LIVE</span>
                 <span id="streamPreviewWait" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#888; font-size:12px">Vorschau lädt…</span>
               </div>
@@ -5087,96 +5086,44 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         setTimeout(function () { try { ctx.close() } catch (e) {} }, 1100)
       } catch (e) {}
     }
-    // --- Stream-Vorschau: echtes Video per WHEP ueber localhost -----------------
-    // Die App haengt sich an den EIGENEN Broadcast-Server (localhost) und zeigt
-    // exakt den Stream, den auch der Zuschauer sieht – volle Qualitaet, 60 fps,
-    // vom Browser per Hardware dekodiert. Kein zweiter Encoder, kein Upload (alles
-    // lokal), und ueber den localhost-Filter zaehlt es NICHT als Zuschauer. Der
-    // SDP-Austausch laeuft ueber IPC (kein Cross-Origin-fetch noetig). Laeuft nur
-    // bei sichtbarem Stream-Tab; im Spiel (Tab zu / Fenster im Hintergrund) 0 Last.
-    let _previewActive = false, _streamActive = false, _streamPort = 0, _previewPc = null, _previewSession = null
-    let _previewRetry = null, _previewGen = 0   // Generation-Zaehler: alte async-Versuche greifen nach Stop/Neustart nicht mehr
-    async function _previewConnect(gen) {
-      const video = document.getElementById('streamPreview'), wait = document.getElementById('streamPreviewWait')
-      try {
-        // localhost-zu-localhost: keine STUN/TURN-Server noetig, die Host-Kandidaten
-        // auf 127.0.0.1 verbinden direkt -> schneller Aufbau ohne Gathering-Delay.
-        const pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
-        _previewPc = pc
-        const ms = new MediaStream()
-        pc.addTransceiver('video', { direction: 'recvonly' })
-        pc.ontrack = (e) => { ms.addTrack(e.track); if (video) video.srcObject = ms }
-        pc.addEventListener('connectionstatechange', () => {
-          if (gen !== _previewGen) return
-          if (pc.connectionState === 'connected') { if (video) video.play().catch(() => {}); if (wait) wait.style.display = 'none' }
-          // Abriss (z. B. mediamtx uebernimmt in der Router-Phase neue ICE-Hosts) -> selbst neu verbinden
-          else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') _previewRearm(gen, 500)
-        })
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        await new Promise((r) => { if (pc.iceGatheringState === 'complete') return r(); const t = setTimeout(r, 300); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); r() } }) })
-        if (gen !== _previewGen) { try { pc.close() } catch (e) {} return }   // waehrenddessen gestoppt
-        const res = await ipcRenderer.invoke('preview-whep', pc.localDescription.sdp)
-        if (gen !== _previewGen) { try { pc.close() } catch (e) {} return }
-        // Direkt nach dem Streamstart published FFmpeg evtl. noch nicht -> kurz
-        // darauf nochmal. So steht die Vorschau, SOBALD der allererste Keyframe da ist.
-        if (!res || !res.ok) { try { pc.close() } catch (e) {} _previewRearm(gen, 350); return }
-        _previewSession = res.session
-        await pc.setRemoteDescription({ type: 'answer', sdp: res.answer })
-      } catch (e) { _previewRearm(gen, 500) }
-    }
-    function _previewRearm(gen, ms) {
+    // --- Stream-Vorschau: JPEG-Standbild vom Capture-Helfer (5 Bilder/s) ------------
+    // Frueher eine eigene WHEP-Session: WebView2 dekodierte den kompletten 4K60-Stream in
+    // Hardware - auf einer iGPU 59-60 % der Video-Engine, so viel wie der Encoder selbst
+    // (gemessen 2026-10-27). Jetzt skaliert der Helfer sein ohnehin vorhandenes Bild auf
+    // 640 px und schreibt 5x/s ein JPEG; die Shell reicht es per IPC 'preview-frame' durch.
+    // Jede Abfrage ist zugleich das Lebenszeichen - ohne Abfragen stellt der Helfer die
+    // Standbilder nach 3 s ein. Laeuft nur bei sichtbarem Stream-Tab (s. refreshStreamPreview).
+    let _previewActive = false, _streamActive = false, _streamPort = 0
+    let _previewTimer = null, _previewGen = 0, _previewLast = ''
+    const PREVIEW_POLL_MS = 200
+    async function _previewPoll(gen) {
       if (gen !== _previewGen || !_previewActive) return
-      unfreezePreview()   // Sicherheitsnetz: bei einem ECHTEN Reconnect nie ein eingefrorenes Bild stehen lassen
-      if (_previewSession) { ipcRenderer.invoke('preview-whep-stop', _previewSession).catch(() => {}); _previewSession = null }
-      if (_previewPc) { try { _previewPc.close() } catch (e) {} _previewPc = null }
-      clearTimeout(_previewRetry)
-      _previewRetry = setTimeout(() => { if (gen === _previewGen && _previewActive) _previewConnect(gen) }, ms)
-    }
-    // Nahtloser Uebergang bei Bitrate-/Aufloesungswechsel: letztes echtes Bild
-    // einfrieren statt mediamtx' "STREAM IS OFFLINE"-Platzhalter kurz zu zeigen.
-    // Gleiche (einfache, bewaehrte) Technik wie player.html - fester Timer, kein
-    // requestVideoFrameCallback, kein visibility:hidden (s. player.html-Lehre).
-    // Hier per IPC direkt vom Hauptprozess (bcDoRestartFfmpeg sendet 'switch-freeze'
-    // GENAU beim Start des Wechsels) - lokal, kein SSE/Heartbeat-Thema wie extern.
-    let _pvFreezeTimer = null
-    const PV_FREEZE_MS = { fast: 700, full: 3000 }   // fester, bewaehrter Ansatz (s. player.html-Kommentar)
-    function freezePreview(kind) {
-      const video = document.getElementById('streamPreview'), canvas = document.getElementById('streamPreviewFreeze')
-      if (!video || !canvas) return
+      const img = document.getElementById('streamPreview'), wait = document.getElementById('streamPreviewWait')
       try {
-        if (video.videoWidth && video.videoHeight) {
-          canvas.width = video.videoWidth; canvas.height = video.videoHeight
-          canvas.getContext('2d').drawImage(video, 0, 0)
-          canvas.style.display = 'block'
+        const res = await ipcRenderer.invoke('preview-frame')
+        if (gen !== _previewGen || !_previewActive) return
+        if (res && res.ok && res.jpg && res.jpg !== _previewLast) {
+          _previewLast = res.jpg
+          if (img) img.src = 'data:image/jpeg;base64,' + res.jpg
+          if (wait) wait.style.display = 'none'
         }
       } catch (e) {}
-      clearTimeout(_pvFreezeTimer)
-      _pvFreezeTimer = setTimeout(unfreezePreview, PV_FREEZE_MS[kind] || PV_FREEZE_MS.full)
+      _previewTimer = setTimeout(() => _previewPoll(gen), PREVIEW_POLL_MS)
     }
-    function unfreezePreview() {
-      clearTimeout(_pvFreezeTimer)
-      const canvas = document.getElementById('streamPreviewFreeze')
-      if (canvas) canvas.style.display = 'none'
-    }
-    ipcRenderer.on('switch-freeze', (e, d) => freezePreview(d && d.kind === 'fast' ? 'fast' : 'full'))
     function startStreamPreview() {
       if (_previewActive) return
-      _previewActive = true
+      _previewActive = true; _previewLast = ''
       const wait = document.getElementById('streamPreviewWait')
       if (wait) wait.style.display = 'flex'
-      _previewConnect(++_previewGen)   // verbindet mit Retry, bis der Stream published ist
+      _previewPoll(++_previewGen)   // pollt, bis der Helfer das erste Standbild liefert
     }
     function stopStreamPreview() {
-      if (!_previewActive && !_previewPc) return
+      if (!_previewActive) return
       _previewActive = false
       _previewGen++
-      clearTimeout(_previewRetry); _previewRetry = null
-      unfreezePreview()
-      const video = document.getElementById('streamPreview'), wait = document.getElementById('streamPreviewWait')
-      if (_previewSession) { ipcRenderer.invoke('preview-whep-stop', _previewSession).catch(() => {}); _previewSession = null }
-      if (_previewPc) { try { _previewPc.close() } catch (e) {} _previewPc = null }
-      if (video) video.srcObject = null
+      clearTimeout(_previewTimer); _previewTimer = null
+      const img = document.getElementById('streamPreview'), wait = document.getElementById('streamPreviewWait')
+      if (img) img.removeAttribute('src')
       if (wait) wait.style.display = 'flex'
     }
     // Vorschau nur, wenn Stream laeuft, Stream-Tab offen, Fenster sichtbar UND kein Spiel

@@ -1628,6 +1628,7 @@ static void bcNativeExitWatch(HANDLE proc, ULONGLONG startedAt) {
     }).detach();
 }
 static void bcStartNative(const json& cfg) {
+    DeleteFileW(tempPath(L"k-toolz-preview.jpg").c_str());   // kein Standbild der VORIGEN Sitzung in der neuen Vorschau
     static const std::map<std::string, std::wstring> encMap = { {"h264_nvenc", L"nvenc"}, {"h264_amf", L"amf"}, {"h264_qsv", L"qsv"} };
     auto em = encMap.find(cfg.value("encoder", ""));
     std::wstring args = L"--encoder " + (em != encMap.end() ? em->second : L"auto") +
@@ -5224,25 +5225,18 @@ static json handleChannel(const std::string& channel, const json& args) {
         writeFile(settingsPath(), s.dump(2));
         return true;
     }
-    if (channel == "preview-whep" && args.size() >= 1 && args[0].is_string()) {
-        // Vorschau direkt an den eigenen /whep-Weg (User-Agent markiert -> nicht als Zuschauer gezaehlt)
-        auto r = lusrv::proxyLocal(MTX_WHEP_PORT, "POST", std::string("/") + MTX_PATH + "/whep", "application/sdp", "KToolzPreview", args[0].get<std::string>());
-        json out = { {"ok", r.status >= 200 && r.status < 300}, {"answer", r.body}, {"session", nullptr} };
-        if (r.headers.count("Location")) {
-            std::string loc = r.headers["Location"]; size_t h = loc.find("//");
-            if (h != std::string::npos) { size_t sl = loc.find('/', h + 2); loc = sl == std::string::npos ? "/" : loc.substr(sl); }
-            std::string pre = std::string("/") + MTX_PATH + "/whep"; size_t pp = loc.find(pre);
-            if (pp != std::string::npos) loc = loc.substr(0, pp) + "/whep" + loc.substr(pp + pre.size());
-            out["session"] = loc;
-        }
-        return out;
-    }
-    if (channel == "preview-whep-stop" && args.size() >= 1 && args[0].is_string()) {
-        std::string sess = args[0].get<std::string>();   // '/whep/<id>' -> mediamtx-Pfad
-        std::string pre = "/whep"; size_t pp = sess.find(pre);
-        std::string target = std::string("/") + MTX_PATH + "/whep" + (pp != std::string::npos ? sess.substr(pp + pre.size()) : sess);
-        lusrv::proxyLocal(MTX_WHEP_PORT, "DELETE", target, "", "", "");
-        return true;
+    if (channel == "preview-frame") {
+        // Lokale Vorschau als JPEG-Standbild vom Capture-Helfer (struct PreviewSnap in
+        // lumora-capture/main.cpp) - ersetzt die frueheren preview-whep-Kanaele: WebView2
+        // dekodierte den kompletten 4K60-Stream in Hardware, auf einer iGPU 59-60 % der
+        // Video-Engine (gemessen 2026-10-27), so viel wie der Encoder selbst. Jede Abfrage
+        // ist zugleich das Lebenszeichen fuer den Helfer (want-Datei, hoechstens 1x/s neu
+        // geschrieben); bleiben die Abfragen aus, stellt er die Standbilder nach 3 s ein.
+        static ULONGLONG lastWant = 0; ULONGLONG now = GetTickCount64();
+        if (lastWant == 0 || now - lastWant >= 1000) { lastWant = now; writeFile(tempPath(L"k-toolz-preview-want.txt"), std::to_string(now)); }
+        std::string jpg = readFile(tempPath(L"k-toolz-preview.jpg"));   // ~30-60 KB, atomar vom Helfer ersetzt
+        if (jpg.size() < 4) return { {"ok", false} };
+        return { {"ok", true}, {"jpg", b64encode((const uint8_t*)jpg.data(), jpg.size())} };
     }
     if (channel == "set-hdr-tonemap") {
         if (args.size() >= 1 && args[0].is_object()) {
@@ -5735,7 +5729,7 @@ static bool isSlowChannel(const std::string& c) {
            c == "fetch-image-url" || c == "search-steam" || c == "search-msstore" || c == "search-sgdb" ||
            c == "launch-game" ||   // HDR-Wartezeit (3s) + AUMID-Suche
            c == "start-broadcast" || c == "stop-broadcast" || c == "queue-copy-link" || c == "list-sources" ||   // Relay-Ready/Helfer-Lauf
-           c == "list-viewers" || c == "kick-viewer" || c == "preview-whep" || c == "preview-whep-stop" ||
+           c == "list-viewers" || c == "kick-viewer" ||
            c == "group-start" || c == "group-join" || c == "group-leave" || c == "group-status" ||
            c == "test-connectivity" ||   // STUN+UPnP-Proben ~10s   // Vermittlungs-Netz
            c == "analyze-share" || c == "analyze-unshare" ||   // HTTP zum Berichts-Endpunkt

@@ -13,7 +13,7 @@ Jeder Kanal wird beim Portieren abgehakt; bis dahin antwortet die Shell mit null
 
 **Artwork/Medien (WinHTTP + Cache):** fetch-cover, fetch-hero, fetch-game-info, fetch-image-url, search-sgdb, search-steam, search-msstore, store-media, delete-media
 
-**Streaming (Orchestrierung ist schon nativ!):** start-broadcast, stop-broadcast, broadcast-status, list-sources, list-viewers, kick-viewer, preview-whep, preview-whep-stop, test-connectivity, set-hdr-tonemap
+**Streaming (Orchestrierung ist schon nativ!):** start-broadcast, stop-broadcast, broadcast-status, list-sources, list-viewers, kick-viewer, preview-frame (JPEG-Standbild vom Helfer, ersetzt preview-whep), test-connectivity, set-hdr-tonemap
 
 **Gruppe:** group-start, group-join, group-leave, group-status
 

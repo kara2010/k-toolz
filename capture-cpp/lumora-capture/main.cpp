@@ -769,6 +769,108 @@ struct TonemapStage {
     }
 };
 
+// =============== Lokale Vorschau: kleines JPEG-Standbild statt WebRTC-Decode ===============
+// Die Oberflaeche zeigte die Vorschau bisher als eigene WHEP-Session: WebView2 dekodierte den
+// kompletten 4K60-Stream in Hardware - auf einer iGPU 59-60 % der Video-Engine, so viel wie
+// der Encoder selbst (gemessen 2026-10-27, Ryzen 7 6800H). Encode + Vorschau-Decode zusammen
+// 91 %; ein dritter Verbraucher (YouTube-Decode) kippte den Encoder in AMF_INPUT_FULL.
+// Jetzt: der Helfer skaliert die ohnehin vorhandene BGRA-Quelle per VideoProcessor auf
+// 640 px Breite (3D-Engine, winzig), liest sie ueber eine Staging-Textur OHNE GPU-Stillstand
+// aus (DO_NOT_WAIT, Abholung im naechsten Tick) und schreibt 5x/s ein JPEG atomar nach
+// %TEMP%\k-toolz-preview.jpg. Nur solange die Shell Interesse meldet: sie schreibt bei jeder
+// Bildabfrage %TEMP%\k-toolz-preview-want.txt; ist die Datei aelter als 3 s, passiert nichts.
+struct PreviewSnap {
+    winrt::com_ptr<ID3D11VideoProcessorEnumerator> venum; winrt::com_ptr<ID3D11VideoProcessor> vproc;
+    winrt::com_ptr<ID3D11VideoProcessorOutputView> outView; winrt::com_ptr<ID3D11Texture2D> smallTex, staging;   // "small" ist ein Win-Makro (s. iconBase64)
+    int inW = 0, inH = 0, pw = 0, ph = 0, every = 12; uint64_t tick = 0; bool pending = false;
+    std::string jpgPath, tmpPath, wantPath; CLSID jpegClsid{}; bool haveClsid = false; ULONG_PTR gdiToken = 0;
+    bool wantedCached = false; uint64_t wantCheckTick = 0; uint64_t written = 0;
+    ~PreviewSnap() { if (gdiToken) Gdiplus::GdiplusShutdown(gdiToken); }
+    // Einmalig: Pfade, GDI+, JPEG-Encoder. fps bestimmt den Takt (5 Bilder/s).
+    void setup(int fps) {
+        const char* tmp = getenv("TEMP"); std::string base = std::string(tmp ? tmp : ".");
+        jpgPath = base + "\\k-toolz-preview.jpg"; tmpPath = base + "\\k-toolz-preview.tmp"; wantPath = base + "\\k-toolz-preview-want.txt";
+        every = fps / 5 > 0 ? fps / 5 : 1;
+        Gdiplus::GdiplusStartupInput gsi; if (Gdiplus::GdiplusStartup(&gdiToken, &gsi, nullptr) != Gdiplus::Ok) gdiToken = 0;
+        UINT num = 0, size = 0; Gdiplus::GetImageEncodersSize(&num, &size);
+        if (size) { std::vector<uint8_t> buf(size); auto* codecs = (Gdiplus::ImageCodecInfo*)buf.data(); Gdiplus::GetImageEncoders(num, size, codecs);
+            for (UINT i = 0; i < num; ++i) if (wcscmp(codecs[i].MimeType, L"image/jpeg") == 0) { jpegClsid = codecs[i].Clsid; haveClsid = true; break; } }
+        if (!haveClsid) printf("VORSCHAU: kein JPEG-Encoder (GDI+) - Standbild aus\n");
+    }
+    // Skalierer fuer die aktuelle Eingangsgroesse (BGRA) aufbauen - beim Start und bei jedem Quellwechsel/Resize.
+    bool rebuild(ID3D11Device* dev, ID3D11VideoDevice* vdev, int w, int h, int fps) {
+        venum = nullptr; vproc = nullptr; outView = nullptr; smallTex = nullptr; staging = nullptr; pending = false;
+        inW = w; inH = h; pw = 640; ph = (w > 0) ? (int)(((long long)pw * h / w)) & ~1 : 360;
+        if (w < pw) { pw = w & ~1; ph = h & ~1; }   // kleine Quellen nicht hochskalieren
+        if (pw < 2 || ph < 2) return false;
+        D3D11_VIDEO_PROCESSOR_CONTENT_DESC cd{}; cd.InputFrameFormat = D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE; cd.InputWidth = w; cd.InputHeight = h; cd.OutputWidth = pw; cd.OutputHeight = ph; cd.InputFrameRate = { (UINT)fps, 1 }; cd.OutputFrameRate = { 5, 1 }; cd.Usage = D3D11_VIDEO_USAGE_PLAYBACK_NORMAL;
+        if (FAILED(vdev->CreateVideoProcessorEnumerator(&cd, venum.put()))) return false;
+        if (FAILED(vdev->CreateVideoProcessor(venum.get(), 0, vproc.put()))) return false;
+        D3D11_TEXTURE2D_DESC td{}; td.Width = pw; td.Height = ph; td.MipLevels = 1; td.ArraySize = 1; td.Format = DXGI_FORMAT_B8G8R8A8_UNORM; td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_DEFAULT; td.BindFlags = D3D11_BIND_RENDER_TARGET;
+        if (FAILED(dev->CreateTexture2D(&td, nullptr, smallTex.put()))) return false;
+        td.Usage = D3D11_USAGE_STAGING; td.BindFlags = 0; td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        if (FAILED(dev->CreateTexture2D(&td, nullptr, staging.put()))) return false;
+        D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC ovd{}; ovd.ViewDimension = D3D11_VPOV_DIMENSION_TEXTURE2D;
+        return SUCCEEDED(vdev->CreateVideoProcessorOutputView(smallTex.get(), venum.get(), &ovd, outView.put()));
+    }
+    // Interesse der Shell: want-Datei juenger als 3 s. Nur 1x/s pruefen (Datei-Attribut, kein Lesen).
+    bool wanted(int fps) {
+        if (wantCheckTick == 0 || tick - wantCheckTick >= (uint64_t)fps) {
+            wantCheckTick = tick; wantedCached = false;
+            WIN32_FILE_ATTRIBUTE_DATA fa{};
+            if (GetFileAttributesExA(wantPath.c_str(), GetFileExInfoStandard, &fa)) {
+                FILETIME now; GetSystemTimeAsFileTime(&now);
+                uint64_t n = ((uint64_t)now.dwHighDateTime << 32) | now.dwLowDateTime, m = ((uint64_t)fa.ftLastWriteTime.dwHighDateTime << 32) | fa.ftLastWriteTime.dwLowDateTime;
+                wantedCached = (n >= m) && (n - m) < 30000000ull;   // 3 s in 100-ns-Einheiten
+            }
+        }
+        return wantedCached;
+    }
+    // Pro Encode-Tick aufrufen. src = aktuelle BGRA-Quelle in inW x inH.
+    void onTick(ID3D11DeviceContext* ctx, ID3D11VideoDevice* vdev, ID3D11VideoContext* vctx, ID3D11Texture2D* src, int fps) {
+        tick++;
+        if (pending) { pending = false; grab(ctx); }   // Abholung des Bildes vom VORIGEN Tick (GPU ist damit fertig)
+        if (!vproc || !haveClsid || (tick % (uint64_t)every) != 0 || !wanted(fps)) return;
+        D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC ivd{}; ivd.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D;
+        winrt::com_ptr<ID3D11VideoProcessorInputView> iv; if (FAILED(vdev->CreateVideoProcessorInputView(src, venum.get(), &ivd, iv.put()))) return;
+        D3D11_VIDEO_PROCESSOR_STREAM st{}; st.Enable = TRUE; st.pInputSurface = iv.get();
+        if (FAILED(vctx->VideoProcessorBlt(vproc.get(), outView.get(), 0, 1, &st))) return;
+        ctx->CopyResource(staging.get(), smallTex.get());
+        pending = true;
+    }
+    void grab(ID3D11DeviceContext* ctx) {
+        D3D11_MAPPED_SUBRESOURCE m{};
+        HRESULT hr = ctx->Map(staging.get(), 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &m);
+        if (hr == DXGI_ERROR_WAS_STILL_DRAWING) { pending = true; return; }   // naechster Tick, kein Stillstand
+        if (FAILED(hr)) return;
+        {
+            Gdiplus::Bitmap bmp(pw, ph, (INT)m.RowPitch, PixelFormat32bppRGB, (BYTE*)m.pData);
+            IStream* stm = nullptr;
+            if (SUCCEEDED(CreateStreamOnHGlobal(nullptr, TRUE, &stm))) {
+                ULONG q = 70; Gdiplus::EncoderParameters ep{}; ep.Count = 1; ep.Parameter[0].Guid = Gdiplus::EncoderQuality; ep.Parameter[0].Type = Gdiplus::EncoderParameterValueTypeLong; ep.Parameter[0].NumberOfValues = 1; ep.Parameter[0].Value = &q;
+                if (bmp.Save(stm, &jpegClsid, &ep) == Gdiplus::Ok) {
+                    STATSTG ss{}; HGLOBAL hg = nullptr;
+                    if (SUCCEEDED(stm->Stat(&ss, STATFLAG_NONAME)) && SUCCEEDED(GetHGlobalFromStream(stm, &hg)) && hg) {
+                        void* p = GlobalLock(hg);   // GlobalSize() waere die Reservierung, Stat() die echte JPEG-Laenge
+                        if (p) { writeAtomic(p, (size_t)ss.cbSize.QuadPart); GlobalUnlock(hg); }
+                    }
+                }
+                stm->Release();
+            }
+        }
+        ctx->Unmap(staging.get(), 0);
+    }
+    // Erst .tmp schreiben, dann per MoveFileEx ersetzen: die Shell liest nie ein halbes JPEG.
+    void writeAtomic(const void* p, size_t n) {
+        HANDLE h = CreateFileA(tmpPath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (h == INVALID_HANDLE_VALUE) return;
+        DWORD w = 0; BOOL ok = WriteFile(h, p, (DWORD)n, &w, nullptr); CloseHandle(h);
+        if (ok && w == n && MoveFileExA(tmpPath.c_str(), jpgPath.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+            if (written++ == 0) printf("VORSCHAU: Standbild %dx%d aktiv (%u Bytes, 5/s)\n", pw, ph, (unsigned)n);
+        }
+    }
+};
+
 // =============== Fensterliste (--list) + HDR-Status (--hdr-check) fuer die UI ===============
 // Die Shell ruft "k-toolz-capture --list" und erwartet je sichtbarem Fenster: HWND \t Titel \t
 // Icon-PNG-Base64 (UTF-8). Ohne diese Ausgabe bliebe die Fensterauswahl in der App leer.
@@ -919,6 +1021,7 @@ int main(int argc, char** argv) {
     winrt::com_ptr<ID3D11VideoProcessorEnumerator> venum; winrt::com_ptr<ID3D11VideoProcessor> vproc;
     winrt::com_ptr<ID3D11VideoProcessorOutputView> outView; winrt::com_ptr<ID3D11Texture2D> nv12, bgraIn;
     TonemapStage tonemap; bool tonemapReady = false;
+    PreviewSnap preview; preview.setup(fps);   // lokale Vorschau als JPEG-Standbild (s. struct PreviewSnap)
     HWND curHwnd = nullptr; int W = 0, H = 0, outW = 0, outH = 0;
 
     // Scaler-Kette (VideoProcessor + Eingangstexturen) fuer die AKTUELLE Quellgroesse W x H
@@ -948,6 +1051,8 @@ int main(int argc, char** argv) {
             vctx->VideoProcessorSetOutputBackgroundColor(vproc.get(), FALSE, &black);
         }
         printf("SOURCE: %dx%d -> %dx%d (Bild %dx%d @ %d,%d)\n", W, H, outW, outH, lw, lh, lx, ly);
+        // Vorschau-Skalierer auf dieselbe BGRA-Quelle wie der Haupt-VP (HDR: sdrTex in outW x outH, sonst bgraIn in W x H).
+        if (!preview.rebuild(dev.get(), vdev.get(), hdr ? outW : W, hdr ? outH : H, fps)) printf("VORSCHAU: Skalierer-Init fehlgeschlagen - Standbild aus\n");
         return true;
     };
     // Capture-Quelle (Monitor oder Fenster) neu aufsetzen. initial=true beim Programmstart.
@@ -1175,6 +1280,7 @@ int main(int argc, char** argv) {
         ctx->Flush();
         std::vector<std::vector<uint8_t>> aus; if (encoder) encoder->encode(nv12.get(), aus);
         std::vector<std::vector<uint8_t>> ausAv1; if (encoderAv1) encoderAv1->encode(nv12.get(), ausAv1);
+        preview.onTick(ctx.get(), vdev.get(), vctx.get(), vpIn, fps);   // nach dem Encode-Submit: kostet den Encoder keine Zeit
         frameTick++;
         // --- 1x/s Steuerdateien pollen (Bitrate, Quelle, Codec) - auf TICK-Ebene, nicht am
         //     H.264-AU-Zaehler (bei AV1-only kaeme sonst nie ein Tick durch). ---
