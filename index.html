@@ -450,16 +450,17 @@
             </div>
 
             <h3 class="settings-sec">Grenzwerte</h3>
-            <p class="settings-hint">Ab der Grenze wird der Wert rot, zehn darunter gelb; FPS unter der Grenze gelb, unter der Hälfte rot.</p>
+            <p class="settings-hint">Ab der Warnschwelle wird der Wert gelb, ab der Alarmschwelle rot. Bei FPS gilt: unter der Warnschwelle gelb, unter der Alarmschwelle rot.</p>
             <div class="setting-toggle-row">
               <span class="setting-toggle-label">Grenzwerte einfärben</span>
               <label class="switch"><input type="checkbox" id="setOsdLimOn" checked onchange="onOsdSettingChange()"><span class="switch-slider"></span></label>
             </div>
             <div class="osd-limits">
-              <label class="osd-limit"><span>GPU-Temperatur</span><input type="number" id="setOsdLimGpuTemp" min="40" max="120" value="85" onchange="onOsdSettingChange()"><i>°C</i></label>
-              <label class="osd-limit"><span>CPU-Temperatur</span><input type="number" id="setOsdLimCpuTemp" min="40" max="120" value="90" onchange="onOsdSettingChange()"><i>°C</i></label>
-              <label class="osd-limit"><span>Auslastung</span><input type="number" id="setOsdLimLoad" min="50" max="100" value="95" onchange="onOsdSettingChange()"><i>%</i></label>
-              <label class="osd-limit"><span>FPS mindestens</span><input type="number" id="setOsdLimFps" min="10" max="500" value="60" onchange="onOsdSettingChange()"><i>FPS</i></label>
+              <div class="osd-limit osd-limit-head"><span></span><b>Warnung</b><b>Alarm</b><i></i></div>
+              <div class="osd-limit"><span>GPU-Temperatur</span><input type="number" id="setOsdLimGpuTempWarn" min="30" max="120" value="75" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimGpuTemp" min="30" max="120" value="85" onchange="onOsdSettingChange()"><i>°C</i></div>
+              <div class="osd-limit"><span>CPU-Temperatur</span><input type="number" id="setOsdLimCpuTempWarn" min="30" max="120" value="80" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimCpuTemp" min="30" max="120" value="90" onchange="onOsdSettingChange()"><i>°C</i></div>
+              <div class="osd-limit"><span>Auslastung</span><input type="number" id="setOsdLimLoadWarn" min="10" max="100" value="85" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimLoad" min="10" max="100" value="95" onchange="onOsdSettingChange()"><i>%</i></div>
+              <div class="osd-limit"><span>FPS unter</span><input type="number" id="setOsdLimFps" min="5" max="500" value="60" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimFpsCrit" min="1" max="500" value="30" onchange="onOsdSettingChange()"><i>FPS</i></div>
             </div>
             <div class="setting-toggle-row">
               <span class="setting-toggle-label">Bei Alarm pulsieren</span>
@@ -1355,12 +1356,14 @@ const I18N_EN = {
   'Leuchtrahmen': 'Glow frame',
   'Dicht': 'Dense',
   'Grenzwerte': 'Thresholds',
-  'Ab der Grenze wird der Wert rot, zehn darunter gelb; FPS unter der Grenze gelb, unter der Hälfte rot.': 'At the threshold the value turns red, ten below it yellow; FPS below the threshold yellow, below half of it red.',
+  'Ab der Warnschwelle wird der Wert gelb, ab der Alarmschwelle rot. Bei FPS gilt: unter der Warnschwelle gelb, unter der Alarmschwelle rot.': 'From the warning threshold the value turns yellow, from the alarm threshold red. For FPS: below the warning threshold yellow, below the alarm threshold red.',
+  'Warnung': 'Warning',
+  'Alarm': 'Alarm',
   'Grenzwerte einfärben': 'Color thresholds',
   'GPU-Temperatur': 'GPU temperature',
   'CPU-Temperatur': 'CPU temperature',
   'Auslastung': 'Load',
-  'FPS mindestens': 'FPS at least',
+  'FPS unter': 'FPS below',
   'Bei Alarm pulsieren': 'Pulse on alarm',
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
   'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, K-Toolz ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
@@ -4060,8 +4063,12 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         setOsdForm(l.form || 'rund', false) }
       { const g = s.osdLimits || {}
         document.getElementById('setOsdLimOn').checked = g.on !== false; document.getElementById('setOsdLimPulse').checked = g.pulse !== false
-        document.getElementById('setOsdLimGpuTemp').value = g.gpuTemp || 85; document.getElementById('setOsdLimCpuTemp').value = g.cpuTemp || 90
-        document.getElementById('setOsdLimLoad').value = g.load || 95; document.getElementById('setOsdLimFps').value = g.fpsMin || 60 }
+        // Warnschwelle fehlt in alten Einstellungen: dann wie bisher zehn unter Alarm bzw. halbes FPS-Minimum
+        const gt = g.gpuTemp || 85, ct = g.cpuTemp || 90, ld = g.load || 95, fm = g.fpsMin || 60
+        document.getElementById('setOsdLimGpuTemp').value = gt; document.getElementById('setOsdLimGpuTempWarn').value = g.gpuTempWarn || gt - 10
+        document.getElementById('setOsdLimCpuTemp').value = ct; document.getElementById('setOsdLimCpuTempWarn').value = g.cpuTempWarn || ct - 10
+        document.getElementById('setOsdLimLoad').value = ld; document.getElementById('setOsdLimLoadWarn').value = g.loadWarn || ld - 10
+        document.getElementById('setOsdLimFps').value = fm; document.getElementById('setOsdLimFpsCrit').value = g.fpsCrit || Math.round(fm / 2) }
       renderGpuOptions(s.osdGpu || 'auto')
       renderOsdFields(s.osdFields, s.osdOrder)
       document.getElementById('osdSetupRow').style.display = s.osdSetupDeclined ? 'flex' : 'none'
@@ -4315,7 +4322,10 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         osdLayout: { labels: document.getElementById('setOsdLayLabels').checked, units: document.getElementById('setOsdLayUnits').checked, icons: document.getElementById('setOsdLayIcons').checked,
                      sep: document.getElementById('setOsdLaySep').checked, form: osdForm, glow: document.getElementById('setOsdLayGlow').checked, dense: document.getElementById('setOsdLayDense').checked },
         osdLimits: { on: document.getElementById('setOsdLimOn').checked, pulse: document.getElementById('setOsdLimPulse').checked,
-                     gpuTemp: limZahl('setOsdLimGpuTemp', 40, 120, 85), cpuTemp: limZahl('setOsdLimCpuTemp', 40, 120, 90), load: limZahl('setOsdLimLoad', 50, 100, 95), fpsMin: limZahl('setOsdLimFps', 10, 500, 60) },
+                     gpuTempWarn: limZahl('setOsdLimGpuTempWarn', 30, 120, 75), gpuTemp: limZahl('setOsdLimGpuTemp', 30, 120, 85),
+                     cpuTempWarn: limZahl('setOsdLimCpuTempWarn', 30, 120, 80), cpuTemp: limZahl('setOsdLimCpuTemp', 30, 120, 90),
+                     loadWarn: limZahl('setOsdLimLoadWarn', 10, 100, 85), load: limZahl('setOsdLimLoad', 10, 100, 95),
+                     fpsMin: limZahl('setOsdLimFps', 5, 500, 60), fpsCrit: limZahl('setOsdLimFpsCrit', 1, 500, 30) },
       }
       if (fromEnabledToggle) cfg.osdEnabled = document.getElementById('setOsdEnabled').checked
       ipcRenderer.invoke('set-app-settings', cfg)

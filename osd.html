@@ -362,7 +362,7 @@
     net: ['rate','total'],
   };
   let cfg = { theme: 'bar', fields: JSON.parse(JSON.stringify(ALL)), accent: '#74e857', opacity: 0.55,
-              palette: 'standard', colors: null, limits: { on: true, gpuTemp: 85, cpuTemp: 90, load: 95, fpsMin: 60, pulse: true },
+              palette: 'standard', colors: null, limits: { on: true, gpuTempWarn: 75, gpuTemp: 85, cpuTempWarn: 80, cpuTemp: 90, loadWarn: 85, load: 95, fpsMin: 60, fpsCrit: 30, pulse: true },
               layout: { labels: true, units: true, icons: false, sep: true, form: 'rund', glow: false, dense: false } };   // Standard-Design: Balken
   // Paletten (Paket 1): Gruppenfarben GPU/CPU/FPS/Netz, Wertfarbe, Akzent. 'eigen' nimmt cfg.colors.
   const PALETTES = {
@@ -706,15 +706,23 @@
   }
   function setRole(role, v) { panel.querySelectorAll(`[data-role="${role}"]`).forEach(el => { el.textContent = (v == null ? '–' : v); }); }
   function setRing(role, anteil) { panel.querySelectorAll(`[data-ring="${role}"]`).forEach(el => { el.setAttribute('stroke-dashoffset', (RING_C * (1 - Math.max(0, Math.min(1, anteil)))).toFixed(1)); }); }
-  // Grenzwert-Stufe fuer einen Wert: 'warn' 10 unter der Schwelle (FPS: unter der Schwelle), 'crit' ab der Schwelle (FPS: unter der Haelfte)
-  function limitStufe(v, grenze, niedrigIstSchlecht) {
-    if (v == null || !grenze || !cfg.limits || cfg.limits.on === false) return '';
+  // Grenzwert-Stufe fuer einen Wert: Warn- und Alarmschwelle getrennt. Hoch ist schlecht (Temperatur, Last):
+  // 'warn' ab warn, 'crit' ab crit. Niedrig ist schlecht (FPS): 'warn' unter warn, 'crit' unter crit.
+  // Fehlt die Warnschwelle (alte Einstellungen), gilt crit-10 bzw. bei FPS die Haelfte der Warnschwelle als Alarm.
+  function limitStufe(v, warn, crit, niedrigIstSchlecht) {
+    if (v == null || !cfg.limits || cfg.limits.on === false) return '';
     const n = Number(v); if (!Number.isFinite(n)) return '';
-    if (niedrigIstSchlecht) return n < grenze / 2 ? 'crit' : n < grenze ? 'warn' : '';
-    return n >= grenze ? 'crit' : n >= grenze - 10 ? 'warn' : '';
+    if (niedrigIstSchlecht) {
+      if (!warn) return '';
+      const c = crit || warn / 2;
+      return n < c ? 'crit' : n < warn ? 'warn' : '';
+    }
+    if (!crit) return '';
+    const w = warn || crit - 10;
+    return n >= crit ? 'crit' : n >= w ? 'warn' : '';
   }
-  function setLimit(role, v, grenze, niedrigIstSchlecht) {
-    const st = limitStufe(v, grenze, niedrigIstSchlecht);
+  function setLimit(role, v, warn, crit, niedrigIstSchlecht) {
+    const st = limitStufe(v, warn, crit, niedrigIstSchlecht);
     panel.querySelectorAll(`[data-role="${role}"], [data-ring="${role}"], [data-role="${role}bar"]`).forEach(el => { el.classList.toggle('warn', st === 'warn'); el.classList.toggle('crit', st === 'crit'); });
   }
   function setRow(rowKey, show) { panel.querySelectorAll(`[data-row="${rowKey}"]`).forEach(el => el.classList.toggle('hidden', !show)); }
@@ -737,8 +745,8 @@
         if (f === 'load' || f === 'temp') setRing(cat + '.' + f, v == null ? 0 : Number(v) / 100);
       }
       // Grenzwerte: Temperatur und Last ab Warnschwelle gelb, ab Alarmschwelle rot (optional pulsierend)
-      setLimit(cat + '.temp', d ? d.temp : null, cat === 'gpu' ? L.gpuTemp : L.cpuTemp, false);
-      setLimit(cat + '.load', d ? d.load : null, L.load, false);
+      setLimit(cat + '.temp', d ? d.temp : null, cat === 'gpu' ? L.gpuTempWarn : L.cpuTempWarn, cat === 'gpu' ? L.gpuTemp : L.cpuTemp, false);
+      setLimit(cat + '.load', d ? d.load : null, L.loadWarn, L.load, false);
     }
     // Netz: vorformatierte Texte aus der Shell; ohne laufende Zaehlung Gruppe weg
     {
@@ -754,7 +762,7 @@
       if (data.frametime != null) setRole('fps.frametime', fmtVal('frametime', data.frametime));
       setRow('fps.frametime', data.frametime != null);
       if (data.fps != null) { setRing('fps.fps', Number(data.fps) / 240); const fb = panel.querySelector('[data-role="fps.fpsbar"]'); if (fb) fb.style.width = Math.max(0, Math.min(100, Number(data.fps) / 240 * 100)) + '%'; }
-      setLimit('fps.fps', data.fps, L.fpsMin, true);
+      setLimit('fps.fps', data.fps, L.fpsMin, L.fpsCrit, true);
     }
   }
 
