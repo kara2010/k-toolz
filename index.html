@@ -406,7 +406,64 @@
                 <option value="neon">Neon</option>
                 <option value="strip">Leiste (horizontal)</option>
                 <option value="tiles">Kacheln (horizontal)</option>
+                <option value="gauge">Tacho (Ringanzeigen)</option>
+                <option value="term">Terminal</option>
+                <option value="dots">Punkte (horizontal, dezent)</option>
+                <option value="hud">HUD (Rahmenecken)</option>
               </select>
+            </div>
+            <div class="osd-field">
+              <span class="osd-field-label">Farben</span>
+              <select id="setOsdPalette" class="sort-select" style="flex:1" onchange="onOsdPaletteChange()">
+                <option value="standard">Standard (Grün, Orange, Blau)</option>
+                <option value="mono">Monochrom weiß</option>
+                <option value="dezent">Dezent grau</option>
+                <option value="pastell">Pastell</option>
+                <option value="amber">Amber / Retro</option>
+                <option value="rgb">RGB-Gaming</option>
+                <option value="eigen">Eigene Farben</option>
+              </select>
+            </div>
+            <div class="osd-field osd-colors" id="osdColorsRow">
+              <span class="osd-field-label"></span>
+              <label class="osd-color"><input type="color" id="setOsdColGpu" value="#74e857" oninput="onOsdColorInput()"><span>GPU</span></label>
+              <label class="osd-color"><input type="color" id="setOsdColCpu" value="#ff8a1e" oninput="onOsdColorInput()"><span>CPU</span></label>
+              <label class="osd-color"><input type="color" id="setOsdColFps" value="#4bd6ff" oninput="onOsdColorInput()"><span>FPS</span></label>
+              <label class="osd-color"><input type="color" id="setOsdColNet" value="#c79bff" oninput="onOsdColorInput()"><span>Netz</span></label>
+              <label class="osd-color"><input type="color" id="setOsdColVal" value="#ffe100" oninput="onOsdColorInput()"><span>Werte</span></label>
+            </div>
+            <div class="osd-field">
+              <span class="osd-field-label">Form</span>
+              <div class="osd-seg" id="osdFormSeg">
+                <button type="button" data-form="rund" class="active" onclick="setOsdForm('rund')">Rund</button>
+                <button type="button" data-form="eckig" onclick="setOsdForm('eckig')">Eckig</button>
+                <button type="button" data-form="pille" onclick="setOsdForm('pille')">Pille</button>
+              </div>
+            </div>
+            <div class="osd-togglegrid">
+              <label class="osd-mini"><input type="checkbox" id="setOsdLayLabels" checked onchange="onOsdSettingChange()"><span>Beschriftungen</span></label>
+              <label class="osd-mini"><input type="checkbox" id="setOsdLayUnits" checked onchange="onOsdSettingChange()"><span>Einheiten</span></label>
+              <label class="osd-mini"><input type="checkbox" id="setOsdLayIcons" onchange="onOsdSettingChange()"><span>Symbole</span></label>
+              <label class="osd-mini"><input type="checkbox" id="setOsdLaySep" checked onchange="onOsdSettingChange()"><span>Trennlinien</span></label>
+              <label class="osd-mini"><input type="checkbox" id="setOsdLayGlow" onchange="onOsdSettingChange()"><span>Leuchtrahmen</span></label>
+              <label class="osd-mini"><input type="checkbox" id="setOsdLayDense" onchange="onOsdSettingChange()"><span>Dicht</span></label>
+            </div>
+
+            <h3 class="settings-sec">Grenzwerte</h3>
+            <p class="settings-hint">Ab der Grenze wird der Wert rot, zehn darunter gelb; FPS unter der Grenze gelb, unter der Hälfte rot.</p>
+            <div class="setting-toggle-row">
+              <span class="setting-toggle-label">Grenzwerte einfärben</span>
+              <label class="switch"><input type="checkbox" id="setOsdLimOn" checked onchange="onOsdSettingChange()"><span class="switch-slider"></span></label>
+            </div>
+            <div class="osd-limits">
+              <label class="osd-limit"><span>GPU-Temperatur</span><input type="number" id="setOsdLimGpuTemp" min="40" max="120" value="85" onchange="onOsdSettingChange()"><i>°C</i></label>
+              <label class="osd-limit"><span>CPU-Temperatur</span><input type="number" id="setOsdLimCpuTemp" min="40" max="120" value="90" onchange="onOsdSettingChange()"><i>°C</i></label>
+              <label class="osd-limit"><span>Auslastung</span><input type="number" id="setOsdLimLoad" min="50" max="100" value="95" onchange="onOsdSettingChange()"><i>%</i></label>
+              <label class="osd-limit"><span>FPS mindestens</span><input type="number" id="setOsdLimFps" min="10" max="500" value="60" onchange="onOsdSettingChange()"><i>FPS</i></label>
+            </div>
+            <div class="setting-toggle-row">
+              <span class="setting-toggle-label">Bei Alarm pulsieren</span>
+              <label class="switch"><input type="checkbox" id="setOsdLimPulse" checked onchange="onOsdSettingChange()"><span class="switch-slider"></span></label>
             </div>
             <div class="osd-field">
               <span class="osd-field-label">Größe</span>
@@ -1273,6 +1330,38 @@
 // 'language' (auto = Systemsprache), gecacht in localStorage fuer die
 // flackerfreie Anwendung direkt beim Start.
 const I18N_EN = {
+  'Tacho (Ringanzeigen)': 'Gauge (rings)',
+  'Terminal': 'Terminal',
+  'Punkte (horizontal, dezent)': 'Dots (horizontal, subtle)',
+  'HUD (Rahmenecken)': 'HUD (frame corners)',
+  'Farben': 'Colors',
+  'Standard (Grün, Orange, Blau)': 'Standard (green, orange, blue)',
+  'Monochrom weiß': 'Monochrome white',
+  'Dezent grau': 'Subtle gray',
+  'Pastell': 'Pastel',
+  'Amber / Retro': 'Amber / retro',
+  'RGB-Gaming': 'RGB gaming',
+  'Eigene Farben': 'Custom colors',
+  'Netz': 'Net',
+  'Werte': 'Values',
+  'Form': 'Shape',
+  'Rund': 'Round',
+  'Eckig': 'Square',
+  'Pille': 'Pill',
+  'Beschriftungen': 'Labels',
+  'Einheiten': 'Units',
+  'Symbole': 'Icons',
+  'Trennlinien': 'Separators',
+  'Leuchtrahmen': 'Glow frame',
+  'Dicht': 'Dense',
+  'Grenzwerte': 'Thresholds',
+  'Ab der Grenze wird der Wert rot, zehn darunter gelb; FPS unter der Grenze gelb, unter der Hälfte rot.': 'At the threshold the value turns red, ten below it yellow; FPS below the threshold yellow, below half of it red.',
+  'Grenzwerte einfärben': 'Color thresholds',
+  'GPU-Temperatur': 'GPU temperature',
+  'CPU-Temperatur': 'CPU temperature',
+  'Auslastung': 'Load',
+  'FPS mindestens': 'FPS at least',
+  'Bei Alarm pulsieren': 'Pulse on alarm',
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
   'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, K-Toolz ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
 
@@ -3959,6 +4048,20 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       { const e = document.getElementById('setNetStats'); if (e) e.checked = !!s.netStats; netStatsAn = !!s.netStats }
       document.getElementById('setOsdEnabled').checked = !!s.osdEnabled
       document.getElementById('setOsdTheme').value = s.osdTheme || 'bar'
+      // Paket 1: Palette, eigene Farben, Layout-Baukasten, Grenzwerte
+      document.getElementById('setOsdPalette').value = s.osdPalette || 'standard'
+      { const c = s.osdColors || {}; const setC = (id, v, std) => { document.getElementById(id).value = /^#[0-9a-fA-F]{6}$/.test(v || '') ? v : std }
+        setC('setOsdColGpu', c.nv, '#74e857'); setC('setOsdColCpu', c.amd, '#ff8a1e'); setC('setOsdColFps', c.fpc, '#4bd6ff'); setC('setOsdColNet', c.netc, '#c79bff'); setC('setOsdColVal', c.val, '#ffe100') }
+      osdColorsRowShow()
+      { const l = s.osdLayout || {}
+        document.getElementById('setOsdLayLabels').checked = l.labels !== false; document.getElementById('setOsdLayUnits').checked = l.units !== false
+        document.getElementById('setOsdLayIcons').checked = !!l.icons; document.getElementById('setOsdLaySep').checked = l.sep !== false
+        document.getElementById('setOsdLayGlow').checked = !!l.glow; document.getElementById('setOsdLayDense').checked = !!l.dense
+        setOsdForm(l.form || 'rund', false) }
+      { const g = s.osdLimits || {}
+        document.getElementById('setOsdLimOn').checked = g.on !== false; document.getElementById('setOsdLimPulse').checked = g.pulse !== false
+        document.getElementById('setOsdLimGpuTemp').value = g.gpuTemp || 85; document.getElementById('setOsdLimCpuTemp').value = g.cpuTemp || 90
+        document.getElementById('setOsdLimLoad').value = g.load || 95; document.getElementById('setOsdLimFps').value = g.fpsMin || 60 }
       renderGpuOptions(s.osdGpu || 'auto')
       renderOsdFields(s.osdFields, s.osdOrder)
       document.getElementById('osdSetupRow').style.display = s.osdSetupDeclined ? 'flex' : 'none'
@@ -4187,7 +4290,12 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     }
 
     // --- OSD-Layout (live): jede Änderung wirkt sofort aufs Overlay ------------
-    let osdCorner = 'tl'
+    let osdCorner = 'tl', osdForm = 'rund'
+    function limZahl(id, min, max, std) { const el = document.getElementById(id); let n = parseInt(el.value, 10); if (!Number.isFinite(n)) n = std; n = Math.max(min, Math.min(max, n)); el.value = n; return n }
+    function osdColorsRowShow() { document.getElementById('osdColorsRow').style.display = document.getElementById('setOsdPalette').value === 'eigen' ? 'flex' : 'none' }
+    function onOsdPaletteChange() { osdColorsRowShow(); onOsdSettingChange() }
+    function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdColorsRowShow(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
+    function setOsdForm(f, apply = true) { osdForm = f; document.querySelectorAll('#osdFormSeg button').forEach(b => b.classList.toggle('active', b.dataset.form === f)); if (apply) onOsdSettingChange() }
     // WICHTIG: osdEnabled NUR mitschicken, wenn wirklich die Checkbox bedient wurde.
     // Sonst ueberschrieb jede Regler-Bewegung den per Alt+O gesetzten Zustand mit dem
     // (veralteten) Checkbox-Stand -> das eingeblendete OSD verschwand beim Schieben.
@@ -4201,6 +4309,13 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         osdScale: parseFloat(document.getElementById('setOsdScale').value),
         osdOpacity: parseFloat(document.getElementById('setOsdOpacity').value),
         osdCorner: osdCorner,
+        osdPalette: document.getElementById('setOsdPalette').value,
+        osdColors: { nv: document.getElementById('setOsdColGpu').value, amd: document.getElementById('setOsdColCpu').value, fpc: document.getElementById('setOsdColFps').value,
+                     netc: document.getElementById('setOsdColNet').value, val: document.getElementById('setOsdColVal').value },
+        osdLayout: { labels: document.getElementById('setOsdLayLabels').checked, units: document.getElementById('setOsdLayUnits').checked, icons: document.getElementById('setOsdLayIcons').checked,
+                     sep: document.getElementById('setOsdLaySep').checked, form: osdForm, glow: document.getElementById('setOsdLayGlow').checked, dense: document.getElementById('setOsdLayDense').checked },
+        osdLimits: { on: document.getElementById('setOsdLimOn').checked, pulse: document.getElementById('setOsdLimPulse').checked,
+                     gpuTemp: limZahl('setOsdLimGpuTemp', 40, 120, 85), cpuTemp: limZahl('setOsdLimCpuTemp', 40, 120, 90), load: limZahl('setOsdLimLoad', 50, 100, 95), fpsMin: limZahl('setOsdLimFps', 10, 500, 60) },
       }
       if (fromEnabledToggle) cfg.osdEnabled = document.getElementById('setOsdEnabled').checked
       ipcRenderer.invoke('set-app-settings', cfg)

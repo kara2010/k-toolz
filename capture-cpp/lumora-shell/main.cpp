@@ -4243,7 +4243,10 @@ static void applyOsdConfig() {
     sendToOsd("osd-config", { {"corner", s.value("osdCorner", "tl")}, {"opacity", s.value("osdOpacity", 0.55)},
                               {"theme", s.value("osdTheme", "bar")}, {"fields", s.value("osdFields", json())},
                               {"order", s.value("osdOrder", json())},   // freie Gruppen-Reihenfolge
-                              {"accent", s.value("osdAccent", "#74e857")} });
+                              {"accent", s.value("osdAccent", "#74e857")},
+                              // Paket 1 (Designvielfalt): Palette, eigene Farben, Grenzwerte, Layout-Baukasten
+                              {"palette", s.value("osdPalette", "standard")}, {"colors", s.value("osdColors", json())},
+                              {"limits", s.value("osdLimits", json())}, {"layout", s.value("osdLayout", json())} });
 }
 static ComPtr<IDCompositionDevice> g_dcompDev;
 static ComPtr<IDCompositionTarget> g_dcompTarget;
