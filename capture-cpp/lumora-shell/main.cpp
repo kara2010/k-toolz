@@ -1281,6 +1281,17 @@ static lusrv::Response handleStreamHttp(const lusrv::Request& rq) {
             rq.headers.count("content-type") ? rq.headers.at("content-type") : "",
             rq.headers.count("user-agent") ? rq.headers.at("user-agent") : "", rq.body);
         if (pr.status == 0) { rs.status = 502; rs.body = "mediamtx nicht erreichbar"; return rs; }
+        if (rq.method == "POST" && rest.empty() && pr.status == 201 && !local) {   // unsere Kandidaten, damit ein Fehlschlag spaeter aus dem Log erklaerbar ist
+            std::string list; size_t p = 0;
+            while ((p = pr.body.find("a=candidate:", p)) != std::string::npos) {
+                size_t e = pr.body.find('\n', p);
+                std::istringstream is(pr.body.substr(p + 12, e == std::string::npos ? std::string::npos : e - p - 12));
+                std::string fnd, comp, proto, prio, ip, port, t, typ; is >> fnd >> comp >> proto >> prio >> ip >> port >> t >> typ;
+                p += 12;
+                if (!ip.empty()) list += (list.empty() ? "" : ", ") + ip + ":" + port + " " + typ;
+            }
+            bcLogStream("whep: antwort an " + rq.clientIp + " kandidaten: " + (list.empty() ? "(keine)" : list));
+        }
         rs.status = pr.status; rs.body = pr.body;
         for (auto& [k, v] : pr.headers) {
             if (k == "Location") {   // http://127.0.0.1:8889/live/whep/<id> -> /whep/<id>
@@ -1353,6 +1364,26 @@ static int g_adaptLevel = 0; static ULONGLONG g_adaptLastChange = 0, g_adaptBadS
 static ULONGLONG g_bcSince = 0; static int g_bcPeakViewers = 0, g_bcSwitches = 0; static std::set<std::string> g_bcSessionIds;
 static std::vector<std::string> g_bcPinholeIds; static bool g_bcV4Mapped = false;   // Router-Phase (Teardown beim Stopp)
 static ULONGLONG g_bcPinholeSetAt = 0;   // fuer die 12h-IPv6-Pinhole-Erneuerung (24h-Lease)
+// IPv6-Pinholes (Signalisierung 8787/TCP + Medien 8189/UDP) fuer die Hauptadresse (ausgehende Quell-
+// adresse, steht als Zuschauer-Link und Push-Kandidat) UND fuer jede weitere globale IPv6-Adresse der
+// Schnittstelle - libjuice bietet die SLAAC-Adresse als Host-Kandidat an (s. luupnp::globalIPv6All).
+// Rueckgabe: beide Pinholes der Hauptadresse stehen. IDs sammeln sich in g_bcPinholeIds (Teardown).
+static bool bcAddPinholes(const std::string& primary) {
+    std::string t6 = luupnp::addPinhole(primary, BROADCAST_PORT, "TCP"), u6 = luupnp::addPinhole(primary, MTX_ICE_UDP, "UDP");
+    if (!t6.empty()) g_bcPinholeIds.push_back(t6);
+    if (!u6.empty()) g_bcPinholeIds.push_back(u6);
+    int weitere = 0, fehl = 0;
+    for (auto& ip : luupnp::globalIPv6All()) {
+        if (ip == primary) continue;
+        std::string a = luupnp::addPinhole(ip, BROADCAST_PORT, "TCP"), b = luupnp::addPinhole(ip, MTX_ICE_UDP, "UDP");
+        if (!a.empty()) g_bcPinholeIds.push_back(a);
+        if (!b.empty()) g_bcPinholeIds.push_back(b);
+        if (!a.empty() && !b.empty()) weitere++; else fehl++;
+    }
+    bool ok = !t6.empty() && !u6.empty();
+    bcLogStream("pinholes: hauptadresse " + std::string(ok ? "ok" : "FEHLT") + ", weitere globale IPv6: " + std::to_string(weitere) + " ok" + (fehl ? ", " + std::to_string(fehl) + " fehlgeschlagen" : ""));
+    return ok;
+}
 #define TIMER_IPWATCH 109   // IP-Wechsel-Watcher (5 min): Zwangstrennung/IP-Wechsel nachziehen
 static void bcRegisterWatchLink(); static void bcUnregisterWatchLink();   // (Gruppen-Modul weiter unten)
 static void bcProbeOutside(int& p4, int& p6); static std::string bcShareUrl();   // (ebenfalls Gruppen-Modul)
@@ -1549,7 +1580,9 @@ static void bcPushIceConfig(const std::vector<std::string>& hosts) {
         servers.push_back({ {"url", turl}, {"user", s.value("streamTurnUser", "")}, {"pass", s.value("streamTurnPass", "")} });
     }
     body["iceServers"] = servers;
-    luart::httpPost("http://127.0.0.1:" + std::to_string(MTX_API_PORT) + "/v3/config/ice", body.dump(), 2000);
+    auto r = luart::httpPost("http://127.0.0.1:" + std::to_string(MTX_API_PORT) + "/v3/config/ice", body.dump(), 2000);
+    std::string hl; for (auto& h : hosts) hl += (hl.empty() ? "" : " ") + h;   // bis 4.0.1 verschluckt: ob der Relay die Adressen je bekam, war nicht nachvollziehbar
+    bcLogStream("ice-push -> [" + hl + "]" + (servers.empty() ? "" : " +TURN") + " (http " + std::to_string(r.status) + ")");
 }
 // Codec-Modus (auto|av1|h264) an den Relay pushen - bestimmt die Codec-Wahl pro Zuschauer.
 // Effektiv = Settings-Modus BEGRENZT durch die Hardware-Faehigkeit (g_capAv1): kann der
@@ -1964,11 +1997,7 @@ static json startBroadcast() {
         std::thread tv6([&]() {
             pubIp6 = luupnp::publicIPv6();
             if (pubIp6.empty()) return;
-            std::string t6 = luupnp::addPinhole(pubIp6, BROADCAST_PORT, "TCP");   // Signalisierung
-            std::string u6 = luupnp::addPinhole(pubIp6, MTX_ICE_UDP, "UDP");      // Medien
-            if (!t6.empty()) g_bcPinholeIds.push_back(t6);
-            if (!u6.empty()) g_bcPinholeIds.push_back(u6);
-            v6Ok = !t6.empty() && !u6.empty();
+            v6Ok = bcAddPinholes(pubIp6);   // Signalisierung + Medien, fuer alle globalen IPv6-Adressen
             if (v6Ok) g_bcPinholeSetAt = GetTickCount64();   // Startzeit fuer die 12h-Erneuerung
         });
         std::string routerIp = luupnp::getExternalIp();   // WAN-Adresse des Routers (waermt zugleich den resolveControl-Cache fuer mapPort)
@@ -2771,11 +2800,7 @@ static void bcIpWatchTick() {
         if (!ip6.empty() && (changed || renewPinholes)) {   // Pinholes neu/erneuern
             for (auto& id : g_bcPinholeIds) luupnp::deletePinhole(id);
             g_bcPinholeIds.clear();
-            std::string t6 = luupnp::addPinhole(ip6, BROADCAST_PORT, "TCP");
-            std::string u6 = luupnp::addPinhole(ip6, MTX_ICE_UDP, "UDP");
-            if (!t6.empty()) g_bcPinholeIds.push_back(t6);
-            if (!u6.empty()) g_bcPinholeIds.push_back(u6);
-            if (!t6.empty() && !u6.empty()) g_bcPinholeSetAt = GetTickCount64();
+            if (bcAddPinholes(ip6)) g_bcPinholeSetAt = GetTickCount64();
             bcLogStream("ipwatch: IPv6-Pinholes " + std::string(changed ? "neu gesetzt" : "erneuert"));
         }
     }).detach();

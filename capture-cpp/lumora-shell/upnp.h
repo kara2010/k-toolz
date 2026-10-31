@@ -9,6 +9,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <iphlpapi.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <regex>
@@ -186,6 +188,29 @@ inline std::string publicIPv6() {
     }
     closesocket(s);
     return (!ip.empty() && (ip[0] == '2' || ip[0] == '3')) ? ip : "";   // nur global unicast (2000::/3)
+}
+// ALLE globalen IPv6-Unicast-Adressen (2000::/3) der aktiven Schnittstellen, SLAAC- UND temporaere.
+// Gemessen 31.10.2026: libjuice sammelt als Host-Kandidat die SLAAC-Adresse, publicIPv6() liefert die
+// temporaere. Ein Pinhole nur fuer die temporaere liess den hoechstpriorisierten IPv6-Kandidaten in der
+// Router-Firewall ins Leere laufen - Pinholes gehoeren fuer jede dieser Adressen gesetzt.
+inline std::vector<std::string> globalIPv6All() {
+    std::vector<std::string> out;
+    ULONG sz = 16384; std::vector<unsigned char> buf(sz);
+    ULONG fl = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER;
+    ULONG rc = GetAdaptersAddresses(AF_INET6, fl, nullptr, (IP_ADAPTER_ADDRESSES*)buf.data(), &sz);
+    if (rc == ERROR_BUFFER_OVERFLOW) { buf.resize(sz); rc = GetAdaptersAddresses(AF_INET6, fl, nullptr, (IP_ADAPTER_ADDRESSES*)buf.data(), &sz); }
+    if (rc != NO_ERROR) return out;
+    for (auto* a = (IP_ADAPTER_ADDRESSES*)buf.data(); a; a = a->Next) {
+        if (a->OperStatus != IfOperStatusUp) continue;
+        for (auto* u = a->FirstUnicastAddress; u; u = u->Next) {
+            if (u->Address.lpSockaddr->sa_family != AF_INET6 || u->DadState != IpDadStatePreferred) continue;
+            char b[64] = {}; inet_ntop(AF_INET6, &((sockaddr_in6*)u->Address.lpSockaddr)->sin6_addr, b, sizeof(b));
+            std::string ip = b;
+            if (ip.empty() || !(ip[0] == '2' || ip[0] == '3')) continue;   // nur global unicast
+            if (std::find(out.begin(), out.end(), ip) == out.end()) out.push_back(ip);
+        }
+    }
+    return out;
 }
 inline std::string addPinhole(const std::string& v6, int port, const char* proto) {
     Ctrl* c = resolveV6Firewall(); if (!c || v6.empty()) return "";
