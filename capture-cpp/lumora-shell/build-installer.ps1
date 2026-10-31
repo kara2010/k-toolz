@@ -13,7 +13,12 @@ $stage = "$shell\stage"
 # osd-Rauchtest als Bau-Sperre (Schritt 0b). Die Nummer 3.2.6 bleibt verbrannt -
 # wer sie gezogen hatte, bekaeme dieselbe Nummer nie erneut als Update angeboten
 # (der Updater vergleicht nur die Versionsnummer, s. RELEASE.md 12).
-$version = "4.0.1"   # 4.0.1: StreamToFriend misst nach dem Start die Erreichbarkeit von aussen
+$version = "4.0.2"   # 4.0.2: Stream-Link in 0,5 s (Carrier-NAT-Schnellpfad, Pinholes parallel, Link vor der
+                     #        Messung); tote ICE-Kandidaten (abgelehnte Pinhole-Adressen, Carrier-NAT-IPv4)
+                     #        aus der WHEP-Antwort gestrichen; Pinholes fuer alle globalen IPv6-Adressen;
+                     #        minimiertes Quellfenster -> Schwarzbild statt Neustartschleife + Hinweis;
+                     #        ICE-Push, eigene/fremde Kandidaten und Pinhole-Ablehnungen im Stream-Log.
+$prev_4_0_1 = ""  # 4.0.1: StreamToFriend misst nach dem Start die Erreichbarkeit von aussen
                      #        (Vermittlungsserver klopft an, stream.php?a=probe) statt sie aus der
                      #        Router-Freigabe zu schliessen; oeffentliche IPv4 per STUN statt UPnP;
                      #        Carrier-NAT erkannt und ehrlich gemeldet (Stream-Tab, Verbindungstest,

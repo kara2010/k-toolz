@@ -62,7 +62,7 @@
         "@type": "SoftwareApplication",
         "@id": "https://lumora-streaming.de/en/#app",
         "name": "Lumora",
-        "softwareVersion": "4.0.1",
+        "softwareVersion": "4.0.2",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
         "license": "https://www.gnu.org/licenses/agpl-3.0.html",
@@ -1041,8 +1041,18 @@
     <div class="changelog">
       <div class="release">
         <div class="release-head">
-          <span class="release-ver">4.0.1</span>
+          <span class="release-ver">4.0.2</span>
           <span class="release-tag">current</span>
+        </div>
+        <ul>
+          <li><strong>Stream link available immediately</strong> – the share link appears within half a second after starting, while the reachability check continues in the background.</li>
+          <li><strong>Minimized window as source</strong> – the stream keeps running, viewers connect immediately and see black, and the stream tab tells you why. As soon as the window is visible again, it continues seamlessly.</li>
+          <li><strong>Faster connection setup</strong> – viewers are only offered addresses they can actually reach.</li>
+        </ul>
+      </div>
+      <div class="release">
+        <div class="release-head">
+          <span class="release-ver">4.0.1</span>
         </div>
         <ul>
           <li><strong>StreamToFriend checks reachability</strong> – after starting, the rendezvous server knocks on your stream from outside. If your connection is behind carrier-grade NAT, the stream tab tells you so openly: viewers then reach you via IPv6 or a relay.</li>
@@ -1081,6 +1091,7 @@
           <li><strong>Settings respond instantly on every machine</strong> – when opening the settings, Lumora asked Windows about its scheduled tasks in a blocking way. On machines where this query is slow (typically right after a fresh installation), the app then stopped responding to clicks for several seconds. The query now runs entirely in the background and its result is cached.</li>
         </ul>
       </div>
+      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.8</span>
@@ -1091,7 +1102,6 @@
           <li>The preview in the stream area pauses while a game is running – nobody is watching it there anyway, and it costs performance for nothing.</li>
         </ul>
       </div>
-      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.7</span>
@@ -1504,7 +1514,7 @@
       </div>
       </div><!-- /#changelogRest -->
     </div>
-    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (38)</button>
+    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (39)</button>
   </div>
 </section>
 
@@ -1905,7 +1915,7 @@
     if (!rest || !btn) return;
     var open = rest.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Show less' : 'Show older versions (38)';
+    btn.textContent = open ? 'Show less' : 'Show older versions (39)';
   }
 
   function toggleFeatures() {

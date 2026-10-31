@@ -10,8 +10,8 @@ IDI_MOD_STUTTER ICON "icons/stutterhunter.ico"
 IDI_MOD_WHEEL   ICON "icons/wheeltopad.ico"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 4,0,1,0
- PRODUCTVERSION 4,0,1,0
+ FILEVERSION 4,0,2,0
+ PRODUCTVERSION 4,0,2,0
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
  FILEOS VOS_NT_WINDOWS32
@@ -24,12 +24,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Karsten Radermacher"
             VALUE "FileDescription", "K-Toolz"
-            VALUE "FileVersion", "4.0.1.0"
+            VALUE "FileVersion", "4.0.2.0"
             VALUE "InternalName", "k-toolz"
             VALUE "LegalCopyright", "\xA9 Karsten Radermacher"
             VALUE "OriginalFilename", "k-toolz.exe"
             VALUE "ProductName", "K-Toolz"
-            VALUE "ProductVersion", "4.0.1.0"
+            VALUE "ProductVersion", "4.0.2.0"
         END
     END
     BLOCK "VarFileInfo"
