@@ -1809,6 +1809,8 @@ const I18N_EN = {
   '⏳ Öffentlicher Link wird vorbereitet…': '⏳ Preparing public link…',
   '  ·  ⏳ Router wird geprüft…': '  ·  ⏳ Checking router…',
   '  ·  ⏳ Erreichbarkeit wird geprüft…': '  ·  ⏳ Checking reachability…',
+  '⚠️ <b>Die Quelle liefert kein Bild</b> – das Fenster ist minimiert. Zuschauer sehen so lange Schwarz bzw. das letzte Bild. Stelle das Fenster wieder her, dann geht es sofort weiter.': '⚠️ <b>The source is not delivering a picture</b> – the window is minimized. Viewers see black or the last picture until then. Restore the window and it continues immediately.',
+  '⚠️ <b>Die Quelle liefert gerade kein Bild.</b> Zuschauer sehen so lange Schwarz bzw. das letzte Bild. Läuft die Anwendung noch, und ist das Fenster sichtbar?': '⚠️ <b>The source is not delivering a picture right now.</b> Viewers see black or the last picture until then. Is the application still running and the window visible?',
   'Erreichbarkeit wird geprüft…': 'Checking reachability…',
   '  ·  ⛔ Von außen nicht erreichbar: Carrier-NAT ohne IPv6 – nur ein Relay (TURN, Einstellungen) hilft': '  ·  ⛔ Not reachable from outside: carrier-grade NAT without IPv6 – only a relay (TURN, settings) helps',
   '  ·  🌐 nur über IPv6 erreichbar – IPv4 ist Carrier-NAT (Zuschauer ohne IPv6 brauchen ein Relay)': '  ·  🌐 reachable via IPv6 only – IPv4 is carrier-grade NAT (viewers without IPv6 need a relay)',
@@ -4305,6 +4307,11 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         else if (st.internet) net = window.tr('  ·  🌐 aus dem Internet erreichbar')
         else if (st.needsForward) net = window.tr('  ·  ⚠️ Ports (8787 TCP / 8189 UDP) am Router noch freigeben')
         else net = window.tr('  ·  nur im lokalen Netz')
+        const idle = st.sourceIdle
+          ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr(st.sourceMinimized
+              ? '⚠️ <b>Die Quelle liefert kein Bild</b> – das Fenster ist minimiert. Zuschauer sehen so lange Schwarz bzw. das letzte Bild. Stelle das Fenster wieder her, dann geht es sofort weiter.'
+              : '⚠️ <b>Die Quelle liefert gerade kein Bild.</b> Zuschauer sehen so lange Schwarz bzw. das letzte Bild. Läuft die Anwendung noch, und ist das Fenster sichtbar?') + '</div>'
+          : ''
         const cap = st.driverError
           ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('⚠️ <b>Grafiktreiber veraltet.</b> Das Streaming benötigt einen aktuellen NVIDIA-Treiber (mindestens Version 610). Bitte über GeForce Experience oder nvidia.com aktualisieren – danach läuft es.') + '</div>'
           : st.captureError ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('⚠️ <b>Kein Bild.</b> Läuft dein Spiel im <b>exklusiven Vollbild</b>? Stelle es auf <b>randloses Fenster</b> („Borderless"/„Fenster-Vollbild") um – dann kann K-Toolz aufnehmen, ohne ins Spiel einzugreifen.') + '</div>' : ''
@@ -4318,7 +4325,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
           ? '<div style="color:#f5b942; margin-top:8px; line-height:1.4">' + window.tr('🎨 <b>HDR-Bildschirm erkannt.</b> Beim Teilen des ganzen Bildschirms wirken die Farben für Zuschauer blass. Für korrekte Farben das Spiel als <b>Fenster</b> freigeben – dort wandelt K-Toolz HDR sauber um.') + '</div>'
           : ''
         document.getElementById('streamStats').innerHTML =
-          window.tr('Zuschauer: ') + (st.viewers || 0) + (st.quality ? '  ·  ' + st.quality : '') + net + adapt + hdrW + cap
+          window.tr('Zuschauer: ') + (st.viewers || 0) + (st.quality ? '  ·  ' + st.quality : '') + net + adapt + hdrW + idle + cap
         document.getElementById('streamForwardHelp').style.display = st.needsForward ? 'block' : 'none'
         if (st.needsForward && st.forwardHint) {
           document.getElementById('streamForwardTitle').textContent =

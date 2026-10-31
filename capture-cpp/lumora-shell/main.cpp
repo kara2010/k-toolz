@@ -1534,6 +1534,9 @@ static bool spawnChild(ChildProc& cp, const std::wstring& cmdLine, const char* l
                 std::string line = acc.substr(0, nl); acc = acc.substr(nl + 1);
                 while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
                 if (!line.empty()) bcLogStream(pfx + line);
+                // Quelle liefert kein Bild (Fenster minimiert) / wieder da: Hinweis im Stream-Tab (s. index.html sourceIdle)
+                if (pfx == "nat: " && line.rfind("SOURCE: kein Bild", 0) == 0) { g_bcState["sourceIdle"] = true; g_bcState["sourceMinimized"] = line.find("minimiert") != std::string::npos; bcPushState(); }
+                if (pfx == "nat: " && line.rfind("SOURCE: Bild wieder da", 0) == 0) { g_bcState["sourceIdle"] = false; bcPushState(); }
                 // Faehigkeitsmeldung des Capture-Helfers abgreifen (s. g_capAv1 oben).
                 if (pfx == "nat: " && line.rfind("codec=", 0) == 0) {
                     bool cap = line.find("av1") != std::string::npos;

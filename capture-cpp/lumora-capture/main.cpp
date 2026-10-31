@@ -1181,7 +1181,7 @@ int main(int argc, char** argv) {
     // den Encoder ohne Neustart um (nahtlos, kein Stream-Abriss bei adaptiver Bitrate).
     std::string brPath = std::string(getenv("TEMP") ? getenv("TEMP") : ".") + "\\k-toolz-bitrate.txt";
     uint64_t brMtime = ~0ull; int curKbit = mbit * 1000;
-    uint64_t inFrame = 0, outFrame = 0, frameTick = 0; int tries = 0; auto t0 = std::chrono::steady_clock::now();
+    uint64_t inFrame = 0, outFrame = 0, frameTick = 0; auto t0 = std::chrono::steady_clock::now();
     // Ton als Pointer: beim Quellwechsel (Monitor<->Fenster) wird die Aufnahme-Seite neu
     // gestartet (System- vs. Prozess-Loopback); die PTS laufen dank Epoch-Sync nahtlos weiter.
     AudioCapture* audio = new AudioCapture();
@@ -1222,7 +1222,39 @@ int main(int argc, char** argv) {
     // aufsetzen, sobald diese Bedingung erfuellt ist.
     int srcBaseW = W, srcBaseH = H;   // Quellgroesse, aus der die AKTUELLEN outW/outH/der Encoder stammen
     bool resizePending = false; std::chrono::steady_clock::time_point resizePendingAt;
-    while ((maxFrames == 0 || (int)frameTick < maxFrames) && (haveFrame || tries < 3000)) {
+    // KEIN BILD VON DER QUELLE: WGC liefert fuer ein minimiertes Fenster keine Frames (gemessen
+    // 31.10.2026, Chrome-Fenster minimiert; der Kommentar bei setupSource hatte das Gegenteil
+    // angenommen). Bis 4.0.1 wartete der Helfer ~6 s auf den ersten Frame, beendete sich, die
+    // Shell startete ihn neu - alle 8 s im Kreis, ohne ein einziges Keyframe: ein neuer Zuschauer
+    // hing in "WARTET-AUF-KEYFRAME", bis der Nutzer das Fenster wiederherstellte. Jetzt: nach 1 s
+    // ohne Frame laeuft ein Schwarzbild im Takt (Keyframes kommen, Zuschauer verbinden sofort),
+    // der Zustand geht als "SOURCE: kein Bild ..." an die Shell (Hinweis im Stream-Tab), und
+    // sobald die Quelle wieder liefert, geht es nahtlos weiter. Faellt die Quelle MITTEN im
+    // Stream aus, wird wie bisher das letzte Bild wiederholt - nur jetzt mit Meldung.
+    auto lastFrameAt = t0; bool noPicture = false; double noPictureSince = 0;
+    winrt::com_ptr<ID3D11Texture2D> blackNv12; int blackW = 0, blackH = 0;
+    auto fillBlack = [&]() {   // nv12 (Encoder-Eingang) mit Schwarz fuellen: Y=16, UV=128 (limited range)
+        if (!blackNv12 || blackW != outW || blackH != outH) {
+            blackNv12 = nullptr; blackW = outW; blackH = outH;
+            D3D11_TEXTURE2D_DESC sd{}; sd.Width = outW; sd.Height = outH; sd.MipLevels = 1; sd.ArraySize = 1; sd.Format = DXGI_FORMAT_NV12; sd.SampleDesc.Count = 1; sd.Usage = D3D11_USAGE_STAGING; sd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            if (FAILED(dev->CreateTexture2D(&sd, nullptr, blackNv12.put()))) { blackNv12 = nullptr; return; }
+            D3D11_MAPPED_SUBRESOURCE m{};
+            if (SUCCEEDED(ctx->Map(blackNv12.get(), 0, D3D11_MAP_WRITE, 0, &m))) {
+                uint8_t* p = (uint8_t*)m.pData;
+                for (int y = 0; y < outH; ++y) memset(p + (size_t)y * m.RowPitch, 16, outW);
+                for (int y = 0; y < outH / 2; ++y) memset(p + (size_t)(outH + y) * m.RowPitch, 128, outW);
+                ctx->Unmap(blackNv12.get(), 0);
+            }
+        }
+        if (blackNv12) ctx->CopyResource(nv12.get(), blackNv12.get());
+    };
+    auto quelleStumm = [&](double seitSek) {
+        if (noPicture) return;
+        noPicture = true; noPictureSince = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        printf("SOURCE: kein Bild von der Quelle seit %.0f s%s -> %s, warte weiter\n", seitSek,
+               (curHwnd && IsIconic(curHwnd)) ? " (Fenster minimiert)" : "", haveFrame ? "letztes Bild wird wiederholt" : "Schwarzbild");
+    };
+    while (maxFrames == 0 || (int)frameTick < maxFrames) {
         // 1) alle bereitliegenden WGC-Frames abholen, den NEUESTEN uebernehmen.
         for (;;) {
             auto f = framePool.TryGetNextFrame(); if (!f) break;
@@ -1243,7 +1275,8 @@ int main(int argc, char** argv) {
             // sofort in eigene Textur (WGC recycelt den FramePool-Buffer): HDR -> FP16-Kopie
             // der Tonemap-Stufe, SDR -> bgraIn. Von dort wird beim Takt-Tick gerendert/encodiert.
             if (hdr) tonemap.update(ctx.get(), ft.get()); else ctx->CopyResource(bgraIn.get(), ft.get());
-            haveFrame = true; inFrame++;
+            haveFrame = true; inFrame++; lastFrameAt = std::chrono::steady_clock::now();
+            if (noPicture) { noPicture = false; printf("SOURCE: Bild wieder da nach %.0f s\n", std::chrono::duration<double>(lastFrameAt - t0).count() - noPictureSince); }
         }
         // Deutliche Groessenaenderung 3s stabil -> Encoder+D3D11-Pipeline in-process neu
         // aufsetzen (kein Prozess-Neustart wie im FFmpeg-Pfad noetig/moeglich). Ein frischer
@@ -1264,23 +1297,32 @@ int main(int argc, char** argv) {
             rebuildScaler();
             reconcile(hadH264, hadAv1, curKbit);   // gleiche Codec-Menge in neuer Aufloesung
         }
-        if (!haveFrame) { std::this_thread::sleep_for(std::chrono::milliseconds(2)); tries++; continue; }   // auf den ERSTEN Frame warten (max ~6s)
+        {   // Quelle stumm? Vor dem ersten Frame: 1 s warten, dann Schwarzbild. Mitten im Stream: nach 2 s melden.
+            double ohne = std::chrono::duration<double>(std::chrono::steady_clock::now() - lastFrameAt).count();
+            if (!haveFrame) {
+                if (ohne < 1.0) { std::this_thread::sleep_for(std::chrono::milliseconds(2)); continue; }
+                quelleStumm(ohne);
+                if (ohne > 60.0 && !(curHwnd && IsIconic(curHwnd))) { printf("SOURCE: 60 s kein Bild und Fenster nicht minimiert -> Neustart\n"); break; }   // Aufnahme selbst kaputt? Shell startet neu
+            } else if (ohne >= 2.0) quelleStumm(ohne);
+        }
         // 2) faellige Takt-Ticks encodieren (letzter Frame zaehlt - echt oder wiederholt).
         uint64_t due = (uint64_t)(std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() * fps);
         if (frameIdx + fps < due) frameIdx = due;   // nach Pause/Stau nicht in einem Burst aufholen
         if (frameIdx >= due) { std::this_thread::sleep_for(std::chrono::milliseconds(1)); continue; }
         frameIdx++;
-        ID3D11Texture2D* vpIn;
-        if (hdr) { tonemap.render(ctx.get()); vpIn = tonemap.sdrTex.get(); }
-        else vpIn = bgraIn.get();
-        D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC ivd{}; ivd.FourCC = 0; ivd.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D; ivd.Texture2D.MipSlice = 0;
-        winrt::com_ptr<ID3D11VideoProcessorInputView> iv; if (FAILED(vdev->CreateVideoProcessorInputView(vpIn, venum.get(), &ivd, iv.put()))) continue;
-        D3D11_VIDEO_PROCESSOR_STREAM st{}; st.Enable = TRUE; st.pInputSurface = iv.get();
-        if (FAILED(vctx->VideoProcessorBlt(vproc.get(), outView.get(), 0, 1, &st))) continue;
+        ID3D11Texture2D* vpIn = nullptr;
+        if (haveFrame) {
+            if (hdr) { tonemap.render(ctx.get()); vpIn = tonemap.sdrTex.get(); }
+            else vpIn = bgraIn.get();
+            D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC ivd{}; ivd.FourCC = 0; ivd.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D; ivd.Texture2D.MipSlice = 0;
+            winrt::com_ptr<ID3D11VideoProcessorInputView> iv; if (FAILED(vdev->CreateVideoProcessorInputView(vpIn, venum.get(), &ivd, iv.put()))) continue;
+            D3D11_VIDEO_PROCESSOR_STREAM st{}; st.Enable = TRUE; st.pInputSurface = iv.get();
+            if (FAILED(vctx->VideoProcessorBlt(vproc.get(), outView.get(), 0, 1, &st))) continue;
+        } else fillBlack();   // noch kein Bild von der Quelle: Schwarzbild in den Encoder
         ctx->Flush();
         std::vector<std::vector<uint8_t>> aus; if (encoder) encoder->encode(nv12.get(), aus);
         std::vector<std::vector<uint8_t>> ausAv1; if (encoderAv1) encoderAv1->encode(nv12.get(), ausAv1);
-        preview.onTick(ctx.get(), vdev.get(), vctx.get(), vpIn, fps);   // nach dem Encode-Submit: kostet den Encoder keine Zeit
+        if (vpIn) preview.onTick(ctx.get(), vdev.get(), vctx.get(), vpIn, fps);   // nach dem Encode-Submit: kostet den Encoder keine Zeit
         frameTick++;
         // --- 1x/s Steuerdateien pollen (Bitrate, Quelle, Codec) - auf TICK-Ebene, nicht am
         //     H.264-AU-Zaehler (bei AV1-only kaeme sonst nie ein Tick durch). ---
