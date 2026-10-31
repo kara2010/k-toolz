@@ -75,7 +75,7 @@
         "@type": "SoftwareApplication",
         "@id": "https://lumora-streaming.de/#app",
         "name": "Lumora",
-        "softwareVersion": "4.0.0",
+        "softwareVersion": "4.0.1",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
         "license": "https://www.gnu.org/licenses/agpl-3.0.html",
@@ -1054,8 +1054,18 @@
     <div class="changelog">
       <div class="release">
         <div class="release-head">
-          <span class="release-ver">4.0.0</span>
+          <span class="release-ver">4.0.1</span>
           <span class="release-tag">aktuell</span>
+        </div>
+        <ul>
+          <li><strong>StreamToFriend prüft die Erreichbarkeit</strong> – nach dem Start klopft die Vermittlung von außen an deinem Stream an. Liegt dein Anschluss hinter Carrier-NAT, sagt dir der Stream-Tab das offen: Zuschauer erreichen dich dann über IPv6 oder ein Relay.</li>
+          <li><strong>Klartext für Zuschauer</strong> – wer ohne IPv6 einen nur über IPv6 erreichbaren Stream öffnet, sieht im Player den Grund statt endlos „Verbinde…“.</li>
+          <li><strong>Schnellerer Verbindungsaufbau</strong> – nicht erreichbare Adressen werden gar nicht erst angeboten. Der Verbindungstest in den Einstellungen erkennt Carrier-NAT ebenfalls.</li>
+        </ul>
+      </div>
+      <div class="release">
+        <div class="release-head">
+          <span class="release-ver">4.0.0</span>
         </div>
         <ul>
           <li><strong>Lumora heißt jetzt K-Toolz</strong> – deine Spiele, Einstellungen, Hotkeys und Profile ziehen beim Update automatisch mit um.</li>
@@ -1094,6 +1104,7 @@
           <li>Die Vorschau im Stream-Bereich pausiert, solange ein Spiel läuft – sie wird dort ohnehin von niemandem gesehen und kostet unnötig Leistung.</li>
         </ul>
       </div>
+      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.7</span>
@@ -1105,7 +1116,6 @@
           <li>Maximiert schneidet die Taskleiste nichts mehr vom Fenster ab, und Bibliothek wie Einstellungen scrollen wieder bis zum Ende.</li>
         </ul>
       </div>
-      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.5</span>
@@ -1507,7 +1517,7 @@
       </div>
       </div><!-- /#changelogRest -->
     </div>
-    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Ältere Versionen anzeigen (37)</button>
+    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Ältere Versionen anzeigen (38)</button>
   </div>
 </section>
 
@@ -1924,7 +1934,7 @@
     if (!rest || !btn) return;
     var open = rest.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Weniger anzeigen' : 'Ältere Versionen anzeigen (37)';
+    btn.textContent = open ? 'Weniger anzeigen' : 'Ältere Versionen anzeigen (38)';
   }
 
   function toggleFeatures() {

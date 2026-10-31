@@ -13,7 +13,12 @@ $stage = "$shell\stage"
 # osd-Rauchtest als Bau-Sperre (Schritt 0b). Die Nummer 3.2.6 bleibt verbrannt -
 # wer sie gezogen hatte, bekaeme dieselbe Nummer nie erneut als Update angeboten
 # (der Updater vergleicht nur die Versionsnummer, s. RELEASE.md 12).
-$version = "4.0.0"   # 4.0.0: Lumora heisst K-Toolz. Werkzeuge PlainOSD/StreamToFriend/StutterHunter/
+$version = "4.0.1"   # 4.0.1: StreamToFriend misst nach dem Start die Erreichbarkeit von aussen
+                     #        (Vermittlungsserver klopft an, stream.php?a=probe) statt sie aus der
+                     #        Router-Freigabe zu schliessen; oeffentliche IPv4 per STUN statt UPnP;
+                     #        Carrier-NAT erkannt und ehrlich gemeldet (Stream-Tab, Verbindungstest,
+                     #        Player-Erklaerung fuer Zuschauer ohne IPv6); Zuschauer-Kandidaten im Log.
+$prev_4_0_0 = ""  # 4.0.0: Lumora heisst K-Toolz. Werkzeuge PlainOSD/StreamToFriend/StutterHunter/
                      #        WheelToPad + Launcher, einzeln zuschaltbar; Produkt-Installer per Dateiname.
                      #        Programmdateien k-toolz*.exe, Datenordner %APPDATA%\K-Toolz (Umzug aus
                      #        lumora), Protokoll ktoolz:// (lumora:// bleibt), Komponenten-Manifest
