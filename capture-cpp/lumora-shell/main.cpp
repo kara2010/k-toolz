@@ -982,6 +982,7 @@ static std::string bcSdpCandidateSummary(const std::string& sdp, bool& hasV4, bo
 }
 static std::string bcUaShort(const std::string& ua);
 static json bcReachInfo();   // gemessene Erreichbarkeit (Definition beim Broadcast-Zustand weiter unten)
+static bool bcIsDead(const std::string& ip);   // tote Kandidaten (Definition bei den Pinhole-Globalen)
 // Kompletter Verbindungstest (Texte 1:1 aus main.js - die UI zeigt sie unveraendert).
 static json runConnectivityTest() {
     json steps = json::array();
@@ -1281,16 +1282,23 @@ static lusrv::Response handleStreamHttp(const lusrv::Request& rq) {
             rq.headers.count("content-type") ? rq.headers.at("content-type") : "",
             rq.headers.count("user-agent") ? rq.headers.at("user-agent") : "", rq.body);
         if (pr.status == 0) { rs.status = 502; rs.body = "mediamtx nicht erreichbar"; return rs; }
-        if (rq.method == "POST" && rest.empty() && pr.status == 201 && !local) {   // unsere Kandidaten, damit ein Fehlschlag spaeter aus dem Log erklaerbar ist
-            std::string list; size_t p = 0;
-            while ((p = pr.body.find("a=candidate:", p)) != std::string::npos) {
-                size_t e = pr.body.find('\n', p);
-                std::istringstream is(pr.body.substr(p + 12, e == std::string::npos ? std::string::npos : e - p - 12));
-                std::string fnd, comp, proto, prio, ip, port, t, typ; is >> fnd >> comp >> proto >> prio >> ip >> port >> t >> typ;
-                p += 12;
-                if (!ip.empty()) list += (list.empty() ? "" : ", ") + ip + ":" + port + " " + typ;
+        if (rq.method == "POST" && rest.empty() && pr.status == 201 && !local) {
+            // Tote Kandidaten (s. g_bcDeadCandidates) aus der Antwort streichen, Rest protokollieren -
+            // damit ein Fehlschlag spaeter aus dem Log erklaerbar ist.
+            std::string out, list, weg; size_t p = 0;
+            while (p < pr.body.size()) {
+                size_t e = pr.body.find('\n', p); std::string line = pr.body.substr(p, e == std::string::npos ? std::string::npos : e - p + 1);
+                p = (e == std::string::npos) ? pr.body.size() : e + 1;
+                if (line.rfind("a=candidate:", 0) == 0) {
+                    std::istringstream is(line.substr(12));
+                    std::string fnd, comp, proto, prio, ip, port, t, typ; is >> fnd >> comp >> proto >> prio >> ip >> port >> t >> typ;
+                    if (!ip.empty() && bcIsDead(ip)) { weg += (weg.empty() ? "" : ", ") + ip; continue; }
+                    if (!ip.empty()) list += (list.empty() ? "" : ", ") + ip + ":" + port + " " + typ;
+                }
+                out += line;
             }
-            bcLogStream("whep: antwort an " + rq.clientIp + " kandidaten: " + (list.empty() ? "(keine)" : list));
+            pr.body = out;
+            bcLogStream("whep: antwort an " + rq.clientIp + " kandidaten: " + (list.empty() ? "(keine)" : list) + (weg.empty() ? "" : " | gestrichen: " + weg));
         }
         rs.status = pr.status; rs.body = pr.body;
         for (auto& [k, v] : pr.headers) {
@@ -1364,6 +1372,14 @@ static int g_adaptLevel = 0; static ULONGLONG g_adaptLastChange = 0, g_adaptBadS
 static ULONGLONG g_bcSince = 0; static int g_bcPeakViewers = 0, g_bcSwitches = 0; static std::set<std::string> g_bcSessionIds;
 static std::vector<std::string> g_bcPinholeIds; static bool g_bcV4Mapped = false;   // Router-Phase (Teardown beim Stopp)
 static ULONGLONG g_bcPinholeSetAt = 0;   // fuer die 12h-IPv6-Pinhole-Erneuerung (24h-Lease)
+// Adressen, die ein Zuschauer von aussen nachweislich NICHT erreichen kann: IPv6-Adressen, fuer die der
+// Router das Pinhole abgelehnt hat (FRITZ!Box: UPnP 606 fuer die SLAAC-Adresse, 31.10.2026), und die
+// IPv4 hinter Carrier-NAT. libjuice bietet sie trotzdem als Host-Kandidaten an; der WHEP-Proxy streicht
+// sie aus der Antwort, damit kein Zuschauer Zeit an toten Kandidatenpaaren verliert.
+static std::mutex g_bcDeadMx; static std::set<std::string> g_bcDeadCandidates;
+static void bcDeadAdd(const std::string& ip) { std::lock_guard<std::mutex> lk(g_bcDeadMx); g_bcDeadCandidates.insert(ip); }
+static void bcDeadClear() { std::lock_guard<std::mutex> lk(g_bcDeadMx); g_bcDeadCandidates.clear(); }
+static bool bcIsDead(const std::string& ip) { std::lock_guard<std::mutex> lk(g_bcDeadMx); return g_bcDeadCandidates.count(ip) > 0; }
 // IPv6-Pinholes (Signalisierung 8787/TCP + Medien 8189/UDP) fuer die Hauptadresse (ausgehende Quell-
 // adresse, steht als Zuschauer-Link und Push-Kandidat) UND fuer jede weitere globale IPv6-Adresse der
 // Schnittstelle - libjuice bietet die SLAAC-Adresse als Host-Kandidat an (s. luupnp::globalIPv6All).
@@ -1389,7 +1405,7 @@ static bool bcAddPinholes(const std::string& primary) {
     for (size_t i = 0; i < others.size(); ++i) {
         if (!ergs[i].a.empty()) g_bcPinholeIds.push_back(ergs[i].a);
         if (!ergs[i].b.empty()) g_bcPinholeIds.push_back(ergs[i].b);
-        if (!ergs[i].a.empty() && !ergs[i].b.empty()) weitere++; else { fehl++; bcLogStream("pinholes: abgelehnt fuer " + others[i] + " (" + ergs[i].err + ")"); }
+        if (!ergs[i].a.empty() && !ergs[i].b.empty()) weitere++; else { fehl++; bcDeadAdd(others[i]); bcLogStream("pinholes: abgelehnt fuer " + others[i] + " (" + ergs[i].err + ")"); }
     }
     bool ok = !t6.empty() && !u6.empty();
     bcLogStream("pinholes: hauptadresse " + std::string(ok ? "ok" : "FEHLT") + ", weitere globale IPv6: " + std::to_string(weitere) + " ok" + (fehl ? ", " + std::to_string(fehl) + " fehlgeschlagen" : ""));
@@ -1954,6 +1970,7 @@ static json startBroadcast() {
     if (g_bcState.value("active", false)) return g_bcState;
     g_bcStopping = false; g_adaptLevel = 0; g_adaptLastChange = 0; g_adaptBadSince = 0; g_adaptGoodSince = 0; g_adaptUpAt = 0; g_adaptUpHold = 0;
     { std::lock_guard<std::mutex> lk(g_qosMx); g_qosMap.clear(); }
+    bcDeadClear();
     g_bcSince = GetTickCount64(); g_bcPeakViewers = 0; g_bcSwitches = 0; g_bcSessionIds.clear(); g_bcForwardNotified = false;
     std::string enc = bcShellEncoder();
     std::string lanLink = "http://" + bcLanIp() + ":" + std::to_string(BROADCAST_PORT) + "/";
@@ -2022,6 +2039,7 @@ static json startBroadcast() {
         // Carrier-NAT: Router-WAN-Adresse aus 100.64.0.0/10 oder ungleich der STUN-Sicht. Dann endet
         // eingehendes IPv4 beim Provider - die Portfreigabe im Router aendert daran nichts.
         bool cgn = !pubIp.empty() && (bcIsCgnRange(routerIp) || (!routerIp.empty() && routerIp != pubIp));
+        if (cgn) { bcDeadAdd(pubIp); if (!routerIp.empty()) bcDeadAdd(routerIp); }
         // Hinter Carrier-NAT ist eingehendes IPv4 tot: Hairpin-Check (1,5 s Timeout), Portfreigaben
         // und IPv4-Link entfallen dann komplett - gemessen 31.10.2026 kostete das rund 5 s bis zum Link.
         if (!forceV6 && !cgn && !pubIp.empty()) {
@@ -2057,7 +2075,7 @@ static json startBroadcast() {
         // Zuschauer als Link oder ICE-Kandidat. Bis 4.0.0 galt "Freigabe im Router angenommen =
         // erreichbar" - hinter Carrier-NAT falsch, und ein Zuschauer ohne IPv6 bekam nie ein Bild.
         g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6;
-        int p4 = -1, p6 = -1;
+        int p4 = cgn ? 0 : -1, p6 = -1;   // Carrier-NAT: IPv4 ist gemessen tot (31.10.2026), keine Messung noetig
         if (!l4.empty() || !l6.empty()) {
             ULONGLONG a = GetTickCount64(); bcRegisterWatchLink(); tReg = GetTickCount64() - a;
             // Link SOFORT zeigen - er steht mit der Registrierung fest. Die Messung danach aendert nur
@@ -2070,7 +2088,7 @@ static json startBroadcast() {
         if (!v4Reachable) l4 = "";
         if (!v6Reachable) l6 = "";
         auto pw = [](int p) { return p < 0 ? "unbekannt" : (p ? "ja" : "nein"); };
-        bcLogStream(std::string("erreichbarkeit: v4=") + pw(p4) + " v6=" + pw(p6) + " (Router " + (routerIp.empty() ? "-" : routerIp) + ", Internet " + (pubIp.empty() ? "-" : pubIp) + (cgn ? ", Carrier-NAT" : "") + ")");
+        bcLogStream(std::string("erreichbarkeit: v4=") + pw(p4) + (cgn ? " (Carrier-NAT)" : "") + " v6=" + pw(p6) + " (Router " + (routerIp.empty() ? "-" : routerIp) + ", Internet " + (pubIp.empty() ? "-" : pubIp) + (cgn ? ", Carrier-NAT" : "") + ")");
         if ((p4 == 0 || p6 == 0) && bcHasWatchCode()) { g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6; bcRoomSyncSelf(); }   // toten Weg sofort aus dem Raum nehmen
         // ICE-Hosts fuer den Relay: nur Adressen, die nicht als unerreichbar gemessen wurden
         std::vector<std::string> fresh;
