@@ -942,6 +942,46 @@ static json detectNat() {
     std::set<int> ports; for (auto& r : res) ports.insert(r.port);
     return { {"ok", true}, {"ip", ip}, {"cgn", cgn}, {"priv", priv}, {"symmetric", ports.size() > 1} };
 }
+// Oeffentliche IPv4, wie das INTERNET sie sieht (STUN) - nicht die WAN-Adresse des Routers (UPnP
+// GetExternalIPAddress). Hinter Carrier-NAT (RFC 6598, 100.64.0.0/10) sind das zwei verschiedene
+// Adressen, und nur die STUN-Adresse ist ueberhaupt adressierbar. Bis 4.0.0 ging die Router-Adresse
+// als Zuschauer-Link und ICE-Kandidat hinaus (Befund 31.10.2026: 100.66.x in Raum und Relay-Config).
+static std::string bcStunIPv4() {
+    SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (s == INVALID_SOCKET) return "";
+    sockaddr_in b{}; b.sin_family = AF_INET; bind(s, (sockaddr*)&b, sizeof(b));
+    StunResult r; std::string ip;
+    for (auto& [h, p] : std::vector<std::pair<const char*, int>>{ {"stun.l.google.com", 19302}, {"stun.cloudflare.com", 3478} })
+        if (stunQuery(s, h, p, r)) { ip = r.ip; break; }
+    closesocket(s);
+    return ip;
+}
+static bool bcIsCgnRange(const std::string& ip) {
+    size_t d = ip.find('.'); if (ip.empty() || d == std::string::npos) return false;
+    int o0 = atoi(ip.c_str()), o1 = atoi(ip.c_str() + d + 1);
+    return o0 == 100 && o1 >= 64 && o1 <= 127;
+}
+// Adressfamilien im Zuschauer-Angebot (SDP). host-Kandidaten verstecken Browser hinter mDNS
+// (".local"), aussagekraeftig sind srflx/relay. Ein Zuschauer ohne IPv6-Kandidat erreicht einen nur
+// per IPv6 erreichbaren Streamer nie - genau das blieb am 30.10.2026 im Log unsichtbar.
+static std::string bcSdpCandidateSummary(const std::string& sdp, bool& hasV4, bool& hasV6) {
+    int v4 = 0, v6 = 0, mdns = 0, relay = 0; hasV4 = hasV6 = false;
+    size_t p = 0;
+    while ((p = sdp.find("a=candidate:", p)) != std::string::npos) {
+        size_t e = sdp.find('\n', p);
+        std::istringstream is(sdp.substr(p + 12, e == std::string::npos ? std::string::npos : e - p - 12));
+        std::string fnd, comp, proto, prio, ip, port, t, typ; is >> fnd >> comp >> proto >> prio >> ip >> port >> t >> typ;
+        p += 12;
+        if (ip.empty()) continue;
+        if (ip.find(".local") != std::string::npos) { mdns++; continue; }
+        if (ip.rfind("fe80:", 0) == 0) continue;   // link-local IPv6: nur im eigenen LAN gueltig, sagt nichts ueber Internet-IPv6
+        if (typ == "relay") relay++;
+        if (ip.find(':') != std::string::npos) { v6++; hasV6 = true; } else { v4++; hasV4 = true; }
+    }
+    return "v4=" + std::to_string(v4) + " v6=" + std::to_string(v6) + " mdns=" + std::to_string(mdns) + " relay=" + std::to_string(relay);
+}
+static std::string bcUaShort(const std::string& ua);
+static json bcReachInfo();   // gemessene Erreichbarkeit (Definition beim Broadcast-Zustand weiter unten)
 // Kompletter Verbindungstest (Texte 1:1 aus main.js - die UI zeigt sie unveraendert).
 static json runConnectivityTest() {
     json steps = json::array();
@@ -951,12 +991,16 @@ static json runConnectivityTest() {
         return { {"verdict","error"}, {"steps", steps} };
     }
     std::string ip = nat.value("ip", "");
+    // Carrier-NAT sieht man NICHT an der STUN-Adresse (die ist immer oeffentlich), sondern daran, dass
+    // der Router eine andere WAN-Adresse meldet (meist 100.64.0.0/10) als das Internet sieht.
+    std::string routerIp = luupnp::getExternalIp();
+    bool cgn = nat.value("cgn", false) || nat.value("priv", false) || bcIsCgnRange(routerIp) || (!routerIp.empty() && routerIp != ip);
     std::string v6 = luupnp::publicIPv6();
     bool v6Ok = false;
     if (!v6.empty()) { std::string id = luupnp::addPinhole(v6, MTX_ICE_UDP, "UDP"); if (!id.empty()) { v6Ok = true; luupnp::deletePinhole(id); } }
-    if (nat.value("cgn", false) || nat.value("priv", false)) {
-        if (v6Ok) steps.push_back({ {"key","ip"},{"state","warn"},{"label","\xC3\x96""ffentliche IPv4"},{"detail","Kein eigenes \xC3\xB6""ffentliches IPv4 (DS-Lite / Carrier-NAT, " + ip + "). Das ist aber ok \xE2\x80\x93 \xC3\xBC""ber IPv6 (siehe unten) bist du trotzdem direkt erreichbar."} });
-        else steps.push_back({ {"key","ip"},{"state","error"},{"label","\xC3\x96""ffentliche IPv4"},{"detail","Dein Anschluss hat keine eigene \xC3\xB6""ffentliche IPv4 (DS-Lite / Carrier-NAT, " + ip + ") und auch kein nutzbares IPv6. Direktes Streaming ist so nicht m\xC3\xB6glich \xE2\x80\x93 ein Relay-Server w\xC3\xA4re n\xC3\xB6tig, oder beim Provider echtes IPv4 anfragen (oft kostenlos)."} });
+    if (cgn) {
+        if (v6Ok) steps.push_back({ {"key","ip"},{"state","warn"},{"label","\xC3\x96""ffentliche IPv4"},{"detail","Kein eigenes \xC3\xB6""ffentliches IPv4 (DS-Lite / Carrier-NAT: Router " + (routerIp.empty() ? "?" : routerIp) + ", Internet " + ip + "). Das ist aber ok \xE2\x80\x93 \xC3\xBC""ber IPv6 (siehe unten) bist du trotzdem direkt erreichbar."} });
+        else steps.push_back({ {"key","ip"},{"state","error"},{"label","\xC3\x96""ffentliche IPv4"},{"detail","Dein Anschluss hat keine eigene \xC3\xB6""ffentliche IPv4 (DS-Lite / Carrier-NAT: Router " + (routerIp.empty() ? "?" : routerIp) + ", Internet " + ip + ") und auch kein nutzbares IPv6. Direktes Streaming ist so nicht m\xC3\xB6glich \xE2\x80\x93 ein Relay-Server w\xC3\xA4re n\xC3\xB6tig, oder beim Provider echtes IPv4 anfragen (oft kostenlos)."} });
     } else steps.push_back({ {"key","ip"},{"state","ok"},{"label","\xC3\x96""ffentliche IPv4"},{"detail", ip} });
     if (nat.value("symmetric", false))
         steps.push_back({ {"key","nat"},{"state","warn"},{"label","NAT-Typ"},{"detail","Symmetrisches NAT \xE2\x80\x93 manche Zuschauer erreichen dich evtl. nur \xC3\xBC""ber eine feste Portfreigabe oder einen Relay."} });
@@ -1191,8 +1235,12 @@ static lusrv::Response handleStreamHttp(const lusrv::Request& rq) {
             std::string tu = s.value("streamTurnUser", ""), tp = s.value("streamTurnPass", "");
             ice.push_back({ {"urls", turl}, {"username", tu.empty() ? "k-toolz" : tu}, {"credential", tp.empty() ? "k-toolz" : tp} });
         }
+        json reach = bcReachInfo(); reach["turn"] = turnOn;
         json cfg = { {"buffer", (std::max)(0, s.value("streamBufferMs", 120))}, {"iceServers", ice},
-                     {"forceRelay", turnOn && s.value("streamTurnForce", false)} };
+                     {"forceRelay", turnOn && s.value("streamTurnForce", false)},
+                     // Erreichbarkeit des Streamers (gemessen, s. Router-Phase): der Player erklaert damit einem
+                     // Zuschauer ohne IPv6 ehrlich, warum nichts kommt, statt endlos "Verbinde..." zu zeigen.
+                     {"reach", reach} };
         rs.status = 200; rs.body = cfg.dump();
         rs.headers["Content-Type"] = "application/json"; rs.headers["Cache-Control"] = "no-store";
         return rs;
@@ -1214,6 +1262,13 @@ static lusrv::Response handleStreamHttp(const lusrv::Request& rq) {
             if (!bcVerifyDoormanSig(rq.body, qget("sig"), qget("ts"))) { rs.status = 401; rs.body = "unauthorized"; return rs; }
             std::string gate = bcApproveGate(qget("vid"), qget("name"));
             if (gate != "granted") { rs.status = 403; rs.body = gate; return rs; }
+        }
+        if (rq.method == "POST" && rq.path == "/whep" && !local) {   // Diagnose: welche Adressfamilien bietet der Zuschauer an?
+            bool hasV4 = false, hasV6 = false;
+            std::string sum = bcSdpCandidateSummary(rq.body, hasV4, hasV6);
+            json ri = bcReachInfo(); bool onlyV6 = ri.value("v6", false) && !ri.value("v4", false);
+            bcLogStream("whep: zuschauer " + rq.clientIp + " (" + bcUaShort(rq.headers.count("user-agent") ? rq.headers.at("user-agent") : "") + ") kandidaten " + sum
+                + ((onlyV6 && !hasV6 && !loadSettings().value("streamTurnEnabled", false)) ? " -> KEIN GEMEINSAMER WEG: Streamer nur per IPv6 erreichbar, Zuschauer ohne IPv6-Kandidat" : ""));
         }
         // Zuschauer-Name aus der Query (fuer "Wer schaut zu"); Auth-Query NICHT durchreichen.
         std::string reqName;
@@ -1261,6 +1316,11 @@ static lusrv::Response handleStreamHttp(const lusrv::Request& rq) {
 // (MTX_*-Portkonstanten stehen beim Streaming-HTTP-Server weiter oben)
 static const int BC_ADAPT_F[] = { 100, 70, 50, 35, 24, 16 };   // Stufen-Faktoren (25 Mbit -> 17,5/12,5/8,8/6,0/4,0)
 static json g_bcState = { {"active", false} };
+// Gemessene Erreichbarkeit des Streamers fuer /cfg und das Zuschauer-Protokoll (Router-Phase setzt sie).
+static json bcReachInfo() {
+    return { {"known", !g_bcState.value("opening", true)}, {"v4", g_bcState.value("reachV4", false)},
+             {"v6", g_bcState.value("reachV6", false)}, {"cgn", g_bcState.value("cgn", false)} };
+}
 struct ChildProc { HANDLE proc = nullptr; HANDLE outRd = nullptr; DWORD pid = 0; bool intentional = false; };
 static ChildProc g_mtx, g_cap;
 // Job-Objekt fuer ALLE Stream-Helfer. Bisher raeumte nur der regulaere Weg auf
@@ -1295,6 +1355,8 @@ static std::vector<std::string> g_bcPinholeIds; static bool g_bcV4Mapped = false
 static ULONGLONG g_bcPinholeSetAt = 0;   // fuer die 12h-IPv6-Pinhole-Erneuerung (24h-Lease)
 #define TIMER_IPWATCH 109   // IP-Wechsel-Watcher (5 min): Zwangstrennung/IP-Wechsel nachziehen
 static void bcRegisterWatchLink(); static void bcUnregisterWatchLink();   // (Gruppen-Modul weiter unten)
+static void bcProbeOutside(int& p4, int& p6); static std::string bcShareUrl();   // (ebenfalls Gruppen-Modul)
+static bool bcHasWatchCode(); static void bcRoomSyncSelf();
 static void notifyForwardIssue();   // Tray-Balloon "Portfreigabe noetig" (Definition nach dem Tray)
 static void bcMaybeCopyLink();      // Auto-Copy des Stream-Links nach der Router-Phase (Definition ebd.)
 extern std::string g_bcCopyPending; // "" | "ui" | "hotkey" (Definition bei bcMaybeCopyLink)
@@ -1853,6 +1915,7 @@ static json startBroadcast() {
     std::string lanLink = "http://" + bcLanIp() + ":" + std::to_string(BROADCAST_PORT) + "/";
     g_bcState = { {"active", true}, {"port", BROADCAST_PORT}, {"link", lanLink}, {"linkV4", ""}, {"linkV6", ""},
                   {"lanLink", lanLink}, {"viewers", 0}, {"quality", ""}, {"internet", false}, {"opening", true},
+                  {"reachV4", false}, {"reachV6", false}, {"cgn", false}, {"noInbound", false},
                   {"encoder", enc}, {"since", (long long)time(nullptr) * 1000} };
     bcPushState();
     // PHASE 1 - LOKAL, SOFORT (gecachte oeffentliche Hosts der letzten Session als ICE-Hosts)
@@ -1908,7 +1971,12 @@ static json startBroadcast() {
             v6Ok = !t6.empty() && !u6.empty();
             if (v6Ok) g_bcPinholeSetAt = GetTickCount64();   // Startzeit fuer die 12h-Erneuerung
         });
-        pubIp = luupnp::getExternalIp();   // waermt zugleich den resolveControl-Cache fuer mapPort
+        std::string routerIp = luupnp::getExternalIp();   // WAN-Adresse des Routers (waermt zugleich den resolveControl-Cache fuer mapPort)
+        pubIp = bcStunIPv4();                              // Adresse, wie das INTERNET sie sieht - nur die ist von aussen adressierbar
+        if (pubIp.empty()) pubIp = routerIp;               // keine STUN-Antwort (UDP zu?) -> wie bisher die Router-Angabe
+        // Carrier-NAT: Router-WAN-Adresse aus 100.64.0.0/10 oder ungleich der STUN-Sicht. Dann endet
+        // eingehendes IPv4 beim Provider - die Portfreigabe im Router aendert daran nichts.
+        bool cgn = !pubIp.empty() && (bcIsCgnRange(routerIp) || (!routerIp.empty() && routerIp != pubIp));
         if (!forceV6 && !pubIp.empty()) {
             // Zweiter PC im selben Netz: antwortet unter der oeffentlichen IPv4 schon eine
             // ANDERE Lumora-Instanz, deren Mapping NICHT stehlen (Hairpin-Check, 1.5s wie Electron).
@@ -1932,35 +2000,53 @@ static json startBroadcast() {
             g_bcPinholeIds.clear();
             return;
         }
-        // Frische Hosts vom Cache abweichend? Config aktualisieren (mediamtx laedt selbst neu) + Cache speichern.
+        bcLogStream("router-phase: " + std::to_string(GetTickCount64() - t0) + " ms (v4-freigabe=" + ((tcpOk && udpOk) ? "ok" : "nein") + " v6-pinhole=" + (v6Ok ? "ok" : "nein") + (v4Occupied ? ", IPv4 belegt von anderer Instanz" : "") + ")");
+        bool v4Mapped = tcpOk && udpOk && !pubIp.empty();
+        std::string l4 = v4Mapped ? ("http://" + pubIp + ":" + std::to_string(BROADCAST_PORT) + "/") : "";
+        std::string l6 = (v6Ok && !pubIp6.empty()) ? ("http://[" + pubIp6 + "]:" + std::to_string(BROADCAST_PORT) + "/") : "";
+        // Erreichbarkeit VON AUSSEN messen statt annehmen: Raum mit beiden Kandidaten registrieren,
+        // dann klopft der Vermittlungsserver an (bcProbeOutside). Was er nicht erreicht, bekommt kein
+        // Zuschauer als Link oder ICE-Kandidat. Bis 4.0.0 galt "Freigabe im Router angenommen =
+        // erreichbar" - hinter Carrier-NAT falsch, und ein Zuschauer ohne IPv6 bekam nie ein Bild.
+        g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6;
+        int p4 = -1, p6 = -1;
+        if (!l4.empty() || !l6.empty()) { bcRegisterWatchLink(); bcProbeOutside(p4, p6); }
+        bool v4Reachable = !l4.empty() && p4 != 0;   // Messung unbekannt (Vermittlung nicht erreichbar) -> wie bisher annehmen
+        bool v6Reachable = !l6.empty() && p6 != 0;
+        if (!v4Reachable) l4 = "";
+        if (!v6Reachable) l6 = "";
+        auto pw = [](int p) { return p < 0 ? "unbekannt" : (p ? "ja" : "nein"); };
+        bcLogStream(std::string("erreichbarkeit: v4=") + pw(p4) + " v6=" + pw(p6) + " (Router " + (routerIp.empty() ? "-" : routerIp) + ", Internet " + (pubIp.empty() ? "-" : pubIp) + (cgn ? ", Carrier-NAT" : "") + ")");
+        if ((p4 == 0 || p6 == 0) && bcHasWatchCode()) { g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6; bcRoomSyncSelf(); }   // toten Weg sofort aus dem Raum nehmen
+        // ICE-Hosts fuer den Relay: nur Adressen, die nicht als unerreichbar gemessen wurden
         std::vector<std::string> fresh;
-        if (!forceV6 && !pubIp.empty()) fresh.push_back(pubIp);
-        if (!pubIp6.empty()) fresh.push_back(pubIp6);
+        if (!forceV6 && !pubIp.empty() && p4 != 0) fresh.push_back(pubIp);
+        if (!pubIp6.empty() && p6 != 0) fresh.push_back(pubIp6);
         if (fresh != hosts) {
             bcWriteMtxConfig(fresh);       // mediamtx: Hot-Reload der YAML
             bcPushIceConfig(fresh);        // nativer Relay: Push (bei mediamtx wirkungslos, API kennt den Pfad nicht)
             json s2 = loadSettings(); json arr = json::array(); for (auto& h : fresh) arr.push_back(h);
             s2["streamLastHosts"] = arr; writeFile(settingsPath(), s2.dump(2));
         }
-        bcLogStream("router-phase: " + std::to_string(GetTickCount64() - t0) + " ms (v4=" + ((tcpOk && udpOk) ? "ok" : "nein") + " v6=" + (v6Ok ? "ok" : "nein") + (v4Occupied ? ", IPv4 belegt von anderer Instanz" : "") + ")");
-        bool v4Reachable = tcpOk && udpOk && !pubIp.empty();
-        std::string l4 = v4Reachable ? ("http://" + pubIp + ":" + std::to_string(BROADCAST_PORT) + "/") : "";
-        std::string l6 = (v6Ok && !pubIp6.empty()) ? ("http://[" + pubIp6 + "]:" + std::to_string(BROADCAST_PORT) + "/") : "";
         if (v4Reachable) g_bcState["link"] = l4;                       // Link-Prioritaet wie das Original
-        else if (!l6.empty()) g_bcState["link"] = l6;
+        else if (v6Reachable) g_bcState["link"] = l6;
         else if (!pubIp.empty()) g_bcState["link"] = "http://" + pubIp + ":" + std::to_string(BROADCAST_PORT) + "/";
         g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6;
-        g_bcState["internet"] = v4Reachable || !l6.empty();
-        g_bcState["ipv6Only"] = !v4Reachable && !l6.empty();
-        g_bcState["needsForward"] = !pubIp.empty() && !v4Reachable && l6.empty();
+        g_bcState["reachV4"] = v4Reachable; g_bcState["reachV6"] = v6Reachable; g_bcState["cgn"] = cgn;
+        g_bcState["internet"] = v4Reachable || v6Reachable;
+        g_bcState["ipv6Only"] = !v4Reachable && v6Reachable;
+        // Portfreigabe-Anleitung nur, wenn sie helfen kann - hinter Carrier-NAT hilft sie nicht
+        g_bcState["needsForward"] = !pubIp.empty() && !v4Reachable && !v6Reachable && !cgn;
+        g_bcState["noInbound"] = cgn && !v6Reachable;   // von aussen gar nicht erreichbar: nur ein Relay (TURN) hilft
         if (g_bcState["needsForward"].get<bool>()) {   // herstellerspezifische Portfreigabe-Anleitung + Toast
             lurouter::RouterHint hint = lurouter::routerUpnpHint(luupnp::routerName(), true /*de*/, BROADCAST_PORT, MTX_ICE_UDP);
             g_bcState["forwardHint"] = { {"router", hint.router}, {"steps", hint.steps} };
             notifyForwardIssue();
         } else g_bcState["forwardHint"] = nullptr;
         g_bcState["opening"] = false;
+        if (!g_bcState.value("internet", false)) { if (bcHasWatchCode()) bcUnregisterWatchLink(); }   // nichts Erreichbares -> keine Teilen-URL
+        else { std::string su = bcShareUrl(); if (!su.empty()) g_bcState["link"] = su; }                   // schoene stream.php-Teilen-URL statt IP
         bcPushState();
-        if (g_bcState.value("internet", false)) bcRegisterWatchLink();   // schoene stream.php-Teilen-URL statt IP
         bcMaybeCopyLink();   // Auto-Copy JETZT (Link final - stream.php-URL oder IP-Fallback)
         // Zweiter eigener PC im selben Netz: laeuft auf der anderen Lumora-Instanz bereits
         // eine Gruppe, automatisch per Raumcode beitreten - der Nutzer startet auf Rechner 2
@@ -2198,6 +2284,22 @@ static void bcRegisterWatchLink() {
     bcLogStream("watch-link: " + g_bcState.value("link", ""));
     SetTimer(g_hwnd, TIMER_WATCH, 20000, nullptr);
     bcPushState();
+}
+// Erreichbarkeit von AUSSEN messen: stream.php?a=probe laesst den Vermittlungsserver an den im Raum
+// registrierten Adressen anklopfen (GET /instanz, id-Abgleich). Ergebnis je Weg: 1 erreichbar,
+// 0 nicht, -1 unbekannt (kein Raum, Vermittlung nicht erreichbar, Weg nicht registriert).
+static bool bcHasWatchCode() { return !g_watchCode.empty(); }
+static void bcRoomSyncSelf() {   // eigenen Raumeintrag (Links) sofort nachziehen
+    if (g_watchCode.empty()) return;
+    json self = groupSelfEntry(); groupRelay("update", { {"code", g_watchCode} }, &self);
+}
+static void bcProbeOutside(int& p4, int& p6) {
+    p4 = -1; p6 = -1;
+    if (g_watchCode.empty()) return;
+    json r = groupRelay("probe", { {"code", g_watchCode}, {"id", groupMemberId()} }, nullptr);
+    if (!r.is_object() || !r.value("ok", false)) { bcLogStream("probe: Vermittlung antwortet nicht -> Erreichbarkeit unbekannt"); return; }
+    if (r.contains("v4") && r["v4"].is_boolean()) p4 = r["v4"].get<bool>() ? 1 : 0;
+    if (r.contains("v6") && r["v6"].is_boolean()) p6 = r["v6"].get<bool>() ? 1 : 0;
 }
 // /instanz-Identitaet + Tuersteher-Schluessel (Vorwaertsdeklarationen; nicht-static wegen extern)
 std::string instanzId() { return groupMemberId(); }
@@ -2624,7 +2726,8 @@ static void stopHotkeyPollThread() {
 static void bcIpWatchTick() {
     if (!g_bcState.value("active", false) || g_bcState.value("opening", true)) return;
     std::thread([]() {
-        std::string ip = luupnp::getExternalIp();
+        std::string routerIp = luupnp::getExternalIp();
+        std::string ip = bcStunIPv4(); if (ip.empty()) ip = routerIp;   // wie in der Router-Phase: Internet-Sicht, nicht Router-WAN
         std::string ip6 = luupnp::publicIPv6();
         json s = loadSettings();
         bool forceV6 = s.value("streamForceIPv6", false);
@@ -2650,6 +2753,18 @@ static void bcIpWatchTick() {
             std::string su = bcShareUrl(); g_bcState["link"] = !su.empty() ? su : (!l4.empty() ? l4 : l6);   // Watch-URL bewahren (haengt am Code)
             if (!g_watchCode.empty()) { json self = groupSelfEntry(); groupRelay("update", { {"code", g_watchCode} }, &self); }
             else if (g_bcState.value("internet", false)) bcRegisterWatchLink();
+            // Neue Adresse -> Erreichbarkeit neu messen (wie in der Router-Phase); ein tot gewordener Weg
+            // verschwindet aus Link, Raum und Anzeige, statt Zuschauer ins Leere laufen zu lassen.
+            int p4 = -1, p6 = -1; bcProbeOutside(p4, p6);
+            bool r4 = !l4.empty() && p4 != 0, r6 = !l6.empty() && p6 != 0;
+            bool cgn = !ip.empty() && (bcIsCgnRange(routerIp) || (!routerIp.empty() && routerIp != ip));
+            if (!r4) l4 = "";
+            if (!r6) l6 = "";
+            g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6; g_bcState["reachV4"] = r4; g_bcState["reachV6"] = r6; g_bcState["cgn"] = cgn;
+            g_bcState["internet"] = r4 || r6; g_bcState["ipv6Only"] = !r4 && r6; g_bcState["noInbound"] = cgn && !r6;
+            if ((p4 == 0 || p6 == 0) && !g_watchCode.empty()) { json self = groupSelfEntry(); groupRelay("update", { {"code", g_watchCode} }, &self); }
+            auto pw = [](int p) { return p < 0 ? "unbekannt" : (p ? "ja" : "nein"); };
+            bcLogStream(std::string("ipwatch: erreichbarkeit v4=") + pw(p4) + " v6=" + pw(p6) + " (Router " + (routerIp.empty() ? "-" : routerIp) + ", Internet " + (ip.empty() ? "-" : ip) + (cgn ? ", Carrier-NAT" : "") + ")");
             bcPushState();
             if (!g_group.is_null()) { groupPushState(); groupTickOnce(); }
         }

@@ -250,6 +250,18 @@
   // zu mediamtx' oeffentlichem ICE-Host. TURN ist fuer reines Empfangen unnoetig.
   var ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }]
   function status(text, cls) { msg.textContent = text; dot.className = 'dot' + (cls ? ' ' + cls : '') }
+  // Erreichbarkeits-Abgleich (Fall vom 30.10.2026): der Streamer war nur per IPv6 erreichbar, der
+  // Zuschauer hatte kein IPv6 - der Player zeigte endlos "Verbinde…". Jetzt meldet /cfg die
+  // gemessene Erreichbarkeit des Streamers (reach), und das eigene Angebot verraet, ob dieser
+  // Browser ueberhaupt einen IPv6-Kandidaten hat. host-Kandidaten sind mDNS-verschleiert
+  // (".local") und zaehlen nicht; srflx/relay tragen die echte Adresse.
+  var _v6Warn = false
+  function sdpHasV6(sdp) {
+    var re = /^a=candidate:\S+ \d+ \S+ \d+ (\S+) \d+ typ (\S+)/gm, m
+    while ((m = re.exec(sdp || ''))) { if (m[1].indexOf(':') !== -1 && m[1].indexOf('.local') === -1 && m[1].indexOf('fe80:') !== 0) return true }   // fe80: = link-local, kein Internet-IPv6
+    return false
+  }
+  function v6WarnText() { return GATE_DE ? '⚠️ Der Streamer ist nur über IPv6 erreichbar – dein Internetanschluss hat offenbar kein IPv6' : '⚠️ The streamer is only reachable via IPv6 – your internet connection seems to have no IPv6' }
   var volSlider = document.getElementById('volSlider'), volCtl = document.getElementById('volCtl'), volIcon = document.getElementById('volIcon'), soundHint = document.getElementById('soundHint')
   var _connected = false
   function applyVol() {
@@ -628,11 +640,12 @@
       }
       if (gen !== _gen) return
     }
-    var ice = ICE_SERVERS, relay = false
+    var ice = ICE_SERVERS, relay = false, reach = null
     try {
       var cfg = await fetch(RELAY ? relayUrl('cfg') : '/cfg', { cache: 'no-store' }).then(function (r) { return r.json() })
       if (cfg && Array.isArray(cfg.iceServers) && cfg.iceServers.length) ice = cfg.iceServers
       relay = !!(cfg && cfg.forceRelay)
+      reach = (cfg && cfg.reach) || null   // gemessene Erreichbarkeit des Streamers (known/v4/v6/cgn/turn)
     } catch (e) {}
     if (gen !== _gen) return   // inzwischen hat eine neuere Kette uebernommen
     var pc = new RTCPeerConnection({ iceServers: ice, iceTransportPolicy: relay ? 'relay' : 'all', bundlePolicy: 'max-bundle' })
@@ -711,13 +724,13 @@
           } catch (e) {}
         }, 4000)
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-        status('Verbindung verloren – neuer Versuch…', 'err')
+        status(_v6Warn ? v6WarnText() : 'Verbindung verloren – neuer Versuch…', 'err')
         _connected = false; applyVol()
         overlay.classList.remove('hidden')
         // Nur im Vordergrund sofort neu verbinden. Im Hintergrund (App gewechselt)
         // waere das zwecklos + akkufressend – den Reconnect macht resume() bei der
         // Rueckkehr. So laeuft der Stream auch nach 2-5 Min Pause zuverlaessig weiter.
-        if (document.visibilityState === 'visible') setTimeout(retry, 2000)
+        if (document.visibilityState === 'visible') setTimeout(retry, _v6Warn ? 20000 : 2000)
       }
     })
     try {
@@ -725,6 +738,10 @@
       await pc.setLocalDescription(offer)
       await iceComplete(pc)
       if (gen !== _gen) { try { pc.close() } catch (e) {}; return }
+      // Kein gemeinsamer Weg? Ehrlich sagen. Versucht wird es trotzdem (mDNS kann Kandidaten
+      // verstecken), nur mit langen Pausen statt im 3-Sekunden-Takt.
+      _v6Warn = !!(reach && reach.known && reach.v6 && !reach.v4 && !reach.turn && !sdpHasV6(pc.localDescription.sdp))
+      if (_v6Warn) status(v6WarnText(), 'err')
       // WHEP: das komplette Offer als application/sdp posten -> Answer im Body.
       // Relay-Modus: gruppe.php reicht das Offer an den Streamer durch und
       // antwortet als JSON {ok, sdp, session}; direkt: SDP-Body + Location-Header.
@@ -874,7 +891,7 @@
     var st = pc.connectionState
     if (st === 'failed' || st === 'closed') { retry(); return }
     if (st === 'new' || st === 'connecting') {
-      if (Date.now() - (window._wdStarted || 0) > 15000) retry()
+      if (Date.now() - (window._wdStarted || 0) > (_v6Warn ? 45000 : 15000)) retry()
       return
     }
     if (v.paused) v.play().catch(function () {})

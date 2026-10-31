@@ -1808,6 +1808,8 @@ const I18N_EN = {
   'Standard aus. Ist er an, sieht deinen Stream nur, wen du ausdrücklich freigibst – auch wer den Link oder die IP kennt, kommt nicht ungefragt hinein.': 'Off by default. When on, only people you explicitly approve can see your stream – even someone who knows the link or IP cannot get in uninvited.',
   '⏳ Öffentlicher Link wird vorbereitet…': '⏳ Preparing public link…',
   '  ·  ⏳ Router wird geprüft…': '  ·  ⏳ Checking router…',
+  '  ·  ⛔ Von außen nicht erreichbar: Carrier-NAT ohne IPv6 – nur ein Relay (TURN, Einstellungen) hilft': '  ·  ⛔ Not reachable from outside: carrier-grade NAT without IPv6 – only a relay (TURN, settings) helps',
+  '  ·  🌐 nur über IPv6 erreichbar – IPv4 ist Carrier-NAT (Zuschauer ohne IPv6 brauchen ein Relay)': '  ·  🌐 reachable via IPv6 only – IPv4 is carrier-grade NAT (viewers without IPv6 need a relay)',
   '  ·  🌐 über IPv6 erreichbar (Zuschauer braucht IPv6, z. B. Mobilfunk)': '  ·  🌐 reachable via IPv6 (viewer needs IPv6, e.g. mobile data)',
   '  ·  🌐 aus dem Internet erreichbar': '  ·  🌐 reachable from the internet',
   '  ·  ⚠️ Ports (8787 TCP / 8189 UDP) am Router noch freigeben': '  ·  ⚠️ Still need to open ports (8787 TCP / 8189 UDP) on your router',
@@ -1836,6 +1838,8 @@ const I18N_EN = {
   'Beitreten': 'Join',
   'Dein Stream wird gestartet…': 'Starting your stream…',
   'Öffentliche Adresse wird eingerichtet…': 'Setting up public address…',
+  'von außen nicht erreichbar (Carrier-NAT ohne IPv6)': 'not reachable from outside (carrier-grade NAT without IPv6)',
+  'nur über IPv6 erreichbar (IPv4: Carrier-NAT)': 'reachable via IPv6 only (IPv4: carrier-grade NAT)',
   'über IPv6 erreichbar': 'reachable via IPv6',
   'aus dem Internet erreichbar': 'reachable from the internet',
   'nur im lokalen Netz erreichbar': 'reachable on local network only',
@@ -4292,6 +4296,8 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         else { linkEl.value = st.link || ''; linkEl.placeholder = '' }
         let net = ''
         if (st.opening) net = window.tr('  ·  ⏳ Router wird geprüft…')
+        else if (st.noInbound) net = window.tr('  ·  ⛔ Von außen nicht erreichbar: Carrier-NAT ohne IPv6 – nur ein Relay (TURN, Einstellungen) hilft')
+        else if (st.ipv6Only && st.cgn) net = window.tr('  ·  🌐 nur über IPv6 erreichbar – IPv4 ist Carrier-NAT (Zuschauer ohne IPv6 brauchen ein Relay)')
         else if (st.ipv6Only) net = window.tr('  ·  🌐 über IPv6 erreichbar (Zuschauer braucht IPv6, z. B. Mobilfunk)')
         else if (st.internet) net = window.tr('  ·  🌐 aus dem Internet erreichbar')
         else if (st.needsForward) net = window.tr('  ·  ⚠️ Ports (8787 TCP / 8189 UDP) am Router noch freigeben')
@@ -4449,8 +4455,10 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         if (_streamOpening) rows.push([spin, window.tr('Öffentliche Adresse wird eingerichtet…')])
         else {
           const s = _lastStreamState || {}
-          const det = s.ipv6Only ? window.tr('über IPv6 erreichbar') : (s.internet ? window.tr('aus dem Internet erreichbar') : window.tr('nur im lokalen Netz erreichbar'))
-          rows.push([ok, window.tr('Verbindung eingerichtet – ') + det])
+          const det = s.noInbound ? window.tr('von außen nicht erreichbar (Carrier-NAT ohne IPv6)')
+            : s.ipv6Only && s.cgn ? window.tr('nur über IPv6 erreichbar (IPv4: Carrier-NAT)')
+            : s.ipv6Only ? window.tr('über IPv6 erreichbar') : (s.internet ? window.tr('aus dem Internet erreichbar') : window.tr('nur im lokalen Netz erreichbar'))
+          rows.push([s.noInbound ? err : ok, window.tr('Verbindung eingerichtet – ') + det])
         }
       }
       // Schritt 3: Gruppenraum (erscheint, sobald die Verbindung steht)

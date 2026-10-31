@@ -46,7 +46,13 @@ function link_ok($u) {
   $port = isset($p['port']) ? (int)$p['port'] : 80;
   if ($port < 1024 || $port > 65535) return false;
   $h = trim($p['host'], '[]');
-  return filter_var($h, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+  if (filter_var($h, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) return false;
+  // Carrier-NAT-Bereich 100.64.0.0/10 (RFC 6598): die WAN-Adresse eines Routers hinter
+  // Provider-NAT. PHP zaehlt ihn nicht zu den privaten Bereichen, aus dem Internet ist er
+  // aber genauso unerreichbar - ein solcher Link brachte jeden Handshake erst in den
+  // Connect-Timeout (Befund 31.10.2026).
+  if (strpos($h, ':') === false && (ip2long($h) & 0xffc00000) === ip2long('100.64.0.0')) return false;
+  return true;
 }
 
 // Raum lesen + abgelaufene Mitglieder ausmisten. flock schuetzt vor parallelen Schreibern.
@@ -333,6 +339,53 @@ if ($a === 'qos') {
     }
   }
   jout(array('ok' => true));
+}
+// Erreichbarkeit eines Mitglieds VON AUSSEN pruefen: dieser Server klopft an den im Raum
+// registrierten Adressen des Mitglieds an (GET /instanz, parallel) und meldet je Weg, ob
+// der Streamer dort antwortet. Die App ersetzt damit ihr bisheriges "Portfreigabe ok" (das
+// nur den Router fragte und hinter Carrier-NAT falsch war) durch eine echte Messung.
+// Kein offener Proxy: nur Adressen aus dem Raum (link_ok-geprueft), fester Pfad, und die
+// Antwort wird nicht durchgereicht - nur die Frage "antwortet DIESES Mitglied dort?".
+if ($a === 'probe') {
+  if (!code_ok($code)) jout(array('ok' => false, 'error' => 'bad-code'));
+  $mid = isset($_GET['id']) ? substr(preg_replace('/[^a-zA-Z0-9]/', '', $_GET['id']), 0, 32) : '';
+  $j = room_load($code);
+  if ($j === null || !isset($j['members'][$mid])) jout(array('ok' => false, 'error' => 'no-member'));
+  $m = $j['members'][$mid];
+  $out = array('ok' => true, 'v4' => null, 'v6' => null);
+  $mh = curl_multi_init();
+  $map = array();
+  foreach (array('v4' => 'linkV4', 'v6' => 'linkV6') as $k => $lk) {
+    if (empty($m[$lk]) || !link_ok($m[$lk])) continue;
+    $out[$k] = false;
+    $ch = curl_init(rtrim($m[$lk], '/') . '/instanz');
+    curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_TIMEOUT => 6, CURLOPT_FOLLOWLOCATION => false));
+    curl_multi_add_handle($mh, $ch);
+    $map[(int)$ch] = array($ch, $k);
+  }
+  do {
+    $mrc = curl_multi_exec($mh, $running);
+    if ($running) curl_multi_select($mh, 0.2);
+  } while ($running && $mrc === CURLM_OK);
+  foreach ($map as $entry) {
+    $ch = $entry[0];
+    $body = curl_multi_getcontent($ch);
+    $r = json_decode((string)$body, true);
+    // Erreichbar heisst: GENAU dieses Mitglied antwortet dort (id-Abgleich), nicht irgendein Host.
+    if (curl_getinfo($ch, CURLINFO_RESPONSE_CODE) === 200 && is_array($r) && isset($r['id']) && $r['id'] === $mid) $out[$entry[1]] = true;
+    curl_multi_remove_handle($mh, $ch);
+    curl_close($ch);
+  }
+  curl_multi_close($mh);
+  // Gelernten Weg merken: der WHEP-Handshake nimmt dann sofort die funktionierende Adresse.
+  $good = $out['v4'] === true ? rtrim($m['linkV4'], '/') : ($out['v6'] === true ? rtrim($m['linkV6'], '/') : null);
+  if ($good !== null && (empty($m['goodAddr']) || $m['goodAddr'] !== $good)) {
+    $lk = room_lock($code);
+    $j2 = room_load($code);
+    if ($j2 !== null && isset($j2['members'][$mid])) { $j2['members'][$mid]['goodAddr'] = $good; room_save($code, $j2); }
+    room_unlock($lk);
+  }
+  jout($out);
 }
 // ICE-Konfiguration (STUN/TURN) des jeweiligen Streamers durchreichen.
 // PARALLEL an alle Adress-Kandidaten (nebenwirkungsfrei, GET) - der Gewinner wird
