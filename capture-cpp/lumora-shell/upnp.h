@@ -212,12 +212,17 @@ inline std::vector<std::string> globalIPv6All() {
     }
     return out;
 }
+inline std::string lastPinholeError;   // letzter Fehlergrund von addPinhole (fuer das Stream-Log)
 inline std::string addPinhole(const std::string& v6, int port, const char* proto) {
     Ctrl* c = resolveV6Firewall(); if (!c || v6.empty()) return "";
     int pr = strcmp(proto, "TCP") == 0 ? 6 : 17;
     std::string inner = "<RemoteHost></RemoteHost><RemotePort>0</RemotePort><InternalClient>" + v6 +
         "</InternalClient><InternalPort>" + std::to_string(port) + "</InternalPort><Protocol>" + std::to_string(pr) + "</Protocol><LeaseTime>86400</LeaseTime>";
     auto r = soap(c->controlURL, c->serviceType, "AddPinhole", inner);
+    if (r.status != 200) {   // Grund festhalten: die FRITZ!Box lehnt Pinholes fuer manche Adressen ab (Befund 31.10.2026, SLAAC-Adresse)
+        std::string code = xmlTag(r.body, "errorCode"), desc = xmlTag(r.body, "errorDescription");
+        lastPinholeError = "http " + std::to_string(r.status) + (code.empty() ? "" : " upnp " + code) + (desc.empty() ? "" : " " + desc);
+    }
     return r.status == 200 ? xmlTag(r.body, "UniqueID") : "";
 }
 inline void deletePinhole(const std::string& id) {

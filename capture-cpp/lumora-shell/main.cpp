@@ -1378,7 +1378,7 @@ static bool bcAddPinholes(const std::string& primary) {
         std::string a = luupnp::addPinhole(ip, BROADCAST_PORT, "TCP"), b = luupnp::addPinhole(ip, MTX_ICE_UDP, "UDP");
         if (!a.empty()) g_bcPinholeIds.push_back(a);
         if (!b.empty()) g_bcPinholeIds.push_back(b);
-        if (!a.empty() && !b.empty()) weitere++; else fehl++;
+        if (!a.empty() && !b.empty()) weitere++; else { fehl++; bcLogStream("pinholes: abgelehnt fuer " + ip + " (" + luupnp::lastPinholeError + ")"); }
     }
     bool ok = !t6.empty() && !u6.empty();
     bcLogStream("pinholes: hauptadresse " + std::string(ok ? "ok" : "FEHLT") + ", weitere globale IPv6: " + std::to_string(weitere) + " ok" + (fehl ? ", " + std::to_string(fehl) + " fehlgeschlagen" : ""));
