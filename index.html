@@ -1808,6 +1808,8 @@ const I18N_EN = {
   'Standard aus. Ist er an, sieht deinen Stream nur, wen du ausdrücklich freigibst – auch wer den Link oder die IP kennt, kommt nicht ungefragt hinein.': 'Off by default. When on, only people you explicitly approve can see your stream – even someone who knows the link or IP cannot get in uninvited.',
   '⏳ Öffentlicher Link wird vorbereitet…': '⏳ Preparing public link…',
   '  ·  ⏳ Router wird geprüft…': '  ·  ⏳ Checking router…',
+  '  ·  ⏳ Erreichbarkeit wird geprüft…': '  ·  ⏳ Checking reachability…',
+  'Erreichbarkeit wird geprüft…': 'Checking reachability…',
   '  ·  ⛔ Von außen nicht erreichbar: Carrier-NAT ohne IPv6 – nur ein Relay (TURN, Einstellungen) hilft': '  ·  ⛔ Not reachable from outside: carrier-grade NAT without IPv6 – only a relay (TURN, settings) helps',
   '  ·  🌐 nur über IPv6 erreichbar – IPv4 ist Carrier-NAT (Zuschauer ohne IPv6 brauchen ein Relay)': '  ·  🌐 reachable via IPv6 only – IPv4 is carrier-grade NAT (viewers without IPv6 need a relay)',
   '  ·  🌐 über IPv6 erreichbar (Zuschauer braucht IPv6, z. B. Mobilfunk)': '  ·  🌐 reachable via IPv6 (viewer needs IPv6, e.g. mobile data)',
@@ -4296,6 +4298,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         else { linkEl.value = st.link || ''; linkEl.placeholder = '' }
         let net = ''
         if (st.opening) net = window.tr('  ·  ⏳ Router wird geprüft…')
+        else if (st.probing) net = window.tr('  ·  ⏳ Erreichbarkeit wird geprüft…')
         else if (st.noInbound) net = window.tr('  ·  ⛔ Von außen nicht erreichbar: Carrier-NAT ohne IPv6 – nur ein Relay (TURN, Einstellungen) hilft')
         else if (st.ipv6Only && st.cgn) net = window.tr('  ·  🌐 nur über IPv6 erreichbar – IPv4 ist Carrier-NAT (Zuschauer ohne IPv6 brauchen ein Relay)')
         else if (st.ipv6Only) net = window.tr('  ·  🌐 über IPv6 erreichbar (Zuschauer braucht IPv6, z. B. Mobilfunk)')
@@ -4453,6 +4456,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       // Schritt 2: Erreichbarkeit (erscheint, sobald der Stream steht)
       if (_streamActive) {
         if (_streamOpening) rows.push([spin, window.tr('Öffentliche Adresse wird eingerichtet…')])
+        else if ((_lastStreamState || {}).probing) rows.push([spin, window.tr('Erreichbarkeit wird geprüft…')])
         else {
           const s = _lastStreamState || {}
           const det = s.noInbound ? window.tr('von außen nicht erreichbar (Carrier-NAT ohne IPv6)')

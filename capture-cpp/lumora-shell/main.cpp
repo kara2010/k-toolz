@@ -1369,16 +1369,27 @@ static ULONGLONG g_bcPinholeSetAt = 0;   // fuer die 12h-IPv6-Pinhole-Erneuerung
 // Schnittstelle - libjuice bietet die SLAAC-Adresse als Host-Kandidat an (s. luupnp::globalIPv6All).
 // Rueckgabe: beide Pinholes der Hauptadresse stehen. IDs sammeln sich in g_bcPinholeIds (Teardown).
 static bool bcAddPinholes(const std::string& primary) {
-    std::string t6 = luupnp::addPinhole(primary, BROADCAST_PORT, "TCP"), u6 = luupnp::addPinhole(primary, MTX_ICE_UDP, "UDP");
+    std::vector<std::string> others;
+    for (auto& ip : luupnp::globalIPv6All()) if (ip != primary) others.push_back(ip);
+    // Erstes Pinhole seriell (waermt die IGDv2-Aufloesung), die weiteren Adressen danach PARALLEL -
+    // die FRITZ!Box braucht je Pinhole rund eine Sekunde, nacheinander summierte sich das.
+    std::string t6 = luupnp::addPinhole(primary, BROADCAST_PORT, "TCP");
+    struct Erg { std::string a, b, err; };
+    std::vector<Erg> ergs(others.size());
+    std::vector<std::thread> th;
+    for (size_t i = 0; i < others.size(); ++i) th.emplace_back([&, i]() {
+        ergs[i].a = luupnp::addPinhole(others[i], BROADCAST_PORT, "TCP"); ergs[i].b = luupnp::addPinhole(others[i], MTX_ICE_UDP, "UDP");
+        if (ergs[i].a.empty() || ergs[i].b.empty()) ergs[i].err = luupnp::lastPinholeError;
+    });
+    std::string u6 = luupnp::addPinhole(primary, MTX_ICE_UDP, "UDP");
+    for (auto& t : th) t.join();
     if (!t6.empty()) g_bcPinholeIds.push_back(t6);
     if (!u6.empty()) g_bcPinholeIds.push_back(u6);
     int weitere = 0, fehl = 0;
-    for (auto& ip : luupnp::globalIPv6All()) {
-        if (ip == primary) continue;
-        std::string a = luupnp::addPinhole(ip, BROADCAST_PORT, "TCP"), b = luupnp::addPinhole(ip, MTX_ICE_UDP, "UDP");
-        if (!a.empty()) g_bcPinholeIds.push_back(a);
-        if (!b.empty()) g_bcPinholeIds.push_back(b);
-        if (!a.empty() && !b.empty()) weitere++; else { fehl++; bcLogStream("pinholes: abgelehnt fuer " + ip + " (" + luupnp::lastPinholeError + ")"); }
+    for (size_t i = 0; i < others.size(); ++i) {
+        if (!ergs[i].a.empty()) g_bcPinholeIds.push_back(ergs[i].a);
+        if (!ergs[i].b.empty()) g_bcPinholeIds.push_back(ergs[i].b);
+        if (!ergs[i].a.empty() && !ergs[i].b.empty()) weitere++; else { fehl++; bcLogStream("pinholes: abgelehnt fuer " + others[i] + " (" + ergs[i].err + ")"); }
     }
     bool ok = !t6.empty() && !u6.empty();
     bcLogStream("pinholes: hauptadresse " + std::string(ok ? "ok" : "FEHLT") + ", weitere globale IPv6: " + std::to_string(weitere) + " ok" + (fehl ? ", " + std::to_string(fehl) + " fehlgeschlagen" : ""));
@@ -1994,19 +2005,26 @@ static json startBroadcast() {
         std::string pubIp, pubIp6;
         bool tcpOk = false, udpOk = false, v6Ok = false, v4Occupied = false;
         std::string v4Group;   // laeuft auf der ANDEREN eigenen Instanz im Netz eine Gruppe? -> Auto-Join (s.u.)
+        ULONGLONG tPin = 0, tV4 = 0, tReg = 0, tProbe = 0;   // Dauer je Schritt (ms) fuer die zeiten:-Logzeile
         std::thread tv6([&]() {
+            ULONGLONG a = GetTickCount64();
             pubIp6 = luupnp::publicIPv6();
-            if (pubIp6.empty()) return;
-            v6Ok = bcAddPinholes(pubIp6);   // Signalisierung + Medien, fuer alle globalen IPv6-Adressen
-            if (v6Ok) g_bcPinholeSetAt = GetTickCount64();   // Startzeit fuer die 12h-Erneuerung
+            if (!pubIp6.empty()) {
+                v6Ok = bcAddPinholes(pubIp6);   // Signalisierung + Medien, fuer alle globalen IPv6-Adressen
+                if (v6Ok) g_bcPinholeSetAt = GetTickCount64();   // Startzeit fuer die 12h-Erneuerung
+            }
+            tPin = GetTickCount64() - a;
         });
+        ULONGLONG a4 = GetTickCount64();
         std::string routerIp = luupnp::getExternalIp();   // WAN-Adresse des Routers (waermt zugleich den resolveControl-Cache fuer mapPort)
         pubIp = bcStunIPv4();                              // Adresse, wie das INTERNET sie sieht - nur die ist von aussen adressierbar
         if (pubIp.empty()) pubIp = routerIp;               // keine STUN-Antwort (UDP zu?) -> wie bisher die Router-Angabe
         // Carrier-NAT: Router-WAN-Adresse aus 100.64.0.0/10 oder ungleich der STUN-Sicht. Dann endet
         // eingehendes IPv4 beim Provider - die Portfreigabe im Router aendert daran nichts.
         bool cgn = !pubIp.empty() && (bcIsCgnRange(routerIp) || (!routerIp.empty() && routerIp != pubIp));
-        if (!forceV6 && !pubIp.empty()) {
+        // Hinter Carrier-NAT ist eingehendes IPv4 tot: Hairpin-Check (1,5 s Timeout), Portfreigaben
+        // und IPv4-Link entfallen dann komplett - gemessen 31.10.2026 kostete das rund 5 s bis zum Link.
+        if (!forceV6 && !cgn && !pubIp.empty()) {
             // Zweiter PC im selben Netz: antwortet unter der oeffentlichen IPv4 schon eine
             // ANDERE Lumora-Instanz, deren Mapping NICHT stehlen (Hairpin-Check, 1.5s wie Electron).
             auto r = luart::httpGet("http://" + pubIp + ":" + std::to_string(BROADCAST_PORT) + "/instanz", L"", 1500);
@@ -2016,12 +2034,13 @@ static json startBroadcast() {
                 if (j.contains("group") && j["group"].is_string()) v4Group = j["group"].get<std::string>();
             }
         }
-        if (!v4Occupied && !forceV6) {
+        if (!v4Occupied && !forceV6 && !cgn) {
             std::thread tudp([&]() { udpOk = luupnp::mapPort(MTX_ICE_UDP, "UDP", "StreamToFriend Medien"); });
             tcpOk = luupnp::mapPort(BROADCAST_PORT, "TCP", "StreamToFriend");
             tudp.join();
             if (tcpOk || udpOk) g_bcV4Mapped = true;
         }
+        tV4 = GetTickCount64() - a4;
         tv6.join();
         if (!g_bcState.value("active", false)) {   // waehrend der Router-Phase gestoppt
             g_bcCopyPending.clear();   // Sicherheitsnetz: nach dem Stopp nichts mehr kopieren
@@ -2029,7 +2048,7 @@ static json startBroadcast() {
             g_bcPinholeIds.clear();
             return;
         }
-        bcLogStream("router-phase: " + std::to_string(GetTickCount64() - t0) + " ms (v4-freigabe=" + ((tcpOk && udpOk) ? "ok" : "nein") + " v6-pinhole=" + (v6Ok ? "ok" : "nein") + (v4Occupied ? ", IPv4 belegt von anderer Instanz" : "") + ")");
+        bcLogStream("router-phase: " + std::to_string(GetTickCount64() - t0) + " ms (v4-freigabe=" + (cgn ? "uebersprungen, Carrier-NAT" : ((tcpOk && udpOk) ? "ok" : "nein")) + " v6-pinhole=" + (v6Ok ? "ok" : "nein") + (v4Occupied ? ", IPv4 belegt von anderer Instanz" : "") + ")");
         bool v4Mapped = tcpOk && udpOk && !pubIp.empty();
         std::string l4 = v4Mapped ? ("http://" + pubIp + ":" + std::to_string(BROADCAST_PORT) + "/") : "";
         std::string l6 = (v6Ok && !pubIp6.empty()) ? ("http://[" + pubIp6 + "]:" + std::to_string(BROADCAST_PORT) + "/") : "";
@@ -2039,7 +2058,13 @@ static json startBroadcast() {
         // erreichbar" - hinter Carrier-NAT falsch, und ein Zuschauer ohne IPv6 bekam nie ein Bild.
         g_bcState["linkV4"] = l4; g_bcState["linkV6"] = l6;
         int p4 = -1, p6 = -1;
-        if (!l4.empty() || !l6.empty()) { bcRegisterWatchLink(); bcProbeOutside(p4, p6); }
+        if (!l4.empty() || !l6.empty()) {
+            ULONGLONG a = GetTickCount64(); bcRegisterWatchLink(); tReg = GetTickCount64() - a;
+            // Link SOFORT zeigen - er steht mit der Registrierung fest. Die Messung danach aendert nur
+            // den Hinweis daneben (solange: "Erreichbarkeit wird geprueft").
+            if (bcHasWatchCode()) { g_bcState["opening"] = false; g_bcState["probing"] = true; bcPushState(); }
+            a = GetTickCount64(); bcProbeOutside(p4, p6); tProbe = GetTickCount64() - a;
+        }
         bool v4Reachable = !l4.empty() && p4 != 0;   // Messung unbekannt (Vermittlung nicht erreichbar) -> wie bisher annehmen
         bool v6Reachable = !l6.empty() && p6 != 0;
         if (!v4Reachable) l4 = "";
@@ -2072,10 +2097,11 @@ static json startBroadcast() {
             g_bcState["forwardHint"] = { {"router", hint.router}, {"steps", hint.steps} };
             notifyForwardIssue();
         } else g_bcState["forwardHint"] = nullptr;
-        g_bcState["opening"] = false;
+        g_bcState["opening"] = false; g_bcState["probing"] = false;
         if (!g_bcState.value("internet", false)) { if (bcHasWatchCode()) bcUnregisterWatchLink(); }   // nichts Erreichbares -> keine Teilen-URL
         else { std::string su = bcShareUrl(); if (!su.empty()) g_bcState["link"] = su; }                   // schoene stream.php-Teilen-URL statt IP
         bcPushState();
+        bcLogStream("zeiten: v4-zweig " + std::to_string(tV4) + " ms, pinholes " + std::to_string(tPin) + " ms, registrierung " + std::to_string(tReg) + " ms, messung " + std::to_string(tProbe) + " ms, fertig nach " + std::to_string(GetTickCount64() - t0) + " ms");
         bcMaybeCopyLink();   // Auto-Copy JETZT (Link final - stream.php-URL oder IP-Fallback)
         // Zweiter eigener PC im selben Netz: laeuft auf der anderen Lumora-Instanz bereits
         // eine Gruppe, automatisch per Raumcode beitreten - der Nutzer startet auf Rechner 2

@@ -212,7 +212,7 @@ inline std::vector<std::string> globalIPv6All() {
     }
     return out;
 }
-inline std::string lastPinholeError;   // letzter Fehlergrund von addPinhole (fuer das Stream-Log)
+inline thread_local std::string lastPinholeError;   // letzter Fehlergrund von addPinhole je Thread (fuer das Stream-Log)
 inline std::string addPinhole(const std::string& v6, int port, const char* proto) {
     Ctrl* c = resolveV6Firewall(); if (!c || v6.empty()) return "";
     int pr = strcmp(proto, "TCP") == 0 ? 6 : 17;

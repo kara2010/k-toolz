@@ -359,7 +359,8 @@ if ($a === 'probe') {
     if (empty($m[$lk]) || !link_ok($m[$lk])) continue;
     $out[$k] = false;
     $ch = curl_init(rtrim($m[$lk], '/') . '/instanz');
-    curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_TIMEOUT => 6, CURLOPT_FOLLOWLOCATION => false));
+    // 2 s wie relay(): ein toter Weg soll die Antwort (und damit den Hinweis beim Streamer) nicht laenger aufhalten
+    curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 2, CURLOPT_TIMEOUT => 4, CURLOPT_FOLLOWLOCATION => false));
     curl_multi_add_handle($mh, $ch);
     $map[(int)$ch] = array($ch, $k);
   }
