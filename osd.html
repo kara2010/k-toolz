@@ -27,8 +27,8 @@
     --fpc: #4bd6ff; --netc: #c79bff; --warn: #ffd23f; --crit: #ff4d4d; --radius: 10px;
   }
   /* ===== Grenzwerte: Wert faerbt sich ab der Warn-/Alarmschwelle, Alarm optional pulsierend ===== */
-  .v.warn, .num.warn, .gv.warn { color: var(--warn) !important; }
-  .v.crit, .num.crit, .gv.crit { color: var(--crit) !important; }
+  .v.warn, .num.warn, .gv.warn, [data-role="fps.fps"].warn { color: var(--warn) !important; }
+  .v.crit, .num.crit, .gv.crit, [data-role="fps.fps"].crit { color: var(--crit) !important; }
   .fill.warn { background: var(--warn) !important; } .fill.crit { background: var(--crit) !important; }
   .ring.warn { stroke: var(--warn) !important; } .ring.crit { stroke: var(--crit) !important; }
   body.lim-pulse .crit { animation: osdPulse 1s ease-in-out infinite; }
