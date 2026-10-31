@@ -2082,6 +2082,7 @@ static json startBroadcast() {
             // den Hinweis daneben (solange: "Erreichbarkeit wird geprueft").
             if (bcHasWatchCode()) { g_bcState["opening"] = false; g_bcState["probing"] = true; bcPushState(); }
             a = GetTickCount64(); bcProbeOutside(p4, p6); tProbe = GetTickCount64() - a;
+            if (cgn) p4 = 0;   // bcProbeOutside setzt beide Werte zurueck - hinter Carrier-NAT bleibt IPv4 gemessen tot
         }
         bool v4Reachable = !l4.empty() && p4 != 0;   // Messung unbekannt (Vermittlung nicht erreichbar) -> wie bisher annehmen
         bool v6Reachable = !l6.empty() && p6 != 0;
