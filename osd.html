@@ -24,11 +24,15 @@
     --accent: #74e857;              /* Akzentfarbe (überschreibbar per Config) */
     --panel-op: 0.55;
     /* Paket 1 (Paletten): Gruppenfarben FPS/Netz, Grenzwert-Farben, Eckenradius - alles per Config setzbar */
-    --fpc: #4bd6ff; --netc: #c79bff; --warn: #ffd23f; --crit: #ff4d4d; --radius: 10px;
+    --fpc: #4bd6ff; --netc: #c79bff; --warn: #ff9a1f; --crit: #ff4d4d; --radius: 10px;
   }
   /* ===== Grenzwerte: Wert faerbt sich ab der Warn-/Alarmschwelle, Alarm optional pulsierend ===== */
+  /* Warnung = Orange (Standardwerte sind schon gelb - Gelb auf Gelb war unsichtbar), Alarm = Rot; dazu ein
+     dezenter Farbhintergrund hinter dem Wert, damit der Zustand in jeder Palette erkennbar bleibt. */
   .v.warn, .num.warn, .gv.warn, [data-role="fps.fps"].warn { color: var(--warn) !important; }
   .v.crit, .num.crit, .gv.crit, [data-role="fps.fps"].crit { color: var(--crit) !important; }
+  .v.warn, .num.warn, [data-role="fps.fps"].warn { background: color-mix(in srgb, var(--warn) 24%, transparent); border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
+  .v.crit, .num.crit, [data-role="fps.fps"].crit { background: color-mix(in srgb, var(--crit) 26%, transparent); border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
   .fill.warn { background: var(--warn) !important; } .fill.crit { background: var(--crit) !important; }
   .ring.warn { stroke: var(--warn) !important; } .ring.crit { stroke: var(--crit) !important; }
   body.lim-pulse .crit { animation: osdPulse 1s ease-in-out infinite; }
@@ -724,11 +728,11 @@
     const n = Number(v); if (!Number.isFinite(n)) return '';
     if (niedrigIstSchlecht) {
       if (!warn) return '';
-      const c = crit || warn / 2;
+      const c = (crit && crit < warn) ? crit : warn / 2;   // Alarm muss unter der Warnung liegen, sonst halbe Warnung
       return n < c ? 'crit' : n < warn ? 'warn' : '';
     }
     if (!crit) return '';
-    const w = warn || crit - 10;
+    const w = (warn && warn < crit) ? warn : crit - 10;   // Warnung muss unter dem Alarm liegen (alte Einstellungen, Tippfehler), sonst Alarm-10
     return n >= crit ? 'crit' : n >= w ? 'warn' : '';
   }
   function setLimit(role, v, warn, crit, niedrigIstSchlecht) {
