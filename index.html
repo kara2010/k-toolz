@@ -1408,6 +1408,7 @@ const I18N_EN = {
   'Derselbe Schalter wie Afterburners eigener OSD-Hotkey. Das PlainOSD-Panel bleibt davon unberührt.': 'The same switch as Afterburner\'s own OSD hotkey. The PlainOSD panel is not affected.',
   'Datenquellen & Einrichtung': 'Data sources & setup',
   'In diesem Design ohne Wirkung': 'No effect in this design',
+  'Farbe wählen': 'Pick color',
   'Standardfarbe': 'Default color',
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
   'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, K-Toolz ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
@@ -4356,6 +4357,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         }
         setOsdCorner(oc, false) }
       osdMenuInit('setOsdTheme', 'theme'); osdMenuInit('setOsdPalette', 'palette'); osdMenuSync()   // Menues (idempotent) + Knopftext nachziehen
+      osdSwatchInit(); osdPickerClose(false)   // Farbkacheln (idempotent), offenen Farbwaehler schliessen
       osdLastCfg = buildOsdCfg()   // Bezugsstand fuer das Differenz-Senden
     }
     ipcRenderer.on('osd-settings-changed', async () => {   // Shell: Live-Edit hat Settings geschrieben
@@ -4367,7 +4369,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     function limZahl(id, min, max, std) { const el = document.getElementById(id); let n = parseInt(el.value, 10); if (!Number.isFinite(n)) n = std; n = Math.max(min, Math.min(max, n)); el.value = n; return n }
     function osdColorsRowShow() { document.getElementById('osdColorsRow').style.display = document.getElementById('setOsdPalette').value === 'eigen' ? 'grid' : 'none' }
     function onOsdPaletteChange() { osdColorsRowShow(); onOsdSettingChange() }
-    function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdMenuSync(); osdColorsRowShow(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
+    function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdMenuSync(); osdSwatchSyncAll(); osdColorsRowShow(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
     const OSD_COL_STD = { setOsdColGpu: '#74e857', setOsdColCpu: '#ff8a1e', setOsdColFps: '#4bd6ff', setOsdColNet: '#c79bff', setOsdColVal: '#ffe100' }   // = Standardpalette in osd.html
     function osdColorReset(id) { document.getElementById(id).value = OSD_COL_STD[id]; onOsdColorInput() }   // eine Farbe zurueck auf Werkseinstellung
     function setOsdForm(f, apply = true) { osdForm = f; document.querySelectorAll('#osdFormSeg button').forEach(b => b.classList.toggle('active', b.dataset.form === f)); if (apply) onOsdSettingChange() }
@@ -4437,6 +4439,112 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       osdMenus.push(render)
     }
     function osdMenuSync() { osdMenus.forEach(r => r()) }   // nach programmatischem Setzen von sel.value (Laden, Farbe anfassen)
+    // --- Eigener Farbwaehler statt Windows-Farbdialog ------------------------------------------------
+    // Das <input type=color> bleibt versteckt als Wertspeicher (alle Leser unveraendert). Klick auf die
+    // Kachel oeffnet ein Popover: SV-Flaeche, Farbton-Regler, Hex-Feld, Schnellwahl (Standard + Paletten).
+    // Ziehen zeigt die Farbe nur im Overlay (osd-preview-cfg), gespeichert wird beim Loslassen; Escape stellt zurueck.
+    const OSD_COL_KEY = { setOsdColGpu: 'nv', setOsdColCpu: 'amd', setOsdColFps: 'fpc', setOsdColNet: 'netc', setOsdColVal: 'val' }
+    const OSD_PALETTES = {   // Kopie der Gruppenfarben aus osd.html (PALETTES) fuer die Schnellwahl
+      standard: { nv: '#74e857', amd: '#ff8a1e', fpc: '#4bd6ff', netc: '#c79bff', val: '#ffe100' },
+      mono:     { nv: '#ffffff', amd: '#ffffff', fpc: '#ffffff', netc: '#ffffff', val: '#ffffff' },
+      dezent:   { nv: '#9aa3ad', amd: '#9aa3ad', fpc: '#d0d4d8', netc: '#9aa3ad', val: '#e6e8ea' },
+      pastell:  { nv: '#a8e6cf', amd: '#ffd3b6', fpc: '#dcedc1', netc: '#d4c1ec', val: '#fff5ba' },
+      amber:    { nv: '#ffb000', amd: '#ff8c00', fpc: '#ffd166', netc: '#ffb000', val: '#ffcc33' },
+      rgb:      { nv: '#00ff88', amd: '#ff3366', fpc: '#00ccff', netc: '#cc66ff', val: '#ffffff' },
+    }
+    function hexToHsv(hex) {
+      const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0
+      if (d) { h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360 }
+      return { h, s: mx ? d / mx : 0, v: mx }
+    }
+    function hsvToHex(h, s, v) { const f = n => { const k = (n + h / 60) % 6; const c = v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); return Math.round(c * 255).toString(16).padStart(2, '0') }; return '#' + f(5) + f(3) + f(1) }
+    function osdSwatchSync(id) { const sw = document.querySelector('.osd-swatch[data-for="' + id + '"]'); if (sw) sw.style.background = document.getElementById(id).value }
+    function osdSwatchSyncAll() { Object.keys(OSD_COL_KEY).forEach(osdSwatchSync) }
+    function osdSwatchInit() {
+      for (const id of Object.keys(OSD_COL_KEY)) {
+        const inp = document.getElementById(id); if (!inp || inp.dataset.sw) continue
+        inp.dataset.sw = '1'
+        const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'osd-swatch'; sw.dataset.for = id; sw.title = window.tr('Farbe wählen')
+        sw.addEventListener('click', () => osdPickerOpen(id))
+        inp.parentNode.insertBefore(sw, inp)
+        const lab = inp.parentNode.querySelector('label[for="' + id + '"]')
+        if (lab) { lab.removeAttribute('for'); lab.addEventListener('click', () => osdPickerOpen(id)) }   // sonst oeffnet das Label den Windows-Dialog
+      }
+      osdSwatchSyncAll()
+    }
+    let osdPick = null   // { el, inp, id, hsv, orig, saved }
+    function osdPickerInit() {
+      if (document.getElementById('osdPicker')) return
+      const el = document.createElement('div'); el.id = 'osdPicker'; el.className = 'osd-picker'; el.tabIndex = -1
+      el.innerHTML = '<div class="osd-pick-sv" tabindex="0"><div class="osd-pick-dot"></div></div>'
+        + '<div class="osd-pick-hue" tabindex="0"><div class="osd-pick-hd"></div></div>'
+        + '<div class="osd-pick-row"><span class="osd-pick-prev"></span><input class="osd-pick-hex" maxlength="7" spellcheck="false" aria-label="Hex"><button type="button" class="osd-color-reset osd-pick-reset" title="Standardfarbe">↺</button></div>'
+        + '<div class="osd-pick-chips"></div>'
+      document.getElementById('osdColorsRow').appendChild(el)
+      const sv = el.querySelector('.osd-pick-sv'), hue = el.querySelector('.osd-pick-hue'), hex = el.querySelector('.osd-pick-hex'), chips = el.querySelector('.osd-pick-chips')
+      const clamp = (x, a, b) => Math.max(a, Math.min(b, x))
+      const normHex = t => { t = t.trim().toLowerCase(); if (!t.startsWith('#')) t = '#' + t; return /^#[0-9a-f]{6}$/.test(t) ? t : null }
+      function paint() {
+        const { h, s, v } = osdPick.hsv, c = hsvToHex(h, s, v)
+        sv.style.background = 'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(' + h + ' 100% 50%))'
+        const dot = el.querySelector('.osd-pick-dot'); dot.style.left = (s * 100) + '%'; dot.style.top = ((1 - v) * 100) + '%'
+        el.querySelector('.osd-pick-hd').style.left = (h / 360 * 100) + '%'
+        el.querySelector('.osd-pick-prev').style.background = c
+        if (document.activeElement !== hex) hex.value = c
+        osdPick.inp.value = c; osdSwatchSync(osdPick.id)
+      }
+      el._paint = paint
+      function previewNow() {   // nur zeigen, nicht speichern
+        const colors = {}; for (const [id, k] of Object.entries(OSD_COL_KEY)) colors[k] = document.getElementById(id).value
+        osdPreview(true); ipcRenderer.invoke('osd-preview-cfg', { palette: 'eigen', colors })
+      }
+      function commit() { osdPick.saved = osdPick.inp.value; onOsdColorInput(); ipcRenderer.invoke('osd-preview-cfg', null) }   // speichert (Palette -> eigen), dann gespeicherten Stand anwenden
+      el._commitIfDraft = () => { if (osdPick && osdPick.inp.value !== osdPick.saved) commit() }
+      function setHsv(p, live) { Object.assign(osdPick.hsv, p); paint(); if (live) previewNow(); else commit() }
+      function dragOn(area, fn) {
+        area.addEventListener('pointerdown', e => { area.setPointerCapture(e.pointerId); area.focus(); fn(e, true); e.preventDefault() })
+        area.addEventListener('pointermove', e => { if (area.hasPointerCapture(e.pointerId)) fn(e, true) })
+        area.addEventListener('pointerup', e => { area.releasePointerCapture(e.pointerId); fn(e, false) })
+      }
+      dragOn(sv, (e, live) => { const r = sv.getBoundingClientRect(); setHsv({ s: clamp((e.clientX - r.left) / r.width, 0, 1), v: clamp(1 - (e.clientY - r.top) / r.height, 0, 1) }, live) })
+      dragOn(hue, (e, live) => { const r = hue.getBoundingClientRect(); setHsv({ h: clamp((e.clientX - r.left) / r.width, 0, 0.9999) * 360 }, live) })
+      sv.addEventListener('keydown', e => { const d = { ArrowLeft: [-.02, 0], ArrowRight: [.02, 0], ArrowUp: [0, .02], ArrowDown: [0, -.02] }[e.key]; if (!d) return; e.preventDefault(); setHsv({ s: clamp(osdPick.hsv.s + d[0], 0, 1), v: clamp(osdPick.hsv.v + d[1], 0, 1) }, false) })
+      hue.addEventListener('keydown', e => { const d = e.key === 'ArrowLeft' ? -4 : e.key === 'ArrowRight' ? 4 : 0; if (!d) return; e.preventDefault(); setHsv({ h: (osdPick.hsv.h + d + 360) % 360 }, false) })
+      hex.addEventListener('input', () => { const t = normHex(hex.value); if (t) { osdPick.hsv = hexToHsv(t); paint(); previewNow() } })
+      hex.addEventListener('change', () => { const t = normHex(hex.value); if (t) { osdPick.hsv = hexToHsv(t); paint(); commit() } else paint() })
+      el.querySelector('.osd-pick-reset').addEventListener('click', () => { osdPick.hsv = hexToHsv(OSD_COL_STD[osdPick.id]); paint(); commit() })
+      chips.addEventListener('click', e => { const c = e.target.closest('.osd-pick-chip'); if (c) { osdPick.hsv = hexToHsv(c.dataset.c); paint(); commit() } })
+      chips.addEventListener('mouseover', e => { const c = e.target.closest('.osd-pick-chip'); if (!c) return; const keep = osdPick.inp.value; osdPick.inp.value = c.dataset.c; previewNow(); osdPick.inp.value = keep })   // Chip nur zeigen
+      chips.addEventListener('mouseleave', () => { if (osdPick) previewNow() })   // zurueck zur aktuellen Auswahl
+      el.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); osdPickerClose(true) } else if (e.key === 'Enter' && e.target !== hex) { e.preventDefault(); osdPickerClose(false) } })
+      document.addEventListener('pointerdown', e => { if (osdPick && !el.contains(e.target) && !e.target.closest('.osd-swatch, .osd-color-nm label')) osdPickerClose(false) })
+    }
+    function osdPickerOpen(id) {
+      osdPickerInit()
+      if (osdPick && osdPick.id === id) { osdPickerClose(false); return }
+      if (osdPick) osdPickerClose(false)
+      const inp = document.getElementById(id), el = document.getElementById('osdPicker'), row = document.getElementById('osdColorsRow')
+      osdPick = { el, inp, id, hsv: hexToHsv(inp.value), orig: inp.value, saved: inp.value }
+      const k = OSD_COL_KEY[id], seen = new Set(), list = []   // Schnellwahl: Standard zuerst, dann die Paletten, ohne Dubletten
+      for (const p of Object.values(OSD_PALETTES)) { const c = p[k]; if (!seen.has(c)) { seen.add(c); list.push(c) } }
+      el.querySelector('.osd-pick-chips').innerHTML = list.map(c => '<button type="button" class="osd-pick-chip" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></button>').join('')
+      el.style.display = 'block'
+      const cell = inp.closest('.osd-color')   // unter der Kachel, innerhalb des Rasters halten
+      el.style.left = Math.max(0, Math.min(cell.offsetLeft, row.clientWidth - el.offsetWidth)) + 'px'
+      el.style.top = (cell.offsetTop + cell.offsetHeight + 6) + 'px'
+      document.querySelectorAll('.osd-swatch').forEach(s => s.classList.toggle('open', s.dataset.for === id))
+      el._paint(); el.querySelector('.osd-pick-sv').focus()
+    }
+    function osdPickerClose(revert) {
+      if (!osdPick) return
+      const { el, inp, id, orig } = osdPick
+      if (revert) { inp.value = orig; osdSwatchSync(id); if (inp.value !== osdPick.saved) { osdPick.saved = orig; onOsdColorInput() }; ipcRenderer.invoke('osd-preview-cfg', null); osdPreviewSoon(600) }
+      else el._commitIfDraft()
+      el.style.display = 'none'
+      document.querySelectorAll('.osd-swatch.open').forEach(s => s.classList.remove('open'))
+      osdPick = null
+    }
     // Schalter sperren, die im gewaehlten Design keine Wirkung haben (Design-Select + Laden)
     function osdLayCapsApply() {
       const caps = OSD_LAY_CAPS[document.getElementById('setOsdTheme').value] || OSD_LAY_CAPS.bar
