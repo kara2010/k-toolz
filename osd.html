@@ -441,8 +441,12 @@
   // deckt das Overlay nie mehr den ganzen Desktop ab und kann Desktop-Symbole nicht
   // blockieren - egal wie das Click-through auf dem jeweiligen System reagiert.
   // Im Edit-Modus NICHT melden (dort ist das Fenster absichtlich Vollbild + interaktiv).
+  // Das Edit-Fenster (?editbg=1) meldet NIE Panel-Masse: vor dem 'osd-edit'-Signal ist 'editing'
+  // dort noch false, und die Meldung (Standard-Design, noch ohne Config) landete als Fenstergroesse
+  // des Anzeige-Overlays -> echtes Design nach 'Fertig' abgeschnitten.
+  const IS_EDIT_WIN = /[?&]editbg=1/.test(location.search);
   function reportBounds() {
-    if (!ipcRenderer || editing) return;
+    if (!ipcRenderer || editing || IS_EDIT_WIN) return;
     const r = panel.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) return;
     const dpr = window.devicePixelRatio || 1, M = 14;   // Rand ums Panel (ersetzt das alte margin)
@@ -1045,6 +1049,8 @@
     ipcRenderer.on('osd-data', (e, d) => updateOsd(d));
     ipcRenderer.on('osd-config', (e, c) => applyConfig(c));
     ipcRenderer.on('osd-edit', (e, on) => setEdit(on));
+    // Shell nach dem Live-Edit: Hysterese-Gedaechtnis loeschen und die Panel-Masse neu melden
+    ipcRenderer.on('osd-remeasure', () => { _lastB = { key: '', w: 0, h: 0 }; scheduleBounds(); });
     // Sanftes Ein-/Ausblenden (osdFadeVisual in main.cpp) per CSS-Opacity statt der an
     // E_NOINTERFACE gescheiterten DComp-Visual3-Opacity. Edit-Fenster (?editbg=1, oben bereits
     // auf opacity:1 gesetzt) bleibt aussen vor - nur das Anzeige-Overlay startet unsichtbar,

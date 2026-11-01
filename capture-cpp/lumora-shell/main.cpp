@@ -5031,6 +5031,9 @@ static void setOsdEditMode(bool on) {
         g_osdEdit = false;
         destroyOsdEditWindow();
         syncOsdVisibility();   // Anzeige-Overlay gemaess Setting wieder zeigen (neue Ecke/Groesse)
+        // Das Overlay war waehrend des Edits versteckt (requestAnimationFrame pausiert) und meldet
+        // bei unveraenderter Panel-Groesse nichts nach -> einmal frisch messen lassen.
+        sendToOsd("osd-remeasure", nullptr);
     }
 }
 static void toggleOsdSetting() {   // wie Electrons toggleOverlay (Hotkey/Gamepad/Kanal)
@@ -5940,6 +5943,11 @@ static void onWebMessage(const std::wstring& raw, HWND replyWnd) {
     long long id = msg.value("id", 0ll);
     std::string channel = msg.value("channel", "");
     json args = msg.contains("args") && msg["args"].is_array() ? msg["args"] : json::array();
+    // Panel-Masse NUR vom Anzeige-Overlay annehmen. Das Edit-Fenster meldete beim Laden (vor
+    // 'osd-edit' und vor der Config) die Masse des Standard-Designs - nach 'Fertig' wurde das
+    // Anzeige-Fenster darauf gesetzt und schnitt das echte Design ab (gemessen: Fenstergroesse
+    // = Balken-Standardmass x DPI x Zoom, waehrend das Overlay zuletzt das Tacho-Mass gemeldet hatte).
+    if (channel == "osd-bounds" && replyWnd == g_osdEditHwnd) channel = "osd-bounds-editfenster-ignoriert";
     // Antwort ans QUELL-Fenster (Haupt-UI / Doorman / OSD / Werkbank) ueber dessen
     // Marshalling-Message. Werkbank + Analyse-OSD fehlten hier: ihre invoke-Antworten
     // gingen als WM_SHELL_REPLY an ein Fenster, dessen wndProc die Message gar nicht
