@@ -959,7 +959,9 @@
   // Klick liefert die Rolle: in der Reiter-Vorschau (?preview=1) ans Hauptfenster, im Live-Editor an den
   // eigenen Farbwaehler (#ebPick). Kein Element wird einzeln gefaerbt - immer die ganze Rolle.
   const IS_PREVIEW = /[?&]preview=1/.test(location.search);
-  const CR_LABEL = { nv: 'GPU', amd: 'CPU', fpc: 'FPS', netc: 'Netz', main: 'Hauptwerte', val: 'Nebenwerte', lbl: 'Beschriftungen', unit: 'Einheiten', accent: 'Rahmen' };
+  const UI_EN = /[?&]lang=en/.test(location.search);   // Vorschau (Reiter/Website) auf Englisch: Rollennamen + Tipp
+  const CR_LABEL = UI_EN ? { nv: 'GPU', amd: 'CPU', fpc: 'FPS', netc: 'Net', main: 'Main values', val: 'Secondary values', lbl: 'Labels', unit: 'Units', accent: 'Frame' }
+                         : { nv: 'GPU', amd: 'CPU', fpc: 'FPS', netc: 'Netz', main: 'Hauptwerte', val: 'Nebenwerte', lbl: 'Beschriftungen', unit: 'Einheiten', accent: 'Rahmen' };
   const CR_AUTO = ['main', 'lbl', 'unit', 'accent'];   // Rollen ohne eigenen Wert: Design-Standard bzw. (Rahmen) Palettenakzent
   const crTip = document.getElementById('crTip');
   let crMode = false, crHl = '';
@@ -981,7 +983,7 @@
     const role = crOf(e.target);
     crHighlight(role);
     if (!role) { crTip.style.display = 'none'; return; }
-    crTip.innerHTML = CR_LABEL[role] + '<small>Klick = Farbe wählen</small>';
+    crTip.innerHTML = CR_LABEL[role] + (UI_EN ? '<small>Click = pick color</small>' : '<small>Klick = Farbe wählen</small>');
     crTip.style.display = 'block';
     const x = Math.min(e.clientX + 16, window.innerWidth - crTip.offsetWidth - 8), y = Math.min(e.clientY + 18, window.innerHeight - crTip.offsetHeight - 8);
     crTip.style.left = x + 'px'; crTip.style.top = y + 'px';
@@ -992,7 +994,7 @@
     const role = crOf(e.target); if (!role) return;
     e.preventDefault(); e.stopPropagation();
     const c = crColor(role, e.target);
-    if (IS_PREVIEW) { window.parent.postMessage({ t: 'osd-pick', key: role, label: CR_LABEL[role], color: c.color, auto: c.auto, x: e.clientX, y: e.clientY }, '*'); return; }
+    if (IS_PREVIEW) { const pr = panel.getBoundingClientRect(); window.parent.postMessage({ t: 'osd-pick', key: role, label: CR_LABEL[role], color: c.color, auto: c.auto, x: e.clientX, y: e.clientY, panel: { left: pr.left, top: pr.top, right: pr.right, bottom: pr.bottom } }, '*'); return; }   // panel: damit die Seite den Waehler NEBEN das Overlay setzt
     ebPickOpen(role, c, e.clientX, e.clientY);
   });
 
@@ -1312,7 +1314,7 @@
     data = JSON.parse(JSON.stringify(DEMO));
     window.addEventListener('message', (e) => {
       const m = e.data || {};
-      if (m.t === 'cfg' && m.cfg) applyConfig(m.cfg);
+      if (m.t === 'cfg' && m.cfg) { applyConfig(m.cfg); if (m.cfg.scale != null) panel.style.zoom = String(m.cfg.scale); }   // scale: Website-Vorschau (in der App zoomt die Shell das Fenster)
       else if (m.t === 'hl') crHighlight(m.key || '');
       else if (m.t === 'data' && m.d) {   // echte Messwerte (Shell -> Hauptfenster -> hier): ersetzen die Beispielwerte Teil fuer Teil
         const d = Object.assign({}, m.d);

@@ -4651,7 +4651,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     let osdPrevReady = false, osdPrevK = 1
     function osdPrevInit() {
       const fr = document.getElementById('osdPrevFrame'); if (!fr || fr.dataset.init) return
-      fr.dataset.init = '1'; fr.src = 'osd.html?preview=1'
+      fr.dataset.init = '1'; fr.src = 'osd.html?preview=1' + (window.LANG === 'en' ? '&lang=en' : '')
       window.addEventListener('message', e => {
         if (e.source !== fr.contentWindow) return
         const m = e.data || {}
