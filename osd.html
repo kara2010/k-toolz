@@ -218,6 +218,12 @@
      Edit-Modus (body.edit) greift das NICHT -> dort bleibt die Vollbild-Eckplatzierung. */
   body:not(.edit) #panel { position: static !important; margin: 14px !important;
     left: auto !important; right: auto !important; top: auto !important; bottom: auto !important; transform: none !important; }
+  /* Designs OHNE feste Breite (Minimal, Leiste, Kacheln, Tacho, Terminal, Punkte, HUD): als static Block
+     wuerden sie immer den ganzen Viewport fuellen -> reportBounds meldet Fensterbreite, die Shell setzt das
+     Fenster darauf, und das Panel kann nie wieder schmaler werden (gemessen: Leiste = Monitorbreite).
+     max-content = echte Inhaltsbreite, unabhaengig vom aktuellen (vielleicht zu kleinen) Fenster. */
+  body:not(.edit).theme-min #panel, body:not(.edit).theme-strip #panel, body:not(.edit).theme-tiles #panel, body:not(.edit).theme-gauge #panel,
+  body:not(.edit).theme-term #panel, body:not(.edit).theme-dots #panel, body:not(.edit).theme-hud #panel { width: max-content; }
   body.edit #panel { outline: 2px dashed #4f8ef7; outline-offset: 5px; cursor: move; }
   /* Edit-Fenster ist ein normales, immer sichtbares Fenster - vom neuen Fade-Standard
      (body{opacity:0}) und von jeder verirrten 'osd-fade'-Nachricht ausnehmen. */
