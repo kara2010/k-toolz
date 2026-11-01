@@ -1295,8 +1295,8 @@
   // Beispielwerte fuer Reiter-Vorschau und Browser-Demo (keine echten Geraete)
   const DEMO = { gpu: { brand: 'NVIDIA', name: 'GeForce RTX', load: 45, temp: 62, power: 210, clock: 2730, vram: 8420 },
                  cpu: { brand: 'AMD', name: 'Ryzen 9', load: 38, temp: 68, power: 95, clock: 5000, ram: 24560 },
-                 fps: 144, frametime: 6.9, api: 'D3D12', net: null };
-  function demoTick() { data.fps = 138 + Math.round(Math.random() * 12); data.frametime = +(1000 / data.fps).toFixed(1); data.gpu.load = 40 + Math.round(Math.random() * 20); pushFrametime(data.frametime); paintValues(); }
+                 fps: 144, frametime: 6.9, api: 'D3D12', net: { rate: '↓ 2.4 MB/s ↑ 310 KB/s', total: '1.62 GB' } };   // Netz im Shell-Format (vorformatierte Texte)
+  function demoTick() { data.net = { rate: '↓ ' + (2.1 + Math.random() * 0.8).toFixed(1) + ' MB/s ↑ ' + (280 + Math.round(Math.random() * 60)) + ' KB/s', total: data.net ? data.net.total : '1.62 GB' }; data.fps = 138 + Math.round(Math.random() * 12); data.frametime = +(1000 / data.fps).toFixed(1); data.gpu.load = 40 + Math.round(Math.random() * 20); pushFrametime(data.frametime); paintValues(); }
   let ipcRenderer = null;
   if (!IS_PREVIEW) try { ipcRenderer = require('electron').ipcRenderer; } catch (e) {}
   if (IS_PREVIEW) {
