@@ -419,12 +419,16 @@
     const dpr = window.devicePixelRatio || 1, M = 14;   // Rand ums Panel (ersetzt das alte margin)
     const corner = ['tl','tr','bl','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
     const horiz = HORIZ.some(t => document.body.classList.contains('theme-' + t));
-    ipcRenderer.invoke('osd-bounds', {
-      w: Math.ceil((r.width  + 2 * M) * dpr),
-      h: Math.ceil((r.height + 2 * M) * dpr),
-      corner, horiz
-    });
+    const w = Math.ceil((r.width  + 2 * M) * dpr), h = Math.ceil((r.height + 2 * M) * dpr);
+    // Hysterese: Designs mit Inhaltsbreite (Leiste, Punkte, ...) werden mit jeder Ziffer schmaler/breiter
+    // (855 -> 1200 MHz). Wachsen sofort melden (sonst abgeschnitten), Schrumpfen erst ab 16 CSS-px -
+    // sonst rueckt das zentrierte Fenster bei jedem Wert ein paar Pixel hin und her (gemessen: +-21 px).
+    const key = corner + horiz;
+    if (_lastB.key === key && h === _lastB.h && w <= _lastB.w && _lastB.w - w < 16 * dpr) return;
+    _lastB = { key, w, h };
+    ipcRenderer.invoke('osd-bounds', { w, h, corner, horiz });
   }
+  let _lastB = { key: '', w: 0, h: 0 };
   let _rbRaf = 0;
   function scheduleBounds() { if (_rbRaf) return; _rbRaf = requestAnimationFrame(() => { _rbRaf = 0; reportBounds(); }); }
   try { new ResizeObserver(scheduleBounds).observe(panel); } catch (e) {}
