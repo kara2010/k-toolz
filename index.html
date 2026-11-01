@@ -4448,7 +4448,11 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         if (on === open) return
         open = on; wrap.classList.toggle('open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false')
         if (on) { render(); hl = -1; setHl(sel.selectedIndex, false) }
-        else { if (hovered != null) preview(null); items().forEach(x => x.classList.remove('hl')) }
+        else {
+          if (hovered != null) preview(null)
+          else if (osdPrevOn) osdPreviewSoon(900)   // Vorschau lief (Hover), wurde aber durch Klick auf den bereits gewaehlten Eintrag nie beendet -> OSD blieb an
+          items().forEach(x => x.classList.remove('hl'))
+        }
       }
       function choose(v) { hovered = null; show(false); if (sel.value !== v) { sel.value = v; sel.dispatchEvent(new Event('change')) }; ipcRenderer.invoke('osd-preview-cfg', null); btn.focus() }
       btn.addEventListener('click', () => show(!open))
@@ -4526,7 +4530,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       el._paint = paint
       function previewNow() {   // nur zeigen, nicht speichern
         const colors = {}; for (const [id, k] of Object.entries(OSD_COL_KEY)) colors[k] = document.getElementById(id).value
-        osdPreview(true); ipcRenderer.invoke('osd-preview-cfg', { palette: 'eigen', colors })
+        osdPreview(true); osdPreviewSoon(6000); ipcRenderer.invoke('osd-preview-cfg', { palette: 'eigen', colors })   // Sicherheitsnetz: Vorschau endet spaetestens 6 s nach der letzten Bewegung
       }
       function commit() { osdPick.saved = osdPick.inp.value; onOsdColorInput(); ipcRenderer.invoke('osd-preview-cfg', null) }   // speichert (Palette -> eigen), dann gespeicherten Stand anwenden
       el._commitIfDraft = () => { if (osdPick && osdPick.inp.value !== osdPick.saved) commit() }
@@ -4580,6 +4584,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       el.style.display = 'none'
       document.querySelectorAll('.osd-swatch.open').forEach(s => s.classList.remove('open'))
       osdPick = null
+      if (osdPrevOn) osdPreviewSoon(900)   // Vorschau (Chips/Ziehen) immer beenden - sonst blieb das OSD nach dem Schliessen ohne Aenderung an
     }
     // Schalter sperren, die im gewaehlten Design keine Wirkung haben (Design-Select + Laden)
     function osdLayCapsApply() {

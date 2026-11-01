@@ -3096,6 +3096,8 @@ static void sendToOsd(const std::string& channel, const json& payload);
 #define TIMER_SRCWATCH 113 // Quellen-Watcher: Fenster-Fingerprint alle 3s -> sources-updated bei Aenderung
 #define TIMER_OSDPRELOAD 114 // one-shot ~3s nach Start: OSD-WebView2 vorwaermen -> Oeffnen ist sofort statt "Gedenksekunde"
 #define TIMER_OSDHIDE 115    // one-shot: Fenster erst NACH dem DComp-Ausblenden verstecken
+#define TIMER_OSDPREVIEWWD 123 // Watchdog: Vorschau (Regler/Menue/Farbwaehler) endet spaetestens 15 s nach dem letzten 'osd-preview true' -
+                               // sonst blieb das OSD bei ausgeschalteter Einstellung sichtbar, wenn der Reiter das Ende nie schickte
 // --- OSD-Sensorik Teil 1 (treiberfrei): PDH-CPU/GPU-Last, RAM, DXGI-VRAM.
 // Temp/Takt/Power (NVML/ADL/PawnIO) + FPS (PresentMon) folgen als Teil 2.
 static PDH_HQUERY g_pdhQ = nullptr;
@@ -5009,6 +5011,9 @@ static void syncOsdVisibility() { json s = loadSettings(); if (!moduleActive(s, 
 // war ohnehin eingeschaltet (dann bleibt es stehen).
 static void osdPreviewMode(bool on) {
     g_osdPreview = on;
+    // Watchdog: jedes 'an' verlaengert, 'aus' beendet. Laeuft er ab, nimmt die Shell die Vorschau
+    // selbst zurueck (Befund 1.11.: OSD blieb nach Menue-/Farbwaehler-Hover bei 'aus' sichtbar).
+    if (on) SetTimer(g_hwnd, TIMER_OSDPREVIEWWD, 15000, nullptr); else KillTimer(g_hwnd, TIMER_OSDPREVIEWWD);
     syncOsdVisibility();
     if (on) applyOsdConfig();
 }
@@ -6170,6 +6175,11 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         if (w == TIMER_IPWATCH) { bcIpWatchTick(); return 0; }
         if (w == TIMER_COLDLINK) { KillTimer(h, TIMER_COLDLINK); if (!g_coldDeepLink.empty()) { handleDeepLink(g_coldDeepLink); g_coldDeepLink.clear(); } return 0; }
         if (w == TIMER_OSDPRELOAD) { KillTimer(h, TIMER_OSDPRELOAD); if (moduleActive(loadSettings(), "osd")) { createOsdWindow(); sensorsInit(); } return 0; }
+        if (w == TIMER_OSDPREVIEWWD) {   // Vorschau haengt (Reiter hat das Ende nie geschickt) -> selbst beenden
+            KillTimer(h, TIMER_OSDPREVIEWWD);
+            if (g_osdPreview) { bcLogStream("osd-preview: Watchdog - Vorschau nach 15 s ohne Ende zurueckgenommen"); g_osdPreview = false; syncOsdVisibility(); }
+            return 0;
+        }
         if (w == TIMER_FIRSTSETUP) {   // StutterHunter-Erstinstallation: Mess-Dienst jetzt einrichten (Dialog + eine UAC-Abfrage)
             KillTimer(h, TIMER_FIRSTSETUP);
             json s = loadSettings();
