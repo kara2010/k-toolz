@@ -466,6 +466,7 @@
                   <span class="osd-color"><input type="color" id="setOsdColVal" value="#ffe100"><span class="osd-color-nm"><label>Nebenwerte</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColVal')">↺</button></span></span>
                   <span class="osd-color"><input type="color" id="setOsdColLbl" value="#9aa0aa" data-auto="1"><span class="osd-color-nm"><label>Beschriftungen</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColLbl')">↺</button></span></span>
                   <span class="osd-color"><input type="color" id="setOsdColUnit" value="#c8c8c8" data-auto="1"><span class="osd-color-nm"><label>Einheiten</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColUnit')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColAcc" value="#74e857" data-auto="1"><span class="osd-color-nm"><label>Rahmen</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColAcc')">↺</button></span></span>
                 </div>
               </div>
             </div>
@@ -1415,6 +1416,7 @@ const I18N_EN = {
   'Hauptwerte': 'Main values',
   'Nebenwerte': 'Secondary values',
   'Automatisch (wie im Design)': 'Automatic (as in the design)',
+  'Rahmen': 'Frame',
   'Monochrom': 'Monochrome',
   'Dezent': 'Subtle',
   'Vorschau': 'Preview',
@@ -4399,8 +4401,8 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     function onOsdPaletteChange() { osdPalChipsSync(); osdColorsRowShow(); onOsdSettingChange() }
     function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdPalChipsSync(); osdSwatchSyncAll(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
     // Standardwerte je Kachel (= Standardpalette in osd.html); Hauptwerte/Beschriftungen/Einheiten sind 'Auto'-Rollen: ohne eigenen Wert gilt der Design-Standard
-    const OSD_COL_STD = { setOsdColGpu: '#74e857', setOsdColCpu: '#ff8a1e', setOsdColFps: '#4bd6ff', setOsdColNet: '#c79bff', setOsdColVal: '#ffe100', setOsdColMain: '#ffffff', setOsdColLbl: '#9aa0aa', setOsdColUnit: '#c8c8c8' }
-    const OSD_COL_AUTO = ['setOsdColMain', 'setOsdColLbl', 'setOsdColUnit']
+    const OSD_COL_STD = { setOsdColGpu: '#74e857', setOsdColCpu: '#ff8a1e', setOsdColFps: '#4bd6ff', setOsdColNet: '#c79bff', setOsdColVal: '#ffe100', setOsdColMain: '#ffffff', setOsdColLbl: '#9aa0aa', setOsdColUnit: '#c8c8c8', setOsdColAcc: '#74e857' }
+    const OSD_COL_AUTO = ['setOsdColMain', 'setOsdColLbl', 'setOsdColUnit', 'setOsdColAcc']   // Rahmen = Akzent (Neon-Rahmen, HUD-Ecken, Leuchtrahmen, Terminal-Rahmen)
     function osdColorReset(id) { const inp = document.getElementById(id); inp.value = OSD_COL_STD[id]; if (OSD_COL_AUTO.includes(id)) inp.dataset.auto = '1'; onOsdColorInput() }   // zurueck auf Werkseinstellung bzw. Automatisch
     function setOsdForm(f, apply = true) { osdForm = f; document.querySelectorAll('#osdFormSeg button').forEach(b => b.classList.toggle('active', b.dataset.form === f)); if (apply) onOsdSettingChange() }
     // Welche Layout-Option in welchem Design wirkt - KOPIE von LAY_CAPS in osd.html (dort gemessen), muss identisch bleiben.
@@ -4497,18 +4499,18 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // Das <input type=color> bleibt versteckt als Wertspeicher (alle Leser unveraendert). Klick auf die
     // Kachel oeffnet ein Popover: SV-Flaeche, Farbton-Regler, Hex-Feld, Schnellwahl (Standard + Paletten).
     // Ziehen zeigt die Farbe nur im Overlay (osd-preview-cfg), gespeichert wird beim Loslassen; Escape stellt zurueck.
-    const OSD_COL_KEY = { setOsdColGpu: 'nv', setOsdColCpu: 'amd', setOsdColFps: 'fpc', setOsdColNet: 'netc', setOsdColMain: 'main', setOsdColVal: 'val', setOsdColLbl: 'lbl', setOsdColUnit: 'unit' }
+    const OSD_COL_KEY = { setOsdColGpu: 'nv', setOsdColCpu: 'amd', setOsdColFps: 'fpc', setOsdColNet: 'netc', setOsdColMain: 'main', setOsdColVal: 'val', setOsdColLbl: 'lbl', setOsdColUnit: 'unit', setOsdColAcc: 'accent' }
     const OSD_COL_ID = Object.fromEntries(Object.entries(OSD_COL_KEY).map(([id, k]) => [k, id]))
     const OSD_PICK_GENERIC = ['#ffffff', '#d0d4d8', '#9aa0aa', '#6f7688', '#ffe100', '#74e857', '#4bd6ff', '#ff8a1e', '#c79bff', '#ff4d4d']   // Schnellwahl fuer Rollen ohne Palettenwert
     // wirksame Farben wie osd.html sie sieht: feste Palette -> deren Werte (Auto-Rollen leer), eigene -> Kacheln ohne Auto
     function osdColorsObj() { const pal = document.getElementById('setOsdPalette').value, out = {}; for (const [id, k] of Object.entries(OSD_COL_KEY)) { const inp = document.getElementById(id); if (pal !== 'eigen' && OSD_PALETTES[pal]) { if (OSD_PALETTES[pal][k]) out[k] = OSD_PALETTES[pal][k] } else if (!(OSD_COL_AUTO.includes(id) && inp.dataset.auto === '1')) out[k] = inp.value } return out }
     const OSD_PALETTES = {   // Kopie der Gruppenfarben aus osd.html (PALETTES) fuer die Schnellwahl
-      standard: { nv: '#74e857', amd: '#ff8a1e', fpc: '#4bd6ff', netc: '#c79bff', val: '#ffe100' },
-      mono:     { nv: '#ffffff', amd: '#ffffff', fpc: '#ffffff', netc: '#ffffff', val: '#ffffff' },
-      dezent:   { nv: '#9aa3ad', amd: '#9aa3ad', fpc: '#d0d4d8', netc: '#9aa3ad', val: '#e6e8ea' },
-      pastell:  { nv: '#a8e6cf', amd: '#ffd3b6', fpc: '#dcedc1', netc: '#d4c1ec', val: '#fff5ba' },
-      amber:    { nv: '#ffb000', amd: '#ff8c00', fpc: '#ffd166', netc: '#ffb000', val: '#ffcc33' },
-      rgb:      { nv: '#00ff88', amd: '#ff3366', fpc: '#00ccff', netc: '#cc66ff', val: '#ffffff' },
+      standard: { nv: '#74e857', amd: '#ff8a1e', fpc: '#4bd6ff', netc: '#c79bff', val: '#ffe100', accent: '#74e857' },
+      mono:     { nv: '#ffffff', amd: '#ffffff', fpc: '#ffffff', netc: '#ffffff', val: '#ffffff', accent: '#ffffff' },
+      dezent:   { nv: '#9aa3ad', amd: '#9aa3ad', fpc: '#d0d4d8', netc: '#9aa3ad', val: '#e6e8ea', accent: '#9aa3ad' },
+      pastell:  { nv: '#a8e6cf', amd: '#ffd3b6', fpc: '#dcedc1', netc: '#d4c1ec', val: '#fff5ba', accent: '#a8e6cf' },
+      amber:    { nv: '#ffb000', amd: '#ff8c00', fpc: '#ffd166', netc: '#ffb000', val: '#ffcc33', accent: '#ffb000' },
+      rgb:      { nv: '#00ff88', amd: '#ff3366', fpc: '#00ccff', netc: '#cc66ff', val: '#ffffff', accent: '#00ccff' },
     }
     function hexToHsv(hex) {
       const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255

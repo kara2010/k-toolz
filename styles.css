@@ -552,7 +552,7 @@ body::before {
 .osd-prev-scale { transform-origin: 0 0; width: 0; height: 0; }
 .osd-prev iframe { display: block; border: 0; width: 0; height: 0; background: transparent; }   /* kein color-scheme hier: ein abweichendes Schema macht den iframe-Hintergrund in Chromium undurchsichtig weiss */
 .osd-prev-hint { font-size: 11.5px; color: #8a8a90; margin: 6px 0 0; }
-.osd-colors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px; margin-top: 10px; }
+.osd-colors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 6px; margin-top: 10px; }   /* neun Rollen: 3x3 */
 .osd-swatch.auto { background: repeating-linear-gradient(45deg, #2a2a2e 0 5px, #1e1e20 5px 10px) !important; position: relative; }
 .osd-swatch.auto::after { content: 'A'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #8a8a90; }
 .osd-color { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #bbb; min-width: 0; }

@@ -185,13 +185,13 @@
   .t-gauge .lbl, .t-gauge .track, .t-gauge canvas { display: none; }
 
   /* -------- TERMINAL -------- */
-  body.theme-term #panel { padding: 9px 12px; background: rgba(0,8,2,calc(var(--panel-op) + .3)); border: 1px solid rgba(96,200,96,.35); border-radius: 4px; }
-  .t-term { position: relative; font-family: 'Consolas', 'Cascadia Mono', 'DejaVu Sans Mono', monospace; font-weight: 400; text-shadow: 0 0 6px rgba(120,255,120,.35); }
+  body.theme-term #panel { padding: 9px 12px; background: rgba(0,8,2,calc(var(--panel-op) + .3)); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 4px; }   /* Rahmen = Akzentfarbe (Rolle 'Rahmen') */
+  .t-term { position: relative; font-family: 'Consolas', 'Cascadia Mono', 'DejaVu Sans Mono', monospace; font-weight: 400; text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); }
   .t-term::after { content: ''; position: absolute; inset: -9px -12px; pointer-events: none; border-radius: 4px;
     background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }
   body.lay-nosep .t-term::after { display: none; }
   .t-term .ln { font-size: 14px; line-height: 1.45; color: var(--c-main, #c8ffc8); --cr: main; white-space: nowrap; }
-  .t-term .ln + .ln { border-top: 1px dotted rgba(96,200,96,.18); }
+  .t-term .ln + .ln { border-top: 1px dotted color-mix(in srgb, var(--accent) 22%, transparent); }
   .t-term .k { display: inline-block; min-width: 42px; color: var(--gc, #5fd35f); --cr: var(--crg); }
   .t-term .v { color: var(--c-main, #d8ffd8); --cr: main; } .t-term i { color: var(--c-unit, #7fb97f); }
   .t-term .cur::after { content: '▮'; color: var(--c-main, #7dff7d); margin-left: 6px; animation: osdBlink 1s steps(1) infinite; }
@@ -226,6 +226,7 @@
   .t-compact .grp-net .name, .t-bar .grp-net .name, .t-neon .grp-net .name, .t-strip .grp-net .nm, .t-tiles .tile.grp-net .cap, .t-min .grp-net .k { color: var(--netc); --cr: netc; }
   .t-neon .grp.grp-net { border-color: var(--netc); } .t-tiles .tile.grp-net { border-color: var(--netc); }
   .grp-net .name { flex: 0 0 auto; }   /* 'NET' nie abschneiden - die Rate daneben ist lang (Kompakt/Neon zeigten 'N...') */
+  #panel canvas { --cr: fpc; }   /* Frametime-Graph: Linie in der FPS-Gruppenfarbe (drawFtGraph) -> Rolle FPS im Klick-Farbmodus */
 
   /* -------- Live-Edit -------- */
   /* NORMALBETRIEB (kein Edit): das Fenster ist genau panelgross -> Panel fix oben-links
@@ -472,7 +473,7 @@
     amber:    { nv: '#ffb000', amd: '#ff8c00', fpc: '#ffd166', netc: '#ffb000', val: '#ffcc33', accent: '#ffb000' },
     rgb:      { nv: '#00ff88', amd: '#ff3366', fpc: '#00ccff', netc: '#cc66ff', val: '#ffffff', accent: '#00ccff' },
   };
-  function farben(pal) { pal = pal || cfg.palette; return pal === 'eigen' && cfg.colors ? Object.assign({}, PALETTES.standard, cfg.colors) : (PALETTES[pal] || PALETTES.standard); }
+  function farben(pal) { pal = pal || cfg.palette; const p = pal === 'eigen' && cfg.colors ? Object.assign({}, PALETTES.standard, cfg.colors) : Object.assign({}, PALETTES[pal] || PALETTES.standard); if (!/^#[0-9a-fA-F]{6}$/.test(p.accent || '')) p.accent = PALETTES.standard.accent; return p; }   // accent ('Rahmen'): eigener Wert, sonst Palettenakzent
   function applyFarben(pal) {   // pal nur fuer die Hover-Vorschau der Paletten-Chips im Live-Editor (zeigt, speichert nichts)
     const p = farben(pal), r = document.documentElement.style;
     r.setProperty('--nv', p.nv); r.setProperty('--amd', p.amd); r.setProperty('--fpc', p.fpc); r.setProperty('--netc', p.netc); r.setProperty('--val', p.val);
@@ -957,12 +958,12 @@
   // Klick liefert die Rolle: in der Reiter-Vorschau (?preview=1) ans Hauptfenster, im Live-Editor an den
   // eigenen Farbwaehler (#ebPick). Kein Element wird einzeln gefaerbt - immer die ganze Rolle.
   const IS_PREVIEW = /[?&]preview=1/.test(location.search);
-  const CR_LABEL = { nv: 'GPU', amd: 'CPU', fpc: 'FPS', netc: 'Netz', main: 'Hauptwerte', val: 'Nebenwerte', lbl: 'Beschriftungen', unit: 'Einheiten' };
-  const CR_AUTO = ['main', 'lbl', 'unit'];   // Rollen ohne Palettenwert: '' = Design-Standard
+  const CR_LABEL = { nv: 'GPU', amd: 'CPU', fpc: 'FPS', netc: 'Netz', main: 'Hauptwerte', val: 'Nebenwerte', lbl: 'Beschriftungen', unit: 'Einheiten', accent: 'Rahmen' };
+  const CR_AUTO = ['main', 'lbl', 'unit', 'accent'];   // Rollen ohne eigenen Wert: Design-Standard bzw. (Rahmen) Palettenakzent
   const crTip = document.getElementById('crTip');
   let crMode = false, crHl = '';
   function crOf(el) { return el && el.nodeType === 1 ? (getComputedStyle(el).getPropertyValue('--cr').trim() || '') : ''; }
-  function crLeaf(el) { return el.matches('.fill, .ring') || [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); }
+  function crLeaf(el) { return el.matches('.fill, .ring, canvas') || [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); }
   function crHighlight(role) {
     if (role === crHl) return;
     crHl = role;
@@ -1048,7 +1049,6 @@
   function pkApply(live) {   // Farbe sofort ins Overlay (eigene Palette), beim Loslassen an die Shell
     const c = hsvToHex(pk.hsv.h, pk.hsv.s, pk.hsv.v);
     cfg.colors = Object.assign({}, PALETTES[pk.origPal] || PALETTES.standard, cfg.colors || {}, { [pk.role]: c }); cfg.palette = 'eigen';
-    delete cfg.colors.accent;
     applyFarben(); pkPaint(); renderEditbar(false);
     if (!live) pkSend();
   }
@@ -1058,7 +1058,6 @@
     if (pk) ebPickClose(false);
     // Start aus einer festen Palette: deren Farben werden die Basis der eigenen Farben (sonst spraengen alle anderen Rollen auf Standard)
     const basis = cfg.palette === 'eigen' ? (cfg.colors || {}) : Object.assign({}, PALETTES[cfg.palette] || PALETTES.standard);
-    delete basis.accent;
     pk = { role, hsv: hexToHsv(c.color), orig: cfg.colors ? JSON.parse(JSON.stringify(cfg.colors)) : null, origPal: cfg.palette, sent: false };
     if (cfg.palette !== 'eigen') cfg.colors = basis;
     el.querySelector('.pk-name').textContent = CR_LABEL[role];
@@ -1121,7 +1120,7 @@
       const lblOf = f => { const d = defs.find(x => x[0] === f); return d ? d[1] : f; };
       const an = (cfg.fields[cat] || []).filter(f => defs.some(d => d[0] === f));
       const aus = defs.map(d => d[0]).filter(f => !an.includes(f));
-      const farbe = EB_FARBE[cat] || '#e8eaf2';
+      const farbe = farben()[GCK[cat]] || EB_FARBE[cat] || '#e8eaf2';   // wie im Overlay (Palette/eigene Farben)
       return `<div class="eb-frow" data-cat="${cat}" style="--gc:${farbe}">`
         + `<span class="eb-griff" draggable="true" title="Ganze Gruppe verschieben">⠿</span>`
         + `<span class="eb-grp">${cat.toUpperCase()}</span>`
