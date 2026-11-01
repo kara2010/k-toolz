@@ -45,6 +45,8 @@
   /* ===== Layout-Baukasten (body.lay-*) ===== */
   body.lay-nolabels .k, body.lay-nolabels .lbl, body.lay-nolabels .gl { display: none !important; }
   body.lay-nolabels .t-strip .nm, body.lay-nolabels .t-tiles .cap { display: none !important; }   /* Leiste/Kacheln: Gruppenname ist dort die Beschriftung */
+  /* Schriftart (waehlbar, --osd-font per Config): gilt fuer das Panel in allen Designs, auch Terminal; Edit-Leiste bleibt Segoe UI */
+  body.font-custom #panel, body.font-custom #panel .t-term { font-family: var(--osd-font) !important; }
   body.lay-nounits .osd i { display: none !important; }
   body.lay-icons .nv .name::before, body.lay-icons .nv .nm::before, body.lay-icons .nv .cap::before, body.lay-icons .k.nv::before, body.lay-icons .d.nv::before, body.lay-icons .tl.nv::before { content: '▣ '; }
   body.lay-icons .amd .name::before, body.lay-icons .amd .nm::before, body.lay-icons .amd .cap::before, body.lay-icons .k.amd::before, body.lay-icons .d.amd::before, body.lay-icons .tl.amd::before { content: '◩ '; }
@@ -379,6 +381,14 @@
         <div class="eb-row eb-seg" id="ebForm"><button data-form="rund">Rund</button><button data-form="eckig">Eckig</button><button data-form="pille">Pille</button></div>
       </div>
       <div class="eb-ctl">
+        <span class="eb-lbl">Schrift</span>
+        <div class="eb-row">
+          <button class="eb-arrow" id="ebFontPrev" title="Vorherige Schrift">‹</button>
+          <span class="eb-theme" id="ebFontName">Standard</span>
+          <button class="eb-arrow" id="ebFontNext" title="Nächste Schrift">›</button>
+        </div>
+      </div>
+      <div class="eb-ctl">
         <span class="eb-lbl">Darstellung</span>
         <div class="eb-row eb-togs" id="ebLay"><button data-lay="labels">Beschriftungen</button><button data-lay="units">Einheiten</button><button data-lay="icons">Symbole</button><button data-lay="sep">Trennlinien</button><button data-lay="glow">Leuchtrahmen</button><button data-lay="dense">Dicht</button></div>
       </div>
@@ -400,7 +410,8 @@
   };
   let cfg = { theme: 'bar', fields: JSON.parse(JSON.stringify(ALL)), accent: '#74e857', opacity: 0.55,
               palette: 'standard', colors: null, limits: { on: true, gpuTempWarn: 75, gpuTemp: 85, cpuTempWarn: 80, cpuTemp: 90, loadWarn: 85, load: 95, fpsMin: 60, fpsCrit: 30, pulse: true },
-              layout: { labels: true, units: true, icons: false, sep: true, form: 'rund', glow: false, dense: false } };   // Standard-Design: Balken
+              layout: { labels: true, units: true, icons: false, sep: true, form: 'rund', glow: false, dense: false },
+              font: '' };   // Standard-Design: Balken; font '' = Standardschrift (Consolas-Kette aus dem CSS)
   // Paletten (Paket 1): Gruppenfarben GPU/CPU/FPS/Netz, Wertfarbe, Akzent. 'eigen' nimmt cfg.colors.
   const PALETTES = {
     standard: { nv: '#74e857', amd: '#ff8a1e', fpc: '#4bd6ff', netc: '#c79bff', val: '#ffe100', accent: '#74e857' },
@@ -436,6 +447,10 @@
     hud:     ['labels','units','sep','dense','form','glow'],
   };
   function layCan(k) { return (LAY_CAPS[cfg.theme] || LAY_CAPS.bar).includes(k); }
+  // Schriften zum Durchschalten im Live-Editor: Windows-Bordschriften (keine externen Dateien). Der Reiter
+  // bietet zusaetzlich alle installierten Schriften (Shell: list-fonts) - eine davon erscheint hier nur als Name.
+  const EB_FONTS = [['', 'Standard'], ['Cascadia Mono', 'Cascadia Mono'], ['Lucida Console', 'Lucida Console'], ['Courier New', 'Courier New'],
+                    ['Segoe UI', 'Segoe UI'], ['Bahnschrift', 'Bahnschrift'], ['Verdana', 'Verdana'], ['Arial', 'Arial'], ['Impact', 'Impact']];
   const EB_FLD = {
     gpu: [['load','Last'],['temp','Temp'],['power','Watt'],['clock','Takt'],['vram','VRAM']],
     cpu: [['load','Last'],['temp','Temp'],['clock','Takt'],['power','Watt'],['ram','RAM']],
@@ -852,6 +867,7 @@
     if (c.colors !== undefined) cfg.colors = c.colors;
     if (c.limits) cfg.limits = Object.assign({}, cfg.limits, c.limits);
     if (c.layout) { cfg.layout = Object.assign({}, cfg.layout, c.layout); applyLayout(); }
+    if (c.font !== undefined) { cfg.font = c.font || ''; applyFont(); }
     applyFarben();
     document.body.classList.toggle('lim-pulse', !!(cfg.limits && cfg.limits.on !== false && cfg.limits.pulse !== false));
     if (c.corner) { document.body.classList.remove('pos-tl','pos-tc','pos-tr','pos-bl','pos-bc','pos-br'); document.body.classList.add('pos-' + c.corner); }
@@ -867,6 +883,13 @@
     b.toggle('lay-nolabels', l.labels === false); b.toggle('lay-nounits', l.units === false); b.toggle('lay-icons', !!l.icons);
     b.toggle('lay-nosep', l.sep === false); b.toggle('lay-eckig', l.form === 'eckig'); b.toggle('lay-pille', l.form === 'pille');
     b.toggle('lay-glow', !!l.glow); b.toggle('lay-dense', !!l.dense);
+    scheduleBounds();
+  }
+  // Schriftart: '' = Standard (CSS-Kette bleibt), sonst Familienname mit Consolas-Rueckfall; Panelmasse aendern sich -> neu melden
+  function applyFont() {
+    const f = (cfg.font || '').replace(/['"\\]/g, '').trim();
+    document.body.classList.toggle('font-custom', !!f);
+    document.documentElement.style.setProperty('--osd-font', f ? "'" + f + "', Consolas, 'DejaVu Sans Mono', monospace" : 'inherit');
     scheduleBounds();
   }
   // (kein Aufruf beim Laden: Standardwerte stehen schon im CSS; applyConfig setzt alles, sobald die Config kommt)
@@ -891,6 +914,7 @@
     ebc.innerHTML = posSet.map(([c, sym, ti]) => `<button class="eb-corner${c === cur ? ' on' : ''}" data-corner="${c}" title="${ti}">${sym}</button>`).join('');
     // Form + Darstellungsschalter spiegeln cfg.layout (Standardwerte wie in applyLayout)
     const lay = cfg.layout || {};
+    { const f = cfg.font || '', e = EB_FONTS.find(x => x[0] === f); document.getElementById('ebFontName').textContent = e ? e[1] : f; }
     // Schalter ohne Wirkung im aktuellen Design sind gesperrt (LAY_CAPS)
     document.querySelectorAll('#ebForm button').forEach(b => { b.classList.toggle('on', (lay.form || 'rund') === b.dataset.form); b.disabled = !layCan('form'); b.title = b.disabled ? 'In diesem Design ohne Wirkung' : ''; });
     document.querySelectorAll('#ebLay button').forEach(b => { b.classList.toggle('on', ebLayAn(lay, b.dataset.lay)); b.disabled = !layCan(b.dataset.lay); b.title = b.disabled ? 'In diesem Design ohne Wirkung' : ''; });
@@ -982,6 +1006,14 @@
   }
   document.getElementById('ebPrev').addEventListener('click', () => ebStepTheme(-1));
   document.getElementById('ebNext').addEventListener('click', () => ebStepTheme(1));
+  function ebStepFont(dir) {   // nicht in der Liste (installierte Schrift aus dem Reiter) -> von 'Standard' aus weiter
+    const i = EB_FONTS.findIndex(t => t[0] === (cfg.font || ''));
+    const ni = ((i < 0 ? 0 : i) + dir + EB_FONTS.length) % EB_FONTS.length;
+    cfg.font = EB_FONTS[ni][0]; applyFont(); renderEditbar(false);   // sofort sichtbar
+    if (ipcRenderer) ipcRenderer.invoke('osd-edit-font', EB_FONTS[ni][0]);
+  }
+  document.getElementById('ebFontPrev').addEventListener('click', () => ebStepFont(-1));
+  document.getElementById('ebFontNext').addEventListener('click', () => ebStepFont(1));
   document.getElementById('ebOpacity').addEventListener('input', (e) => {
     const v = parseFloat(e.target.value);
     document.documentElement.style.setProperty('--panel-op', v);   // sofort sichtbar

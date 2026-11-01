@@ -4246,7 +4246,8 @@ static void applyOsdConfig() {
                               {"accent", s.value("osdAccent", "#74e857")},
                               // Paket 1 (Designvielfalt): Palette, eigene Farben, Grenzwerte, Layout-Baukasten
                               {"palette", s.value("osdPalette", "standard")}, {"colors", s.value("osdColors", json())},
-                              {"limits", s.value("osdLimits", json())}, {"layout", s.value("osdLayout", json())} });
+                              {"limits", s.value("osdLimits", json())}, {"layout", s.value("osdLayout", json())},
+                              {"font", s.value("osdFont", "")} });   // Schriftart ('' = Standard)
 }
 static ComPtr<IDCompositionDevice> g_dcompDev;
 static ComPtr<IDCompositionTarget> g_dcompTarget;
@@ -5803,6 +5804,7 @@ static json handleChannel(const std::string& channel, const json& args) {
         // Form + Darstellungsschalter (Beschriftungen/Einheiten/Symbole/Trenner/Leuchtrahmen/Dicht):
         // dieselben Optionen wie Karte 1 im Einstellungsreiter, jetzt auch aus dem Live-Editor.
         else if (channel == "osd-edit-layout" && args[0].is_object()) s["osdLayout"] = args[0];
+        else if (channel == "osd-edit-font" && args[0].is_string()) s["osdFont"] = args[0];   // Schriftart aus dem Live-Editor
         writeFile(settingsPath(), s.dump(2));
         applyOsdConfig();
         // Einstellungsreiter nachziehen: der hielt sonst den Stand von VOR dem Live-Edit und
@@ -5811,6 +5813,19 @@ static json handleChannel(const std::string& channel, const json& args) {
         // get-app-settings neu, falls der PlainOSD-Reiter offen ist.
         sendToUi("osd-settings-changed", nullptr);
         return true;
+    }
+    // Installierte Schriftfamilien fuer die Schriftauswahl des Overlays (GDI-Aufzaehlung, ohne die
+    // vertikalen '@'-Varianten, sortiert, ohne Dubletten). Nur Namen - nichts wird geladen oder kopiert.
+    if (channel == "list-fonts") {
+        std::set<std::wstring> names;
+        HDC hdc = GetDC(nullptr);
+        LOGFONTW lf{}; lf.lfCharSet = DEFAULT_CHARSET;
+        EnumFontFamiliesExW(hdc, &lf, [](const LOGFONTW* f, const TEXTMETRICW*, DWORD, LPARAM p) -> int {
+            if (f->lfFaceName[0] && f->lfFaceName[0] != L'@') ((std::set<std::wstring>*)p)->insert(f->lfFaceName);
+            return 1; }, (LPARAM)&names, 0);
+        ReleaseDC(nullptr, hdc);
+        json out = json::array(); for (auto& n : names) out.push_back(narrow(n));
+        return out;
     }
     // Hover-Vorschau aus dem Einstellungsreiter (Design-/Paletten-Menue): Teil-Config nur ANZEIGEN,
     // nichts speichern. null = gespeicherten Stand wiederherstellen. Sichtbarkeit regelt der Reiter

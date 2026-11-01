@@ -418,6 +418,12 @@
                 </select>
               </div>
               <div class="osd-field">
+                <span class="osd-field-label">Schrift</span>
+                <select id="setOsdFont" class="sort-select" style="flex:1" onchange="onOsdSettingChange()">
+                  <option value="">Standard (Consolas)</option>
+                </select>
+              </div>
+              <div class="osd-field">
                 <span class="osd-field-label">Form</span>
                 <div class="osd-seg" id="osdFormSeg">
                   <button type="button" data-form="rund" class="active" onclick="setOsdForm('rund')">Rund</button>
@@ -1409,6 +1415,8 @@ const I18N_EN = {
   'Datenquellen & Einrichtung': 'Data sources & setup',
   'In diesem Design ohne Wirkung': 'No effect in this design',
   'Farbe wählen': 'Pick color',
+  'Schrift': 'Font',
+  'Standard (Consolas)': 'Default (Consolas)',
   'Standardfarbe': 'Default color',
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
   'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, K-Toolz ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
@@ -4356,7 +4364,8 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
           ipcRenderer.invoke('set-app-settings', { osdCorner: oc, osdCornerV2: true })
         }
         setOsdCorner(oc, false) }
-      osdMenuInit('setOsdTheme', 'theme'); osdMenuInit('setOsdPalette', 'palette'); osdMenuSync()   // Menues (idempotent) + Knopftext nachziehen
+      osdFontOptionsFill(s.osdFont || '')   // synchron: Standard + Bordschriften + gespeicherter Wert; installierte Schriften kommen nachtraeglich
+      osdMenuInit('setOsdTheme', 'theme'); osdMenuInit('setOsdPalette', 'palette'); osdMenuInit('setOsdFont', 'font'); osdMenuSync()   // Menues (idempotent) + Knopftext nachziehen
       osdSwatchInit(); osdPickerClose(false)   // Farbkacheln (idempotent), offenen Farbwaehler schliessen
       osdLastCfg = buildOsdCfg()   // Bezugsstand fuer das Differenz-Senden
     }
@@ -4387,6 +4396,26 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       hud:     ['labels','units','sep','dense','form','glow'],
     }
     const OSD_LAY_IDS = { labels: 'setOsdLayLabels', units: 'setOsdLayUnits', icons: 'setOsdLayIcons', sep: 'setOsdLaySep', glow: 'setOsdLayGlow', dense: 'setOsdLayDense' }
+    // --- Schriftauswahl: Standard + Windows-Bordschriften sofort, installierte Schriften (Shell: list-fonts) nachtraeglich ---
+    const OSD_FONTS_STD = ['Cascadia Mono', 'Lucida Console', 'Courier New', 'Segoe UI', 'Bahnschrift', 'Verdana', 'Arial', 'Impact']
+    let osdFontsInstalled = null   // einmal pro Sitzung abgefragt
+    function osdFontOptionsFill(cur) {
+      const sel = document.getElementById('setOsdFont')
+      const build = (installed) => {
+        const keep = sel.options.length ? sel.value : cur   // beim Nachfuellen die inzwischen gewaehlte Schrift behalten
+        const seen = new Set(), add = (v, txt) => { if (seen.has(v)) return; seen.add(v); const o = document.createElement('option'); o.value = v; o.textContent = txt || v; sel.appendChild(o) }
+        sel.innerHTML = ''; add('', window.tr('Standard (Consolas)'))
+        OSD_FONTS_STD.forEach(f => add(f))
+        ;(installed || []).forEach(f => add(f))
+        if (keep && !seen.has(keep)) add(keep)   // gespeicherte Schrift, die hier (noch) nicht gelistet ist
+        sel.value = keep
+      }
+      build(osdFontsInstalled)
+      if (osdFontsInstalled === null) {
+        osdFontsInstalled = []   // laeuft genau einmal
+        ipcRenderer.invoke('list-fonts').then(list => { if (Array.isArray(list)) { osdFontsInstalled = list; build(list); osdMenuSync() } }).catch(() => {})
+      }
+    }
     // --- Eigenes Aufklappmenue fuer Design + Palette mit Hover-Vorschau im Overlay ---------------
     // Das native <select> bleibt (versteckt) als Wertspeicher - alle Leser/Handler bleiben unveraendert.
     // Ueberfahren eines Eintrags zeigt ihn nur im Overlay (osd-preview-cfg, nichts gespeichert);
@@ -4572,6 +4601,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       return {
         osdRenderer: 'window',
         osdTheme: document.getElementById('setOsdTheme').value,
+        osdFont: document.getElementById('setOsdFont').value,
         osdFields: osdFieldsState,
         osdOrder: osdOrderState,
         osdFpsSource: document.getElementById('setOsdFpsSource').value,
