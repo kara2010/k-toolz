@@ -222,6 +222,11 @@
   .t-hud .sub { grid-column: 1 / -1; font-size: 11.5px; color: var(--c-lbl, #c4c8d0); --cr: lbl; padding-left: 56px; margin-top: -2px; } .t-hud .sub .v { color: var(--val); --cr: val; }
   .t-hud .lbl, .t-hud .track, .t-hud canvas { display: none; }
 
+  /* Netz-Gruppe: eigene Gruppenfarbe (netc) statt der FPS-Farbe - in allen Designs, passend zur Netz-Kachel im Reiter */
+  .t-compact .grp-net .name, .t-bar .grp-net .name, .t-neon .grp-net .name, .t-strip .grp-net .nm, .t-tiles .tile.grp-net .cap, .t-min .grp-net .k { color: var(--netc); --cr: netc; }
+  .t-neon .grp.grp-net { border-color: var(--netc); } .t-tiles .tile.grp-net { border-color: var(--netc); }
+  .grp-net .name { flex: 0 0 auto; }   /* 'NET' nie abschneiden - die Rate daneben ist lang (Kompakt/Neon zeigten 'N...') */
+
   /* -------- Live-Edit -------- */
   /* NORMALBETRIEB (kein Edit): das Fenster ist genau panelgross -> Panel fix oben-links
      mit 14px Rand. Die Bildschirm-Ecke macht allein die Fensterposition (Shell). !important,
@@ -585,7 +590,7 @@
         + '</div>';
     // Standard: eigener Gruppenblock (Kompakt/Balken/Neon)
     let h = '<div class="grp fps grp-net"><div class="head"><span class="name">NET</span>';
-    h += rate ? '<span class="big" style="font-size:14px"><span data-role="net.rate">\u2013</span></span></div>' : '<span></span></div>';
+    h += rate ? '<span class="big" style="font-size:12.5px"><span data-role="net.rate">\u2013</span></span></div>' : '<span></span></div>';
     if (total) h += '<div class="stats"><span class="row">' + '\u03a3 ' + '<span class="v" data-role="net.total">\u2013</span></span></div>';
     return h + '</div>';
   }
