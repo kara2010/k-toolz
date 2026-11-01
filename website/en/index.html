@@ -62,7 +62,7 @@
         "@type": "SoftwareApplication",
         "@id": "https://lumora-streaming.de/en/#app",
         "name": "Lumora",
-        "softwareVersion": "4.0.2",
+        "softwareVersion": "4.0.3",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
         "license": "https://www.gnu.org/licenses/agpl-3.0.html",
@@ -1041,8 +1041,20 @@
     <div class="changelog">
       <div class="release">
         <div class="release-head">
-          <span class="release-ver">4.0.2</span>
+          <span class="release-ver">4.0.3</span>
           <span class="release-tag">current</span>
+        </div>
+        <ul>
+          <li><strong>Ten designs, six positions</strong> – Gauge with ring meters, Terminal, Dots and HUD with frame corners are new. Every design can sit top or bottom, left, center or right.</li>
+          <li><strong>Colors the way you want them</strong> – six palettes or custom colors for every kind of text – groups, main and secondary values, labels, units, frame. The settings tab shows a preview of the overlay with your PC's real readings; click whatever should get a different color. In-game, the live editor does the same.</li>
+          <li><strong>Limits per value</strong> – warning and alarm thresholds set separately and switchable individually. Warning orange, alarm red and optionally pulsing – visible in every palette.</li>
+          <li><strong>Presentation made to measure</strong> – labels, units, icons, separators, glow frame and dense layout can be toggled individually, shape round, square or pill, font freely chosen from all installed fonts.</li>
+          <li><strong>Live editor and settings in lockstep</strong> – the in-game editor can do everything the settings tab can – design, position, size, opacity, values, order, shape, font, presentation, palette and colors – and both always stay in sync. The tab is organized into seven cards, and menus preview their entries in the overlay while you hover.</li>
+        </ul>
+      </div>
+      <div class="release">
+        <div class="release-head">
+          <span class="release-ver">4.0.2</span>
         </div>
         <ul>
           <li><strong>Stream link available immediately</strong> – the share link appears within half a second after starting, while the reachability check continues in the background.</li>
@@ -1083,6 +1095,7 @@
           <li>On notebooks with hybrid graphics, the overlay holds the graphics card values through short sensor dropouts instead of flickering and changing the card’s name every second.</li>
         </ul>
       </div>
+      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.9</span>
@@ -1091,7 +1104,6 @@
           <li><strong>Settings respond instantly on every machine</strong> – when opening the settings, Lumora asked Windows about its scheduled tasks in a blocking way. On machines where this query is slow (typically right after a fresh installation), the app then stopped responding to clicks for several seconds. The query now runs entirely in the background and its result is cached.</li>
         </ul>
       </div>
-      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.8</span>
@@ -1514,7 +1526,7 @@
       </div>
       </div><!-- /#changelogRest -->
     </div>
-    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (39)</button>
+    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (40)</button>
   </div>
 </section>
 
@@ -1915,7 +1927,7 @@
     if (!rest || !btn) return;
     var open = rest.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Show less' : 'Show older versions (39)';
+    btn.textContent = open ? 'Show less' : 'Show older versions (40)';
   }
 
   function toggleFeatures() {
