@@ -31,9 +31,14 @@
      dezenter Farbhintergrund hinter dem Wert, damit der Zustand in jeder Palette erkennbar bleibt. */
   .v.warn, .num.warn, .gv.warn, [data-role="fps.fps"].warn { color: var(--warn) !important; }
   .v.crit, .num.crit, .gv.crit, [data-role="fps.fps"].crit { color: var(--crit) !important; }
-  .v.warn, .num.warn, [data-role="fps.fps"].warn { background: color-mix(in srgb, var(--warn) 24%, transparent); border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
-  .v.crit, .num.crit, [data-role="fps.fps"].crit { background: color-mix(in srgb, var(--crit) 26%, transparent); border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
-  .fill.warn { background: var(--warn) !important; } .fill.crit { background: var(--crit) !important; }
+  /* Der Zustand darf nicht an der Farbe allein haengen (Palette/eigene Farben koennen selbst orange sein):
+     Warnung = dunkle Schrift auf gefuellter Warnfarbe, Alarm = weisse Schrift auf Alarmfarbe. Kein normaler
+     Wert hat je einen gefuellten Hintergrund -> in jeder Palette sofort erkennbar. */
+  .v.warn, .num.warn, [data-role="fps.fps"].warn { color: #141414 !important; background: var(--warn); text-shadow: none; border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
+  .v.crit, .num.crit, [data-role="fps.fps"].crit { color: #fff !important; background: var(--crit); text-shadow: 0 1px 1px rgba(0,0,0,.5); border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
+  /* Balkenfuellung: Warnung gestreift (Gruppenfarbe kann selbst orange sein, z. B. AMD), Alarm voll rot */
+  .fill.warn { background: repeating-linear-gradient(45deg, var(--warn) 0 4px, color-mix(in srgb, var(--warn) 35%, #000) 4px 8px) !important; }
+  .fill.crit { background: var(--crit) !important; }
   .ring.warn { stroke: var(--warn) !important; } .ring.crit { stroke: var(--crit) !important; }
   body.lim-pulse .crit { animation: osdPulse 1s ease-in-out infinite; }
   @keyframes osdPulse { 50% { opacity: .45; } }
