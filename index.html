@@ -2972,6 +2972,7 @@ function applyI18n() {
       if (window.APP_MODULES && !window.APP_MODULES.includes('launcher')) { showSettings('allgemein'); return }
       // Bibliotheks-Ansicht = raus aus den Einstellungen.
       settingsTab = null
+      osdPrevData(false)
       rememberTab('library')
       document.getElementById('settingsView').style.display = 'none'
       updateDetailNav()
@@ -4119,6 +4120,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       document.getElementById('setIbAuto').checked = s.inputBridgeAutoActivate !== false
       { const e = document.getElementById('setNetStats'); if (e) e.checked = !!s.netStats; netStatsAn = !!s.netStats }
       fillOsdUi(s)
+      osdPrevData(settingsTab === 'overlay')   // echte Messwerte fuer die Vorschau nur, solange der PlainOSD-Reiter offen ist
       { const src = document.getElementById('osdEditHotkeyDisplay'), dst = document.getElementById('osdEditHotkeyEcho')
         if (src && dst && !src.dataset.echo) { src.dataset.echo = '1'; const sync = () => { dst.textContent = src.textContent }; sync(); new MutationObserver(sync).observe(src, { childList: true, characterData: true, subtree: true }) } }
       appSettingsCache.toggleHotkey = s.toggleHotkey || ''
@@ -4390,6 +4392,11 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       osdLastCfg = buildOsdCfg()   // Bezugsstand fuer das Differenz-Senden
       osdPrevInit(); osdPrevSend()   // Vorschau-Overlay (iframe) laden bzw. auf den geladenen Stand bringen
     }
+    // Echte Messwerte der Shell (Sensoren 5 Hz, FPS 30 Hz) -> Vorschau-Overlay; die Shell liefert sie nur bei gemeldetem Reiter
+    let osdPrevDataOn = false
+    function osdPrevData(on) { on = !!on; if (on === osdPrevDataOn) return; osdPrevDataOn = on; ipcRenderer.invoke('osd-preview-data', on) }
+    ipcRenderer.on('osd-data', (e, d) => { const fr = document.getElementById('osdPrevFrame'); if (osdPrevDataOn && osdPrevReady && fr && fr.contentWindow) try { fr.contentWindow.postMessage({ t: 'data', d }, '*') } catch (er) {} })
+    document.addEventListener('visibilitychange', () => { if (settingsTab !== 'overlay') return; if (document.visibilityState === 'hidden') osdPrevData(false); else osdPrevData(true) })   // Fenster im Infobereich: keine Daten anfordern
     ipcRenderer.on('osd-settings-changed', async () => {   // Shell: Live-Edit hat Settings geschrieben
       if (settingsTab !== 'overlay') return
       try { fillOsdUi(await ipcRenderer.invoke('get-app-settings')) } catch (e) {}

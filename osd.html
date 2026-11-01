@@ -1300,7 +1300,8 @@
   const DEMO = { gpu: { brand: 'NVIDIA', name: 'GeForce RTX', load: 45, temp: 62, power: 210, clock: 2730, vram: 8420 },
                  cpu: { brand: 'AMD', name: 'Ryzen 9', load: 38, temp: 68, power: 95, clock: 5000, ram: 24560 },
                  fps: 144, frametime: 6.9, api: 'D3D12', net: { rate: '↓ 2.4 MB/s ↑ 310 KB/s', total: '1.62 GB' } };   // Netz im Shell-Format (vorformatierte Texte)
-  function demoTick() { data.net = { rate: '↓ ' + (2.1 + Math.random() * 0.8).toFixed(1) + ' MB/s ↑ ' + (280 + Math.round(Math.random() * 60)) + ' KB/s', total: data.net ? data.net.total : '1.62 GB' }; data.fps = 138 + Math.round(Math.random() * 12); data.frametime = +(1000 / data.fps).toFixed(1); data.gpu.load = 40 + Math.round(Math.random() * 20); pushFrametime(data.frametime); paintValues(); }
+  const live = { hw: false, fps: false, net: false };   // Vorschau: welche Teile schon echte Werte haben (Beispielwerte nur fuer den Rest)
+  function demoTick() { if (live.hw && live.fps && live.net) return; if (!live.net) data.net = { rate: '↓ ' + (2.1 + Math.random() * 0.8).toFixed(1) + ' MB/s ↑ ' + (280 + Math.round(Math.random() * 60)) + ' KB/s', total: data.net ? data.net.total : '1.62 GB' }; if (!live.fps) { data.fps = 138 + Math.round(Math.random() * 12); data.frametime = +(1000 / data.fps).toFixed(1); pushFrametime(data.frametime); } if (!live.hw && data.gpu) data.gpu.load = 40 + Math.round(Math.random() * 20); paintValues(); }
   let ipcRenderer = null;
   if (!IS_PREVIEW) try { ipcRenderer = require('electron').ipcRenderer; } catch (e) {}
   if (IS_PREVIEW) {
@@ -1312,7 +1313,14 @@
     window.addEventListener('message', (e) => {
       const m = e.data || {};
       if (m.t === 'cfg' && m.cfg) applyConfig(m.cfg);
-      else if (m.t === 'hl') crHighlight(m.key || '');   // Zeigen auf eine Farbkachel im Reiter hebt die Rolle hier hervor
+      else if (m.t === 'hl') crHighlight(m.key || '');
+      else if (m.t === 'data' && m.d) {   // echte Messwerte (Shell -> Hauptfenster -> hier): ersetzen die Beispielwerte Teil fuer Teil
+        const d = Object.assign({}, m.d);
+        if ('gpu' in d || 'cpu' in d) live.hw = true;
+        if (d.fps != null) { if (Number.isFinite(Number(d.fps))) live.fps = true; else { delete d.fps; delete d.frametime; } }   // ohne Spiel ('...'/'-'): Beispiel-FPS behalten, Graph lebt weiter
+        if ('net' in d) { if (d.net) live.net = true; else delete d.net; }   // Netz ohne laufende Zaehlung: Beispielwerte behalten
+        updateOsd(d);
+      }   // Zeigen auf eine Farbkachel im Reiter hebt die Rolle hier hervor
     });
     crSet(true);
     renderPanel();

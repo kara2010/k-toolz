@@ -3645,6 +3645,7 @@ static std::atomic<int> g_anReady{ -1 };   // -1 unbekannt (Check laeuft), 0 nic
 static std::atomic<int> g_anSense{ 1 };    // Empfindlichkeit 0/1/2 (Cache des Settings analyzeSense)
 static std::atomic<bool> g_anPreview{ false };   // Analyse-OSD-Vorschau aktiv (Regler wird gezogen)
 static bool g_osdPreview = false;                // Gaming-OSD-Vorschau aktiv (Regler im Overlay-Reiter)
+static bool g_osdPrevData = false;               // PlainOSD-Reiter offen: Messwerte zusaetzlich ans Hauptfenster (Vorschau-Overlay mit echter Hardware)
 static std::wstring analyzeDirW() { return dataDir() + L"\\analyze"; }
 static bool anShmOpen() {
     if (g_anShm) return true;
@@ -4145,10 +4146,12 @@ static json readGpuPdh() {
 static void osdDataTick() {
     // Auch bei OFFENEM Edit-Fenster liefern (Overlay ist dann versteckt): sonst zeigt der
     // Live-Edit nur Striche statt Werten (real passiert - wirkte "wie ein anderes OSD").
-    if (!g_osdEdit && (!g_osdHwnd || !IsWindowVisible(g_osdHwnd))) return;
+    // Ebenso bei offenem PlainOSD-Reiter (g_osdPrevData): die Vorschau im Reiter zeigt die echten Werte.
+    const bool osdSichtbar = g_osdHwnd && IsWindowVisible(g_osdHwnd);
+    if (!g_osdEdit && !g_osdPrevData && !osdSichtbar) return;
     // Oberste Lage NACHDRUECKEN (wie Electrons moveTop je Anzeige): ein startendes
     // Spiel setzt sich sonst ueber das TOPMOST-Overlay (User-Befund: OSD weg im Spiel).
-    if (!g_osdEdit) SetWindowPos(g_osdHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (!g_osdEdit && osdSichtbar) SetWindowPos(g_osdHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     {   // DIAGNOSE "OSD weg im Spiel": Vordergrund-Fenster bei Wechsel protokollieren
         static HWND lastFg = nullptr; HWND fg = GetForegroundWindow();
         if (fg && fg != lastFg && fg != g_osdHwnd) { lastFg = fg;
@@ -4209,15 +4212,18 @@ static void osdDataTick() {
         payload["net"] = net;
     }
     sendToOsd("osd-data", payload);
+    if (g_osdPrevData) sendToUi("osd-data", payload);   // Vorschau im Reiter
 }
 // Schneller FPS/Frametime-Tick (~30 Hz) fuer den lebendigen Frametime-Graphen; die
 // Zahlen drosselt osd.html selbst auf lesbare ~4 Hz (1:1 aus main.js startFps).
 static void osdFpsTick() {
-    if (!g_osdEdit && (!g_osdHwnd || !IsWindowVisible(g_osdHwnd))) return;   // Edit-Fenster braucht die FPS ebenfalls
+    if (!g_osdEdit && !g_osdPrevData && (!g_osdHwnd || !IsWindowVisible(g_osdHwnd))) return;   // Edit-Fenster und Reiter-Vorschau brauchen die FPS ebenfalls
     if (loadSettings().value("osdSetupDeclined", false)) return;   // dann liefert der Sensor-Tick fps:"—"
     json f = readFps();   // RTSS oder PresentMon-Broker je nach osdFpsSource (Quelle gecacht)
-    if (f.is_object()) sendToOsd("osd-data", { {"fps", f["fps"]}, {"frametime", f["frametime"]} });
-    else { sendToOsd("osd-data", { {"fps", "\xE2\x80\xA6"} }); if (!g_fpsUseRtss) brokersEnsure(); }
+    json d = f.is_object() ? json{ {"fps", f["fps"]}, {"frametime", f["frametime"]} } : json{ {"fps", "\xE2\x80\xA6"} };
+    sendToOsd("osd-data", d);
+    if (g_osdPrevData) sendToUi("osd-data", d);
+    if (!f.is_object() && !g_fpsUseRtss) brokersEnsure();
 }
 // Live-Edit-Fenster (windowed WebView2, eigene Instanz von osd.html im Edit-Zustand).
 static HWND g_osdEditHwnd = nullptr;
@@ -5009,6 +5015,19 @@ static void syncOsdVisibility() { json s = loadSettings(); if (!moduleActive(s, 
 // Vorschau beim Ziehen der Overlay-Regler (Groesse/Deckkraft/Ecke): das OSD wird
 // kurz gezeigt, auch wenn es aus ist - beim Loslassen wieder versteckt, ausser es
 // war ohnehin eingeschaltet (dann bleibt es stehen).
+// PlainOSD-Reiter offen/zu: Messwerte (Sensoren 5 Hz, FPS 30 Hz) auch ans Hauptfenster fuer das
+// Vorschau-Overlay. Einschalten startet die Datenquellen dialogfrei (wie die Regler-Vorschau);
+// Ausschalten stoppt sie nur, wenn weder Overlay noch Edit-Fenster noch Regler-Vorschau sie brauchen.
+static void osdPreviewData(bool on) {
+    if (g_osdPrevData == on) return;
+    g_osdPrevData = on;
+    if (on) { SetTimer(g_hwnd, TIMER_OSDDATA, 200, nullptr); SetTimer(g_hwnd, TIMER_OSDFPS, 33, nullptr); sensorsInit(); brokersEnsure(); return; }
+    json s = loadSettings();
+    if (!(moduleActive(s, "osd") && s.value("osdEnabled", false)) && !g_osdPreview && !g_osdEdit) {
+        KillTimer(g_hwnd, TIMER_OSDDATA); KillTimer(g_hwnd, TIMER_OSDFPS);
+        shmWriteApp(g_fpsShm, 0); shmWriteApp(g_senseShm, 0);
+    }
+}
 static void osdPreviewMode(bool on) {
     g_osdPreview = on;
     // Watchdog: jedes 'an' verlaengert, 'aus' beendet. Laeuft er ab, nimmt die Shell die Vorschau
@@ -5651,6 +5670,7 @@ static json handleChannel(const std::string& channel, const json& args) {
     if (channel == "analyze-status") { analyzeEnsureReadyCheck(); analyzePushStatus(); return true; }
     if (channel == "analyze-osd-preview" && args.size() >= 1 && args[0].is_boolean()) { analyzeOsdPreview(args[0].get<bool>()); return true; }
     if (channel == "osd-preview" && args.size() >= 1 && args[0].is_boolean()) { osdPreviewMode(args[0].get<bool>()); return true; }
+    if (channel == "osd-preview-data" && args.size() >= 1 && args[0].is_boolean()) { osdPreviewData(args[0].get<bool>()); return true; }   // PlainOSD-Reiter offen/zu
     if (channel == "analyze-list") {   // Verlauf: alle Berichte mit Kopf-Metadaten (neueste zuerst)
         // Meta-Cache je Datei (Groesse+Schreibzeit als Schluessel): v2-Reports sind
         // 1-2 MB gross - ohne Cache parste jede Verlaufs-Anzeige alle Dateien komplett
@@ -6293,7 +6313,7 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         if (w) saveWindowState(h, "endsession");
         return 0;
     case WM_CLOSE:
-        if (loadSettings().value("minimizeToTray", false) && !g_quitting) { ShowWindow(h, SW_HIDE); return 0; }   // in den Infobereich statt beenden
+        if (loadSettings().value("minimizeToTray", false) && !g_quitting) { osdPreviewData(false); ShowWindow(h, SW_HIDE); return 0; }   // in den Infobereich statt beenden; Reiter-Vorschau braucht keine Daten mehr
         if (g_bcState.value("active", false)) stopBroadcast();   // Stream + Kindprozesse sauber beenden
         if (!g_group.is_null()) {   // fullTeardown: Gruppe beim App-Ende sauber verlassen (nicht serverseitig haengen lassen)
             // Hintergrund-Thread wie beim UPnP-Router-Abbau ein paar Zeilen weiter unten
