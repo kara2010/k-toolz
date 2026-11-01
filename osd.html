@@ -170,14 +170,16 @@
 
   /* -------- TACHO (Ringanzeigen) -------- */
   body.theme-gauge #panel { padding: 12px 10px 8px; background: rgba(8,8,12,var(--panel-op)); border-radius: var(--radius); }
-  .t-gauge { display: flex; flex-wrap: wrap; gap: 6px 10px; max-width: 420px; }
+  .t-gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; }   /* symmetrisch: Ringe in EINER Reihe, Restwerte zentriert darunter */
+  .t-gauge .rings { display: flex; justify-content: center; gap: 6px 10px; }
   .t-gauge .g { display: flex; flex-direction: column; align-items: center; width: 78px; }
   .t-gauge svg { width: 68px; height: 68px; display: block; }
   .t-gauge .trk { fill: none; stroke: rgba(255,255,255,.13); stroke-width: 7; }
   .t-gauge .ring { fill: none; stroke: var(--gc); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .25s; transform: rotate(-90deg); transform-origin: 50% 50%; }
   .t-gauge .gv { font-size: 17px; color: #fff; margin-top: -46px; height: 46px; display: flex; align-items: center; } .t-gauge .gv i { font-size: .55em; }
   .t-gauge .gl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--gc); margin-top: 4px; white-space: nowrap; max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
-  .t-gauge .rest { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 12px; color: #cfd3da; padding: 2px 4px 0; }
+  .t-gauge .rest { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; color: #cfd3da; padding: 2px 4px 0; }
+  .t-gauge .rrow { display: flex; gap: 12px; white-space: nowrap; }
   .t-gauge .rest .row .v { color: var(--val); } .t-gauge .rest .row .k { opacity: .8; }
   .t-gauge .lbl, .t-gauge .track, .t-gauge canvas { display: none; }
 
@@ -625,20 +627,22 @@
     return `<div class="g" style="--gc:${GC[cat]}"><svg viewBox="0 0 68 68"><circle class="trk" cx="34" cy="34" r="28"/><circle class="ring" data-ring="${role}" cx="34" cy="34" r="28" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C}"/></svg><div class="gv">${inner}</div><div class="gl">${label}</div></div>`;
   }
   function buildGauge() {
-    let h = '<div class="osd t-gauge">', rest = '';
+    let h = '<div class="osd t-gauge"><div class="rings">', rest = '';   // Ringe in einer Reihe, Restwerte als eigener Block darunter
     for (const cat of orderList()) {
-      if (cat === 'net') { if (catList('net').length) rest += `<span class="row grp-net" style="--gc:${GC.net}"><span class="k">NET</span> ${has('net','rate')?'<span class="v" data-role="net.rate">–</span>':''} ${has('net','total')?'<span class="v" data-role="net.total">–</span>':''}</span>`; continue; }
+      if (cat === 'net') { if (catList('net').length) rest += `<div class="rrow"><span class="row grp-net" style="--gc:${GC.net}"><span class="k">NET</span> ${has('net','rate')?'<span class="v" data-role="net.rate">–</span>':''} ${has('net','total')?'<span class="v" data-role="net.total">–</span>':''}</span></div>`; continue; }
       if (!catList(cat).length) continue;
       if (cat === 'fps') {
         if (has('fps','fps')) h += ring('fps.fps', 'fps', '<span class="v" data-role="fps.fps">–</span>', 'FPS');
-        if (has('fps','frametime')) rest += `<span class="row" data-row="fps.frametime" style="--gc:${GC.fps}"><span class="k">ms</span> ${val('fps.frametime','')}</span>`;
+        if (has('fps','frametime')) rest += `<div class="rrow"><span class="row" data-row="fps.frametime" style="--gc:${GC.fps}"><span class="k">ms</span> ${val('fps.frametime','')}</span></div>`;
         continue;
       }
       const nm = cat.toUpperCase();
       if (has(cat,'load')) h += ring(cat + '.load', cat, val(cat + '.load', '%'), nm + ' Last');
       if (has(cat,'temp')) h += ring(cat + '.temp', cat, val(cat + '.temp', '°'), nm + ' Temp');
-      for (const f of rowsFor(cat).filter(x => x !== 'temp')) rest += `<span class="row" data-row="${cat}.${f}" style="--gc:${GC[cat]}"><span class="k">${nm} ${LABEL[f]}</span> ${val(cat+'.'+f, UNIT[f])}</span>`;
+      const rr = rowsFor(cat).filter(x => x !== 'temp');   // je Gruppe eine zentrierte Zeile unter den Ringen
+      if (rr.length) rest += '<div class="rrow">' + rr.map(f => `<span class="row" data-row="${cat}.${f}" style="--gc:${GC[cat]}"><span class="k">${nm} ${LABEL[f]}</span> ${val(cat+'.'+f, UNIT[f])}</span>`).join('') + '</div>';
     }
+    h += '</div>';
     if (rest) h += '<div class="rest">' + rest + '</div>';
     return h + '</div>';
   }
