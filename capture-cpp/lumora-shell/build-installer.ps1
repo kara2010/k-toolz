@@ -13,7 +13,13 @@ $stage = "$shell\stage"
 # osd-Rauchtest als Bau-Sperre (Schritt 0b). Die Nummer 3.2.6 bleibt verbrannt -
 # wer sie gezogen hatte, bekaeme dieselbe Nummer nie erneut als Update angeboten
 # (der Updater vergleicht nur die Versionsnummer, s. RELEASE.md 12).
-$version = "4.0.2"   # 4.0.2: Stream-Link in 0,5 s (Carrier-NAT-Schnellpfad, Pinholes parallel, Link vor der
+$version = "4.0.3"   # 4.0.3: PlainOSD-Ausbau: zehn Designs (Tacho/Terminal/Punkte/HUD neu), sechs
+                     #        Positionen je Design, sechs Paletten + eigene Farben fuer jede Textart
+                     #        (Gruppen, Haupt-/Nebenwerte, Beschriftungen, Einheiten, Rahmen) per Klick
+                     #        im Vorschau-Overlay (echte Messwerte) oder im Live-Editor; Grenzwerte mit
+                     #        Warn-/Alarmschwelle je Wert, einzeln abschaltbar; Layout-Baukasten, Form,
+                     #        Schriftart; Reiter als sieben Karten; Live-Editor und Reiter synchron.
+$prev_4_0_2 = ""  # 4.0.2: Stream-Link in 0,5 s (Carrier-NAT-Schnellpfad, Pinholes parallel, Link vor der
                      #        Messung); tote ICE-Kandidaten (abgelehnte Pinhole-Adressen, Carrier-NAT-IPv4)
                      #        aus der WHEP-Antwort gestrichen; Pinholes fuer alle globalen IPv6-Adressen;
                      #        minimiertes Quellfenster -> Schwarzbild statt Neustartschleife + Hinweis;
