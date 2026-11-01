@@ -443,25 +443,30 @@
 
             <div class="osd-card">
               <h3 class="osd-card-title"><span class="n">2</span>Farben</h3>
-              <p class="osd-card-sub">Palette oder eigene Farben je Gruppe.</p>
-              <div class="osd-field">
-                <span class="osd-field-label">Palette</span>
-                <select id="setOsdPalette" class="sort-select" style="flex:1" onchange="onOsdPaletteChange()">
-                  <option value="standard">Standard (Grün, Orange, Blau)</option>
-                  <option value="mono">Monochrom weiß</option>
-                  <option value="dezent">Dezent grau</option>
-                  <option value="pastell">Pastell</option>
-                  <option value="amber">Amber / Retro</option>
-                  <option value="rgb">RGB-Gaming</option>
-                  <option value="eigen">Eigene Farben</option>
-                </select>
-              </div>
-              <div class="osd-colors" id="osdColorsRow">
-                <span class="osd-color"><input type="color" id="setOsdColGpu" value="#74e857" oninput="onOsdColorInput()"><span class="osd-color-nm"><label for="setOsdColGpu">GPU</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColGpu')">↺</button></span></span>
-                <span class="osd-color"><input type="color" id="setOsdColCpu" value="#ff8a1e" oninput="onOsdColorInput()"><span class="osd-color-nm"><label for="setOsdColCpu">CPU</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColCpu')">↺</button></span></span>
-                <span class="osd-color"><input type="color" id="setOsdColFps" value="#4bd6ff" oninput="onOsdColorInput()"><span class="osd-color-nm"><label for="setOsdColFps">FPS</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColFps')">↺</button></span></span>
-                <span class="osd-color"><input type="color" id="setOsdColNet" value="#c79bff" oninput="onOsdColorInput()"><span class="osd-color-nm"><label for="setOsdColNet">Netz</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColNet')">↺</button></span></span>
-                <span class="osd-color"><input type="color" id="setOsdColVal" value="#ffe100" oninput="onOsdColorInput()"><span class="osd-color-nm"><label for="setOsdColVal">Werte</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColVal')">↺</button></span></span>
+              <p class="osd-card-sub">Palette wählen – oder in der Vorschau anklicken, was eine andere Farbe bekommen soll.</p>
+              <select id="setOsdPalette" class="sort-select" style="display:none" onchange="onOsdPaletteChange()">
+                <option value="standard">Standard (Grün, Orange, Blau)</option>
+                <option value="mono">Monochrom weiß</option>
+                <option value="dezent">Dezent grau</option>
+                <option value="pastell">Pastell</option>
+                <option value="amber">Amber / Retro</option>
+                <option value="rgb">RGB-Gaming</option>
+                <option value="eigen">Eigene Farben</option>
+              </select>
+              <div class="osd-palchips" id="osdPalChips"></div>
+              <div class="osd-colorbody" id="osdColorBody">
+                <div class="osd-prev" id="osdPrevWrap"><div class="osd-prev-scale" id="osdPrevScale"><iframe id="osdPrevFrame" title="Vorschau" scrolling="no"></iframe></div></div>
+                <p class="osd-prev-hint">Zeigen hebt alle Teile einer Art hervor, Klick öffnet den Farbwähler.</p>
+                <div class="osd-colors" id="osdColorsRow">
+                  <span class="osd-color"><input type="color" id="setOsdColGpu" value="#74e857"><span class="osd-color-nm"><label>GPU</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColGpu')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColCpu" value="#ff8a1e"><span class="osd-color-nm"><label>CPU</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColCpu')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColFps" value="#4bd6ff"><span class="osd-color-nm"><label>FPS</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColFps')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColNet" value="#c79bff"><span class="osd-color-nm"><label>Netz</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColNet')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColMain" value="#ffffff" data-auto="1"><span class="osd-color-nm"><label>Hauptwerte</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColMain')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColVal" value="#ffe100"><span class="osd-color-nm"><label>Nebenwerte</label><button type="button" class="osd-color-reset" title="Standardfarbe" onclick="osdColorReset('setOsdColVal')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColLbl" value="#9aa0aa" data-auto="1"><span class="osd-color-nm"><label>Beschriftungen</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColLbl')">↺</button></span></span>
+                  <span class="osd-color"><input type="color" id="setOsdColUnit" value="#c8c8c8" data-auto="1"><span class="osd-color-nm"><label>Einheiten</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColUnit')">↺</button></span></span>
+                </div>
               </div>
             </div>
 
@@ -1405,6 +1410,14 @@ const I18N_EN = {
   'Wie das Overlay aussieht.': 'How the overlay looks.',
   'Palette': 'Palette',
   'Palette oder eigene Farben je Gruppe.': 'Palette or custom colors per group.',
+  'Palette wählen – oder in der Vorschau anklicken, was eine andere Farbe bekommen soll.': 'Pick a palette – or click in the preview on whatever should get a different color.',
+  'Zeigen hebt alle Teile einer Art hervor, Klick öffnet den Farbwähler.': 'Hovering highlights all parts of one kind, clicking opens the color picker.',
+  'Hauptwerte': 'Main values',
+  'Nebenwerte': 'Secondary values',
+  'Automatisch (wie im Design)': 'Automatic (as in the design)',
+  'Monochrom': 'Monochrome',
+  'Dezent': 'Subtle',
+  'Vorschau': 'Preview',
   'Position und Größe': 'Position and size',
   'Wo das Overlay sitzt und wie groß es ist. Sechs Positionen für jedes Design.': 'Where the overlay sits and how big it is. Six positions for every design.',
   'Feinjustieren direkt im Spiel:': 'Fine-tune right in the game:',
@@ -4326,9 +4339,9 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       document.getElementById('setOsdTheme').value = s.osdTheme || 'bar'
       // Paket 1: Palette, eigene Farben, Layout-Baukasten, Grenzwerte
       document.getElementById('setOsdPalette').value = s.osdPalette || 'standard'
-      { const c = s.osdColors || {}; const setC = (id, v, std) => { document.getElementById(id).value = /^#[0-9a-fA-F]{6}$/.test(v || '') ? v : std }
-        setC('setOsdColGpu', c.nv, '#74e857'); setC('setOsdColCpu', c.amd, '#ff8a1e'); setC('setOsdColFps', c.fpc, '#4bd6ff'); setC('setOsdColNet', c.netc, '#c79bff'); setC('setOsdColVal', c.val, '#ffe100') }
-      osdColorsRowShow()
+      { const c = s.osdColors || {}
+        for (const [id, k] of Object.entries(OSD_COL_KEY)) { const inp = document.getElementById(id), ok = /^#[0-9a-fA-F]{6}$/.test(c[k] || ''); inp.value = ok ? c[k] : OSD_COL_STD[id]; if (OSD_COL_AUTO.includes(id)) inp.dataset.auto = ok ? '0' : '1' } }   // Rollen ohne Wert = automatisch (Design-Standard)
+      osdPalChipsSync(); osdColorsRowShow()
       { const l = s.osdLayout || {}
         document.getElementById('setOsdLayLabels').checked = l.labels !== false; document.getElementById('setOsdLayUnits').checked = l.units !== false
         document.getElementById('setOsdLayIcons').checked = !!l.icons; document.getElementById('setOsdLaySep').checked = l.sep !== false
@@ -4370,9 +4383,10 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         }
         setOsdCorner(oc, false) }
       osdFontOptionsFill(s.osdFont || '')   // synchron: Standard + Bordschriften + gespeicherter Wert; installierte Schriften kommen nachtraeglich
-      osdMenuInit('setOsdTheme', 'theme'); osdMenuInit('setOsdPalette', 'palette'); osdMenuInit('setOsdFont', 'font'); osdMenuSync()   // Menues (idempotent) + Knopftext nachziehen
+      osdMenuInit('setOsdTheme', 'theme'); osdMenuInit('setOsdFont', 'font'); osdMenuSync()   // Menues (idempotent) + Knopftext nachziehen; Palette laeuft ueber Chips
       osdSwatchInit(); osdPickerClose(false)   // Farbkacheln (idempotent), offenen Farbwaehler schliessen
       osdLastCfg = buildOsdCfg()   // Bezugsstand fuer das Differenz-Senden
+      osdPrevInit(); osdPrevSend()   // Vorschau-Overlay (iframe) laden bzw. auf den geladenen Stand bringen
     }
     ipcRenderer.on('osd-settings-changed', async () => {   // Shell: Live-Edit hat Settings geschrieben
       if (settingsTab !== 'overlay') return
@@ -4381,11 +4395,13 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // --- OSD-Layout (live): jede Änderung wirkt sofort aufs Overlay ------------
     let osdCorner = 'tl', osdForm = 'rund'
     function limZahl(id, min, max, std) { const el = document.getElementById(id); let n = parseInt(el.value, 10); if (!Number.isFinite(n)) n = std; n = Math.max(min, Math.min(max, n)); el.value = n; return n }
-    function osdColorsRowShow() { document.getElementById('osdColorsRow').style.display = document.getElementById('setOsdPalette').value === 'eigen' ? 'grid' : 'none' }
-    function onOsdPaletteChange() { osdColorsRowShow(); onOsdSettingChange() }
-    function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdMenuSync(); osdSwatchSyncAll(); osdColorsRowShow(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
-    const OSD_COL_STD = { setOsdColGpu: '#74e857', setOsdColCpu: '#ff8a1e', setOsdColFps: '#4bd6ff', setOsdColNet: '#c79bff', setOsdColVal: '#ffe100' }   // = Standardpalette in osd.html
-    function osdColorReset(id) { document.getElementById(id).value = OSD_COL_STD[id]; onOsdColorInput() }   // eine Farbe zurueck auf Werkseinstellung
+    function osdColorsRowShow() { osdSwatchSyncAll() }   // Kacheln zeigen immer die wirksamen Farben (Palette oder eigene); frueher: Zeile nur bei 'eigen'
+    function onOsdPaletteChange() { osdPalChipsSync(); osdColorsRowShow(); onOsdSettingChange() }
+    function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdPalChipsSync(); osdSwatchSyncAll(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
+    // Standardwerte je Kachel (= Standardpalette in osd.html); Hauptwerte/Beschriftungen/Einheiten sind 'Auto'-Rollen: ohne eigenen Wert gilt der Design-Standard
+    const OSD_COL_STD = { setOsdColGpu: '#74e857', setOsdColCpu: '#ff8a1e', setOsdColFps: '#4bd6ff', setOsdColNet: '#c79bff', setOsdColVal: '#ffe100', setOsdColMain: '#ffffff', setOsdColLbl: '#9aa0aa', setOsdColUnit: '#c8c8c8' }
+    const OSD_COL_AUTO = ['setOsdColMain', 'setOsdColLbl', 'setOsdColUnit']
+    function osdColorReset(id) { const inp = document.getElementById(id); inp.value = OSD_COL_STD[id]; if (OSD_COL_AUTO.includes(id)) inp.dataset.auto = '1'; onOsdColorInput() }   // zurueck auf Werkseinstellung bzw. Automatisch
     function setOsdForm(f, apply = true) { osdForm = f; document.querySelectorAll('#osdFormSeg button').forEach(b => b.classList.toggle('active', b.dataset.form === f)); if (apply) onOsdSettingChange() }
     // Welche Layout-Option in welchem Design wirkt - KOPIE von LAY_CAPS in osd.html (dort gemessen), muss identisch bleiben.
     const OSD_LAY_CAPS = {
@@ -4445,8 +4461,8 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       function preview(v) {   // v = Wert zum Zeigen, null = zurueck auf gespeichert
         if (v === hovered) return
         hovered = v
-        if (v == null) { ipcRenderer.invoke('osd-preview-cfg', null); osdPreviewSoon(900) }
-        else { osdPreview(true); ipcRenderer.invoke('osd-preview-cfg', { [key]: v }) }
+        if (v == null) { ipcRenderer.invoke('osd-preview-cfg', null); osdPreviewSoon(900); osdPrevSend() }
+        else { osdPreview(true); ipcRenderer.invoke('osd-preview-cfg', { [key]: v }); osdPrevSend({ [key]: v }) }
       }
       function setHl(i, withPreview) { const its = items(); if (!its.length) return; hl = (i + its.length) % its.length; its.forEach((x, j) => x.classList.toggle('hl', j === hl)); its[hl].scrollIntoView({ block: 'nearest' }); if (withPreview) preview(its[hl].dataset.v) }
       function show(on) {
@@ -4481,7 +4497,11 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // Das <input type=color> bleibt versteckt als Wertspeicher (alle Leser unveraendert). Klick auf die
     // Kachel oeffnet ein Popover: SV-Flaeche, Farbton-Regler, Hex-Feld, Schnellwahl (Standard + Paletten).
     // Ziehen zeigt die Farbe nur im Overlay (osd-preview-cfg), gespeichert wird beim Loslassen; Escape stellt zurueck.
-    const OSD_COL_KEY = { setOsdColGpu: 'nv', setOsdColCpu: 'amd', setOsdColFps: 'fpc', setOsdColNet: 'netc', setOsdColVal: 'val' }
+    const OSD_COL_KEY = { setOsdColGpu: 'nv', setOsdColCpu: 'amd', setOsdColFps: 'fpc', setOsdColNet: 'netc', setOsdColMain: 'main', setOsdColVal: 'val', setOsdColLbl: 'lbl', setOsdColUnit: 'unit' }
+    const OSD_COL_ID = Object.fromEntries(Object.entries(OSD_COL_KEY).map(([id, k]) => [k, id]))
+    const OSD_PICK_GENERIC = ['#ffffff', '#d0d4d8', '#9aa0aa', '#6f7688', '#ffe100', '#74e857', '#4bd6ff', '#ff8a1e', '#c79bff', '#ff4d4d']   // Schnellwahl fuer Rollen ohne Palettenwert
+    // wirksame Farben wie osd.html sie sieht: feste Palette -> deren Werte (Auto-Rollen leer), eigene -> Kacheln ohne Auto
+    function osdColorsObj() { const pal = document.getElementById('setOsdPalette').value, out = {}; for (const [id, k] of Object.entries(OSD_COL_KEY)) { const inp = document.getElementById(id); if (pal !== 'eigen' && OSD_PALETTES[pal]) { if (OSD_PALETTES[pal][k]) out[k] = OSD_PALETTES[pal][k] } else if (!(OSD_COL_AUTO.includes(id) && inp.dataset.auto === '1')) out[k] = inp.value } return out }
     const OSD_PALETTES = {   // Kopie der Gruppenfarben aus osd.html (PALETTES) fuer die Schnellwahl
       standard: { nv: '#74e857', amd: '#ff8a1e', fpc: '#4bd6ff', netc: '#c79bff', val: '#ffe100' },
       mono:     { nv: '#ffffff', amd: '#ffffff', fpc: '#ffffff', netc: '#ffffff', val: '#ffffff' },
@@ -4497,7 +4517,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       return { h, s: mx ? d / mx : 0, v: mx }
     }
     function hsvToHex(h, s, v) { const f = n => { const k = (n + h / 60) % 6; const c = v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); return Math.round(c * 255).toString(16).padStart(2, '0') }; return '#' + f(5) + f(3) + f(1) }
-    function osdSwatchSync(id) { const sw = document.querySelector('.osd-swatch[data-for="' + id + '"]'); if (sw) sw.style.background = document.getElementById(id).value }
+    function osdSwatchSync(id) { const sw = document.querySelector('.osd-swatch[data-for="' + id + '"]'); if (!sw) return; const c = osdColorsObj()[OSD_COL_KEY[id]]; sw.classList.toggle('auto', !c); sw.style.background = c || ''; sw.title = c ? window.tr('Farbe wählen') : window.tr('Automatisch (wie im Design)') + ' – ' + window.tr('Farbe wählen') }
     function osdSwatchSyncAll() { Object.keys(OSD_COL_KEY).forEach(osdSwatchSync) }
     function osdSwatchInit() {
       for (const id of Object.keys(OSD_COL_KEY)) {
@@ -4506,12 +4526,13 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'osd-swatch'; sw.dataset.for = id; sw.title = window.tr('Farbe wählen')
         sw.addEventListener('click', () => osdPickerOpen(id))
         inp.parentNode.insertBefore(sw, inp)
-        const lab = inp.parentNode.querySelector('label[for="' + id + '"]')
-        if (lab) { lab.removeAttribute('for'); lab.addEventListener('click', () => osdPickerOpen(id)) }   // sonst oeffnet das Label den Windows-Dialog
+        const lab = inp.parentNode.querySelector('label'); if (lab) lab.addEventListener('click', () => osdPickerOpen(id))
+        const cell = inp.closest('.osd-color')   // Zeigen auf die Kachel hebt die Rolle in der Vorschau hervor
+        cell.addEventListener('mouseenter', () => osdPrevHl(OSD_COL_KEY[id])); cell.addEventListener('mouseleave', () => osdPrevHl(''))
       }
       osdSwatchSyncAll()
     }
-    let osdPick = null   // { el, inp, id, hsv, orig, saved }
+    let osdPick = null   // { el, inp, id, hsv, orig, origAuto, saved, savedAuto, snap }
     function osdPickerInit() {
       if (document.getElementById('osdPicker')) return
       const el = document.createElement('div'); el.id = 'osdPicker'; el.className = 'osd-picker'; el.tabIndex = -1
@@ -4519,7 +4540,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         + '<div class="osd-pick-hue" tabindex="0"><div class="osd-pick-hd"></div></div>'
         + '<div class="osd-pick-row"><span class="osd-pick-prev"></span><input class="osd-pick-hex" maxlength="7" spellcheck="false" aria-label="Hex"><button type="button" class="osd-color-reset osd-pick-reset" title="Standardfarbe">↺</button></div>'
         + '<div class="osd-pick-chips"></div>'
-      document.getElementById('osdColorsRow').appendChild(el)
+      document.getElementById('osdColorBody').appendChild(el)   // Bezugsrahmen fuer die Platzierung: Vorschau + Kacheln
       const sv = el.querySelector('.osd-pick-sv'), hue = el.querySelector('.osd-pick-hue'), hex = el.querySelector('.osd-pick-hex'), chips = el.querySelector('.osd-pick-chips')
       const clamp = (x, a, b) => Math.max(a, Math.min(b, x))
       const normHex = t => { t = t.trim().toLowerCase(); if (!t.startsWith('#')) t = '#' + t; return /^#[0-9a-f]{6}$/.test(t) ? t : null }
@@ -4533,13 +4554,18 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         osdPick.inp.value = c; osdSwatchSync(osdPick.id)
       }
       el._paint = paint
-      function previewNow() {   // nur zeigen, nicht speichern
-        const colors = {}; for (const [id, k] of Object.entries(OSD_COL_KEY)) colors[k] = document.getElementById(id).value
-        osdPreview(true); osdPreviewSoon(6000); ipcRenderer.invoke('osd-preview-cfg', { palette: 'eigen', colors })   // Sicherheitsnetz: Vorschau endet spaetestens 6 s nach der letzten Bewegung
+      function previewNow() {   // nur zeigen, nicht speichern (eigene Palette; die bearbeitete Rolle zaehlt dabei als gesetzt)
+        const colors = {}; for (const [id, k] of Object.entries(OSD_COL_KEY)) { const inp = document.getElementById(id); if (!(OSD_COL_AUTO.includes(id) && inp.dataset.auto === '1')) colors[k] = inp.value }
+        colors[OSD_COL_KEY[osdPick.id]] = osdPick.inp.value
+        osdPreview(true); osdPreviewSoon(6000); ipcRenderer.invoke('osd-preview-cfg', { palette: 'eigen', colors }); osdPrevSend({ palette: 'eigen', colors })   // Sicherheitsnetz: Vorschau endet spaetestens 6 s nach der letzten Bewegung
       }
-      function commit() { osdPick.saved = osdPick.inp.value; onOsdColorInput(); ipcRenderer.invoke('osd-preview-cfg', null) }   // speichert (Palette -> eigen), dann gespeicherten Stand anwenden
-      el._commitIfDraft = () => { if (osdPick && osdPick.inp.value !== osdPick.saved) commit() }
-      function setHsv(p, live) { Object.assign(osdPick.hsv, p); paint(); if (live) previewNow(); else commit() }
+      function commit(auto) {   // speichert (Palette -> eigen), dann gespeicherten Stand anwenden; auto = Rolle zurueck auf Design-Standard
+        if (OSD_COL_AUTO.includes(osdPick.id)) osdPick.inp.dataset.auto = auto ? '1' : '0'
+        osdPick.saved = osdPick.inp.value; osdPick.savedAuto = osdPick.inp.dataset.auto || ''
+        onOsdColorInput(); ipcRenderer.invoke('osd-preview-cfg', null)
+      }
+      el._commitIfDraft = () => { if (osdPick && (osdPick.inp.value !== osdPick.saved || (osdPick.inp.dataset.auto || '') !== osdPick.savedAuto)) commit(false) }
+      function setHsv(p, live) { Object.assign(osdPick.hsv, p); paint(); if (live) previewNow(); else commit(false) }
       function dragOn(area, fn) {
         area.addEventListener('pointerdown', e => { area.setPointerCapture(e.pointerId); area.focus(); fn(e, true); e.preventDefault() })
         area.addEventListener('pointermove', e => { if (area.hasPointerCapture(e.pointerId)) fn(e, true) })
@@ -4548,49 +4574,117 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       dragOn(sv, (e, live) => { const r = sv.getBoundingClientRect(); setHsv({ s: clamp((e.clientX - r.left) / r.width, 0, 1), v: clamp(1 - (e.clientY - r.top) / r.height, 0, 1) }, live) })
       dragOn(hue, (e, live) => { const r = hue.getBoundingClientRect(); setHsv({ h: clamp((e.clientX - r.left) / r.width, 0, 0.9999) * 360 }, live) })
       sv.addEventListener('keydown', e => { const d = { ArrowLeft: [-.02, 0], ArrowRight: [.02, 0], ArrowUp: [0, .02], ArrowDown: [0, -.02] }[e.key]; if (!d) return; e.preventDefault(); setHsv({ s: clamp(osdPick.hsv.s + d[0], 0, 1), v: clamp(osdPick.hsv.v + d[1], 0, 1) }, false) })
+      el._commit = commit
       hue.addEventListener('keydown', e => { const d = e.key === 'ArrowLeft' ? -4 : e.key === 'ArrowRight' ? 4 : 0; if (!d) return; e.preventDefault(); setHsv({ h: (osdPick.hsv.h + d + 360) % 360 }, false) })
       hex.addEventListener('input', () => { const t = normHex(hex.value); if (t) { osdPick.hsv = hexToHsv(t); paint(); previewNow() } })
-      hex.addEventListener('change', () => { const t = normHex(hex.value); if (t) { osdPick.hsv = hexToHsv(t); paint(); commit() } else paint() })
-      el.querySelector('.osd-pick-reset').addEventListener('click', () => { osdPick.hsv = hexToHsv(OSD_COL_STD[osdPick.id]); paint(); commit() })
-      chips.addEventListener('click', e => { const c = e.target.closest('.osd-pick-chip'); if (c) { osdPick.hsv = hexToHsv(c.dataset.c); paint(); commit() } })
+      hex.addEventListener('change', () => { const t = normHex(hex.value); if (t) { osdPick.hsv = hexToHsv(t); paint(); commit(false) } else paint() })
+      el.querySelector('.osd-pick-reset').addEventListener('click', () => { osdPick.hsv = hexToHsv(OSD_COL_STD[osdPick.id]); paint(); commit(OSD_COL_AUTO.includes(osdPick.id)) })   // Auto-Rollen: zurueck auf Design-Standard
+      chips.addEventListener('click', e => { const c = e.target.closest('.osd-pick-chip'); if (c) { osdPick.hsv = hexToHsv(c.dataset.c); paint(); commit(false) } })
       chips.addEventListener('mouseover', e => { const c = e.target.closest('.osd-pick-chip'); if (!c) return; const keep = osdPick.inp.value; osdPick.inp.value = c.dataset.c; previewNow(); osdPick.inp.value = keep })   // Chip nur zeigen
       chips.addEventListener('mouseleave', () => { if (osdPick) previewNow() })   // zurueck zur aktuellen Auswahl
       el.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); osdPickerClose(true) } else if (e.key === 'Enter' && e.target !== hex) { e.preventDefault(); osdPickerClose(false) } })
       document.addEventListener('pointerdown', e => { if (osdPick && !el.contains(e.target) && !e.target.closest('.osd-swatch, .osd-color-nm label')) osdPickerClose(false) })
     }
-    function osdPickerOpen(id) {
+    // id = Kachel; anchor = Rechteck (Viewport) aus der Vorschau, sonst die Kachel; startColor = gerade gerenderte Farbe einer Auto-Rolle
+    function osdPickerOpen(id, anchor, startColor) {
       osdPickerInit()
-      if (osdPick && osdPick.id === id) { osdPickerClose(false); return }
+      if (osdPick && osdPick.id === id && !anchor) { osdPickerClose(false); return }
       if (osdPick) osdPickerClose(false)
-      const inp = document.getElementById(id), el = document.getElementById('osdPicker'), row = document.getElementById('osdColorsRow')
-      osdPick = { el, inp, id, hsv: hexToHsv(inp.value), orig: inp.value, saved: inp.value }
-      const k = OSD_COL_KEY[id], seen = new Set(), list = []   // Schnellwahl: Standard zuerst, dann die Paletten, ohne Dubletten
-      for (const p of Object.values(OSD_PALETTES)) { const c = p[k]; if (!seen.has(c)) { seen.add(c); list.push(c) } }
+      const inp = document.getElementById(id), el = document.getElementById('osdPicker'), host = document.getElementById('osdColorBody')
+      // Schnappschuss aller Kacheln (Escape stellt alles zurueck) - denn der Start aus einer festen Palette uebernimmt deren Farben in die Kacheln
+      const snap = {}; for (const iid of Object.keys(OSD_COL_KEY)) { const x = document.getElementById(iid); snap[iid] = { v: x.value, a: x.dataset.auto || '' } }
+      const pal = document.getElementById('setOsdPalette').value
+      if (pal !== 'eigen' && OSD_PALETTES[pal]) for (const [iid, k] of Object.entries(OSD_COL_KEY)) { const x = document.getElementById(iid); if (OSD_PALETTES[pal][k]) x.value = OSD_PALETTES[pal][k]; else if (OSD_COL_AUTO.includes(iid)) { x.dataset.auto = '1'; x.value = OSD_COL_STD[iid] } }
+      if (/^#[0-9a-fA-F]{6}$/.test(startColor || '') && OSD_COL_AUTO.includes(id) && inp.dataset.auto === '1') inp.value = startColor   // Auto-Rolle: beim Design-Standard beginnen
+      osdPick = { el, inp, id, hsv: hexToHsv(inp.value), orig: inp.value, origAuto: inp.dataset.auto || '', saved: inp.value, savedAuto: inp.dataset.auto || '', snap }
+      const k = OSD_COL_KEY[id], seen = new Set(), list = []   // Schnellwahl: Standard zuerst, dann die Paletten, ohne Dubletten; Rollen ohne Palettenwert: Grundfarben
+      for (const p of Object.values(OSD_PALETTES)) { const c = p[k]; if (c && !seen.has(c)) { seen.add(c); list.push(c) } }
+      for (const c of OSD_PICK_GENERIC) if (list.length < 10 && !seen.has(c)) { seen.add(c); list.push(c) }
       el.querySelector('.osd-pick-chips').innerHTML = list.map(c => '<button type="button" class="osd-pick-chip" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></button>').join('')
+      el.querySelector('.osd-pick-reset').title = OSD_COL_AUTO.includes(id) ? window.tr('Automatisch (wie im Design)') : window.tr('Standardfarbe')
       el.style.display = 'block'
-      const cell = inp.closest('.osd-color')   // horizontal: unter der Kachel, innerhalb des Rasters halten
-      el.style.left = Math.max(0, Math.min(cell.offsetLeft, row.clientWidth - el.offsetWidth)) + 'px'
+      const cell = inp.closest('.osd-color'), hr = host.getBoundingClientRect()
+      const ar = anchor || cell.getBoundingClientRect()   // Bezug: Klickpunkt in der Vorschau oder die Kachel
+      // horizontal: am Bezug, innerhalb der Karte halten
+      el.style.left = Math.max(0, Math.min(ar.left - hr.left, host.clientWidth - el.offsetWidth)) + 'px'
       // vertikal: Platz im SICHTBAREN Teil des scrollenden Reiters berechnen - unten, wenn er dort
-      // ganz hineinpasst; sonst oben ueber der Kachel; passt es nirgends, unten + ins Bild scrollen.
-      const scroller = document.getElementById('settingsView'), sr = scroller.getBoundingClientRect(), cr = cell.getBoundingClientRect()
+      // ganz hineinpasst; sonst oben ueber dem Bezug; passt es nirgends, unten + ins Bild scrollen.
+      const scroller = document.getElementById('settingsView'), sr = scroller.getBoundingClientRect()
       const sichtOben = Math.max(sr.top, 0), sichtUnten = Math.min(sr.bottom, window.innerHeight), h = el.offsetHeight + 6
-      const passtUnten = cr.bottom + h <= sichtUnten, passtOben = cr.top - h >= sichtOben
+      const passtUnten = ar.bottom + h <= sichtUnten, passtOben = ar.top - h >= sichtOben
       el.classList.toggle('up', !passtUnten && passtOben)
-      el.style.top = (!passtUnten && passtOben) ? (cell.offsetTop - h) + 'px' : (cell.offsetTop + cell.offsetHeight + 6) + 'px'
+      el.style.top = ((!passtUnten && passtOben) ? (ar.top - hr.top - h) : (ar.bottom - hr.top + 6)) + 'px'
       if (!passtUnten && !passtOben) el.scrollIntoView({ block: 'nearest' })
+      osdPrevHl(k)   // Rolle in der Vorschau hervorheben, solange der Waehler offen ist
       document.querySelectorAll('.osd-swatch').forEach(s => s.classList.toggle('open', s.dataset.for === id))
       el._paint(); el.querySelector('.osd-pick-sv').focus()
     }
     function osdPickerClose(revert) {
       if (!osdPick) return
       const { el, inp, id, orig } = osdPick
-      if (revert) { inp.value = orig; osdSwatchSync(id); if (inp.value !== osdPick.saved) { osdPick.saved = orig; onOsdColorInput() }; ipcRenderer.invoke('osd-preview-cfg', null); osdPreviewSoon(600) }
-      else el._commitIfDraft()
+      if (revert) {
+        const gespeichert = osdPick.saved !== osdPick.orig || osdPick.savedAuto !== osdPick.origAuto   // schon etwas uebernommen (Loslassen/Chip)? dann Rueckgaengig auch speichern
+        for (const [iid, x] of Object.entries(osdPick.snap)) { const e = document.getElementById(iid); e.value = x.v; if (OSD_COL_AUTO.includes(iid)) e.dataset.auto = x.a }
+        osdSwatchSyncAll()
+        if (gespeichert) { osdPick.saved = orig; onOsdColorInput() } else osdPrevSend()
+        ipcRenderer.invoke('osd-preview-cfg', null); osdPreviewSoon(600)
+      }
+      else { el._commitIfDraft(); osdSwatchSyncAll(); osdPrevSend() }
       el.style.display = 'none'
       document.querySelectorAll('.osd-swatch.open').forEach(s => s.classList.remove('open'))
       osdPick = null
+      osdPrevHl('')
       if (osdPrevOn) osdPreviewSoon(900)   // Vorschau (Chips/Ziehen) immer beenden - sonst blieb das OSD nach dem Schliessen ohne Aenderung an
     }
+    // --- Vorschau-Overlay im Reiter: osd.html?preview=1 als iframe. Config per postMessage (gleiche Felder wie osd-config
+    // der Shell); das iframe meldet seine Panelmasse (Rahmen wird passend und bei Bedarf verkleinert) und Klicks auf eine
+    // Rolle (-> Farbwaehler am Klickpunkt). Zeigen auf eine Kachel hebt die Rolle im iframe hervor.
+    let osdPrevReady = false, osdPrevK = 1
+    function osdPrevInit() {
+      const fr = document.getElementById('osdPrevFrame'); if (!fr || fr.dataset.init) return
+      fr.dataset.init = '1'; fr.src = 'osd.html?preview=1'
+      window.addEventListener('message', e => {
+        if (e.source !== fr.contentWindow) return
+        const m = e.data || {}
+        if (m.t === 'osd-ready') { osdPrevReady = true; osdPrevSend() }
+        else if (m.t === 'osd-size') osdPrevResize(m.w, m.h)
+        else if (m.t === 'osd-pick') {
+          const id = OSD_COL_ID[m.key]; if (!id) return
+          // Bezug: Klickspalte, aber ober-/unterhalb des ganzen Vorschau-Rahmens - so bleibt das Overlay beim Faerben sichtbar
+          const r = fr.getBoundingClientRect(), wr = document.getElementById('osdPrevWrap').getBoundingClientRect(), x = r.left + m.x * osdPrevK
+          osdPickerOpen(id, { left: x, top: wr.top, right: x, bottom: wr.bottom }, m.auto ? m.color : null)
+        }
+      })
+    }
+    function osdPrevCfg() {
+      const c = buildOsdCfg()
+      return { theme: c.osdTheme, fields: c.osdFields, order: c.osdOrder, palette: c.osdPalette, colors: c.osdColors, limits: c.osdLimits, layout: c.osdLayout, font: c.osdFont, opacity: c.osdOpacity }
+    }
+    function osdPrevSend(teil) {   // Objekt = nur diesen Teil zeigen (Hover), sonst der komplette Reiterstand
+      const fr = document.getElementById('osdPrevFrame'); if (!fr || !osdPrevReady || !fr.contentWindow) return
+      try { fr.contentWindow.postMessage({ t: 'cfg', cfg: teil && typeof teil === 'object' ? teil : osdPrevCfg() }, '*') } catch (e) {}
+    }
+    function osdPrevHl(key) { const fr = document.getElementById('osdPrevFrame'); if (fr && osdPrevReady && fr.contentWindow) try { fr.contentWindow.postMessage({ t: 'hl', key: key || '' }, '*') } catch (e) {} }
+    function osdPrevResize(w, h) {   // iframe in Panelgroesse, bei Platzmangel verkleinert (transform), Rahmen bekommt die skalierte Hoehe
+      const fr = document.getElementById('osdPrevFrame'), sc = document.getElementById('osdPrevScale'), wrap = document.getElementById('osdPrevWrap')
+      if (!fr || !w || !h) return
+      const W = Math.max(60, wrap.clientWidth - 2), k = Math.min(1, W / w)
+      osdPrevK = k
+      fr.style.width = w + 'px'; fr.style.height = h + 'px'
+      sc.style.transform = 'scale(' + k + ')'; sc.style.width = Math.round(w * k) + 'px'; sc.style.height = Math.round(h * k) + 'px'
+    }
+    // Paletten-Chips (ersetzen das Menue): drei Gruppenfarben als Streifen; Zeigen = Vorschau (Overlay + iframe), Klick = waehlen
+    function osdPalChipsBuild() {
+      const box = document.getElementById('osdPalChips'), sel = document.getElementById('setOsdPalette'); if (!box || box.dataset.built) return
+      box.dataset.built = '1'
+      const kurz = { standard: 'Standard', mono: 'Monochrom', dezent: 'Dezent', pastell: 'Pastell', amber: 'Amber', rgb: 'RGB-Gaming', eigen: 'Eigene Farben' }
+      box.innerHTML = [...sel.options].map(o => { const p = OSD_PALETTES[o.value]; return '<button type="button" class="osd-palchip' + (o.value === 'eigen' ? ' eigen' : '') + '" data-pal="' + o.value + '" title="' + o.text + '"><span class="sw">' + (p ? '<i style="background:' + p.nv + '"></i><i style="background:' + p.amd + '"></i><i style="background:' + p.fpc + '"></i>' : '') + '</span><span class="nm">' + window.tr(kurz[o.value] || o.text) + '</span></button>' }).join('')
+      let hov = null
+      box.addEventListener('mouseover', e => { const b = e.target.closest('.osd-palchip'); if (!b || b.dataset.pal === hov) return; hov = b.dataset.pal; osdPreview(true); ipcRenderer.invoke('osd-preview-cfg', { palette: hov }); osdPrevSend({ palette: hov }) })
+      box.addEventListener('mouseleave', () => { if (hov == null) return; hov = null; ipcRenderer.invoke('osd-preview-cfg', null); osdPreviewSoon(900); osdPrevSend() })
+      box.addEventListener('click', e => { const b = e.target.closest('.osd-palchip'); if (!b) return; hov = null; if (sel.value !== b.dataset.pal) { sel.value = b.dataset.pal; sel.dispatchEvent(new Event('change')) } ipcRenderer.invoke('osd-preview-cfg', null); if (osdPrevOn) osdPreviewSoon(900) })
+    }
+    function osdPalChipsSync() { osdPalChipsBuild(); const v = document.getElementById('setOsdPalette').value; document.querySelectorAll('.osd-palchip').forEach(b => b.classList.toggle('on', b.dataset.pal === v)) }
     // Grenzwert-Zeilen: abgeschalteter Wert -> Schwellenfelder gesperrt und Zeile gedimmt
     function osdLimRowsSync() {
       for (const id of ['setOsdLimGpuTempOn', 'setOsdLimCpuTempOn', 'setOsdLimLoadOn', 'setOsdLimFpsOn']) {
@@ -4626,8 +4720,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         osdOpacity: parseFloat(document.getElementById('setOsdOpacity').value),
         osdCorner: osdCorner,
         osdPalette: document.getElementById('setOsdPalette').value,
-        osdColors: { nv: document.getElementById('setOsdColGpu').value, amd: document.getElementById('setOsdColCpu').value, fpc: document.getElementById('setOsdColFps').value,
-                     netc: document.getElementById('setOsdColNet').value, val: document.getElementById('setOsdColVal').value },
+        osdColors: (() => { const o = {}; for (const [id, k] of Object.entries(OSD_COL_KEY)) { const inp = document.getElementById(id); if (!(OSD_COL_AUTO.includes(id) && inp.dataset.auto === '1')) o[k] = inp.value } return o })(),   // Auto-Rollen fehlen -> Design-Standard
         osdLayout: { labels: document.getElementById('setOsdLayLabels').checked, units: document.getElementById('setOsdLayUnits').checked, icons: document.getElementById('setOsdLayIcons').checked,
                      sep: document.getElementById('setOsdLaySep').checked, form: osdForm, glow: document.getElementById('setOsdLayGlow').checked, dense: document.getElementById('setOsdLayDense').checked },
         osdLimits: { on: document.getElementById('setOsdLimOn').checked, pulse: document.getElementById('setOsdLimPulse').checked,
@@ -4648,6 +4741,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       osdLastCfg = cfg
       if (fromEnabledToggle) send.osdEnabled = document.getElementById('setOsdEnabled').checked
       if (Object.keys(send).length) ipcRenderer.invoke('set-app-settings', send)
+      osdPrevSend()   // Vorschau-Overlay im Reiter nachziehen
       // JEDE Layout-Aenderung (Design, Werte, FPS-Quelle, Regler, Ecke) zeigt das Overlay
       // kurz - sonst sieht man bei ausgeschaltetem OSD gar nicht, was die Aenderung bewirkt.
       // NICHT beim Ein-/Ausschalten selbst: da ist der Zustand ja gerade die Aussage.

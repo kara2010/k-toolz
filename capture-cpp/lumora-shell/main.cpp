@@ -5810,6 +5810,9 @@ static json handleChannel(const std::string& channel, const json& args) {
         // dieselben Optionen wie Karte 1 im Einstellungsreiter, jetzt auch aus dem Live-Editor.
         else if (channel == "osd-edit-layout" && args[0].is_object()) s["osdLayout"] = args[0];
         else if (channel == "osd-edit-font" && args[0].is_string()) s["osdFont"] = args[0];   // Schriftart aus dem Live-Editor
+        // Klick-Farbmodus im Live-Editor: eigene Farben je Rolle ({palette:'eigen', colors:{nv,amd,fpc,netc,val,main,lbl,unit}})
+        else if (channel == "osd-edit-colors" && args[0].is_object()) { s["osdPalette"] = args[0].value("palette", "eigen"); if (args[0].contains("colors") && args[0]["colors"].is_object()) s["osdColors"] = args[0]["colors"]; }
+        else if (channel == "osd-edit-palette" && args[0].is_string()) s["osdPalette"] = args[0];   // Paletten-Chip im Live-Editor (eigene Farben bleiben gespeichert)
         writeFile(settingsPath(), s.dump(2));
         applyOsdConfig();
         // Einstellungsreiter nachziehen: der hielt sonst den Stand von VOR dem Live-Edit und

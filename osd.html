@@ -67,7 +67,7 @@
   .t-bar .row .k, .t-neon .row .k { opacity: .85; }
   /* Panel sitzt absolut in der gewählten Ecke; horizontale Themes zentrieren am Rand */
   #panel {
-    position: absolute; margin: 18px; color: #fff;
+    position: absolute; margin: 18px; color: var(--c-main, #fff); --cr: main;   /* Rollenfarben: --c-main/--c-lbl/--c-unit nur gesetzt, wenn Palette/Nutzer sie vorgeben, sonst Design-Standard; --cr = Rolle fuer den Klick-Farbmodus */
     text-shadow: 0 1px 2px rgba(0,0,0,.9); font-variant-numeric: tabular-nums;
   }
   body.pos-tl #panel { top: 0;    left: 0; }
@@ -76,7 +76,7 @@
   body.pos-br #panel { bottom: 0; right: 0; }
   body.pos-tc #panel { top: 0;    left: 50%; transform: translateX(-50%); }
   body.pos-bc #panel { bottom: 0; left: 50%; transform: translateX(-50%); }
-  .osd i { font-style: normal; font-size: .6em; margin-left: 2px; opacity: .95; }
+  .osd i { font-style: normal; font-size: .6em; margin-left: 2px; opacity: .95; color: var(--c-unit, currentColor); --cr: unit; }
   .hidden { display: none !important; }
 
   /* ============================ THEMES ============================ */
@@ -85,27 +85,27 @@
   body.theme-compact #panel { width: 232px; padding: 13px 15px 14px;
     background: rgba(8,8,12,var(--panel-op)); border-radius: 10px; backdrop-filter: blur(2px); }
   .t-compact .grp { margin-bottom: 13px; } .t-compact .grp:last-child { margin-bottom: 0; }
-  .t-compact .lbl { font-size: 11px; letter-spacing: .16em; color: #8a8a8a; margin-bottom: 1px; }
+  .t-compact .lbl { font-size: 11px; letter-spacing: .16em; color: var(--c-lbl, #8a8a8a); --cr: lbl; margin-bottom: 1px; }
   .t-compact .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .t-compact .name { font-size: 21px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .t-compact .big  { font-size: 21px; color: var(--val); flex: 0 0 auto; }
+  .t-compact .big  { font-size: 21px; color: var(--c-main, var(--val)); --cr: main; flex: 0 0 auto; }
   .t-compact .row  { display: flex; justify-content: space-between; align-items: baseline; margin-top: 1px; }
-  .t-compact .row .k { font-size: 15px; } .t-compact .row .v { font-size: 15px; color: var(--val); }
-  .t-compact .nv .name, .t-compact .nv .row .k { color: var(--nv); }
-  .t-compact .amd .name, .t-compact .amd .row .k { color: var(--amd); }
-  .t-compact .fps .name { color: var(--nv); } .t-compact .fps .big { font-size: 27px; color: #fff; }
+  .t-compact .row .k { font-size: 15px; } .t-compact .row .v { font-size: 15px; color: var(--val); --cr: val; }
+  .t-compact .nv .name, .t-compact .nv .row .k { color: var(--nv); --cr: nv; }
+  .t-compact .amd .name, .t-compact .amd .row .k { color: var(--amd); --cr: amd; }
+  .t-compact .fps .name { color: var(--fpc); --cr: fpc; } .t-compact .fps .big { font-size: 27px; color: var(--c-main, #fff); }
   .t-compact .track, .t-compact .stats { display: none; }
   .t-compact canvas { display: block; width: 100%; height: 42px; margin-top: 4px; }
-  .t-compact .ftline { font-size: 13px; color: #9a9a9a; margin-top: 5px; }
-  .t-compact .ftline .v { color: var(--ft); }
+  .t-compact .ftline { font-size: 13px; color: var(--c-lbl, #9a9a9a); --cr: lbl; margin-top: 5px; }
+  .t-compact .ftline .v { color: var(--val); --cr: val; }
 
   /* -------- MINIMAL -------- */
   body.theme-min #panel { display: flex; flex-direction: column; gap: 7px; }
   .t-min .line { display: flex; align-items: baseline; gap: 9px; }
   .t-min .k { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
-  .t-min .k.nv { color: var(--nv); } .t-min .k.amd { color: var(--amd); } .t-min .k.fp { color: #fff; }
-  .t-min .v { font-size: 24px; color: #fff; } .t-min .v.big { font-size: 33px; }
-  .t-min .sub { font-size: 15px; opacity: .85; }
+  .t-min .k.nv { color: var(--nv); --cr: nv; } .t-min .k.amd { color: var(--amd); --cr: amd; } .t-min .k.fp { color: var(--fpc); --cr: fpc; }
+  .t-min .v { font-size: 24px; color: var(--c-main, #fff); --cr: main; } .t-min .v.big { font-size: 33px; }
+  .t-min .sub { font-size: 15px; opacity: .85; } .t-min .sub .v { color: var(--val); --cr: val; }
   .t-min canvas, .t-min .track, .t-min .lbl { display: none; }
 
   /* -------- BALKEN -------- */
@@ -114,16 +114,16 @@
   .t-bar .grp { margin-bottom: 14px; } .t-bar .grp:last-child { margin-bottom: 0; }
   .t-bar .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; gap: 8px; }
   .t-bar .name { font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .t-bar .nv .name { color: var(--nv); } .t-bar .amd .name { color: var(--amd); } .t-bar .fps .name { color: var(--nv); }
-  .t-bar .big { font-size: 17px; color: #fff; flex: 0 0 auto; } .t-bar .fps .big { font-size: 26px; }
-  .t-bar .fps .big i { color: var(--nv); }
+  .t-bar .nv .name { color: var(--nv); --cr: nv; } .t-bar .amd .name { color: var(--amd); --cr: amd; } .t-bar .fps .name { color: var(--fpc); --cr: fpc; }
+  .t-bar .big { font-size: 17px; color: var(--c-main, #fff); --cr: main; flex: 0 0 auto; } .t-bar .fps .big { font-size: 26px; }
+  .t-bar .fps .big i { color: var(--c-unit, var(--fpc)); }
   .t-bar .lbl { display: none; }
   .t-bar .track { height: 7px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; margin-bottom: 7px; }
   .t-bar .fill { height: 100%; border-radius: 4px; transition: width .2s; }
-  .t-bar .nv .fill { background: linear-gradient(90deg, #3f8f45, var(--nv)); }
-  .t-bar .amd .fill { background: linear-gradient(90deg, #a5561a, var(--amd)); }
-  .t-bar .row { display: inline-flex; gap: 4px; margin-right: 12px; font-size: 13px; color: #d6d6d6; }
-  .t-bar .row .v { color: var(--val); } .t-bar .stats { margin-top: -2px; }
+  .t-bar .nv .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--nv) 55%, #000), var(--nv)); --cr: nv; }
+  .t-bar .amd .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--amd) 55%, #000), var(--amd)); --cr: amd; }
+  .t-bar .row { display: inline-flex; gap: 4px; margin-right: 12px; font-size: 13px; color: var(--c-lbl, #d6d6d6); --cr: lbl; }
+  .t-bar .row .v { color: var(--val); --cr: val; } .t-bar .stats { margin-top: -2px; }
   .t-bar .fps .track, .t-bar .fps-rows { display: none; }
   .t-bar canvas { display: block; width: 100%; height: 40px; margin-top: 4px; }
 
@@ -137,12 +137,12 @@
   .t-neon .lbl { display: none; }
   .t-neon .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .t-neon .name { font-size: 16px; letter-spacing: .03em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .t-neon .nv .name { color: var(--nv); text-shadow: 0 0 8px rgba(116,232,87,.55); }
-  .t-neon .amd .name { color: var(--amd); text-shadow: 0 0 8px rgba(255,138,30,.5); }
-  .t-neon .fps .name { color: var(--fpc); text-shadow: 0 0 8px color-mix(in srgb, var(--fpc) 50%, transparent); }
-  .t-neon .big { font-size: 18px; color: #fff; flex: 0 0 auto; } .t-neon .fps .big { font-size: 24px; }
-  .t-neon .row { display: inline-flex; gap: 3px; margin-right: 10px; margin-top: 3px; font-size: 12.5px; color: #cfd3da; }
-  .t-neon .row .v { color: var(--val); } .t-neon .stats { margin-top: 1px; }
+  .t-neon .nv .name { color: var(--nv); --cr: nv; text-shadow: 0 0 8px color-mix(in srgb, var(--nv) 55%, transparent); }
+  .t-neon .amd .name { color: var(--amd); --cr: amd; text-shadow: 0 0 8px color-mix(in srgb, var(--amd) 50%, transparent); }
+  .t-neon .fps .name { color: var(--fpc); --cr: fpc; text-shadow: 0 0 8px color-mix(in srgb, var(--fpc) 50%, transparent); }
+  .t-neon .big { font-size: 18px; color: var(--c-main, #fff); --cr: main; flex: 0 0 auto; } .t-neon .fps .big { font-size: 24px; }
+  .t-neon .row { display: inline-flex; gap: 3px; margin-right: 10px; margin-top: 3px; font-size: 12.5px; color: var(--c-lbl, #cfd3da); --cr: lbl; }
+  .t-neon .row .v { color: var(--val); --cr: val; } .t-neon .stats { margin-top: 1px; }
   .t-neon .track { display: none; } .t-neon canvas { display: none; }
 
   /* -------- LEISTE (horizontal) -------- */
@@ -152,8 +152,8 @@
   .t-strip .seg { display: flex; align-items: baseline; gap: 7px; padding: 2px 15px; }
   .t-strip .seg + .seg { border-left: 1px solid rgba(255,255,255,.14); }
   .t-strip .nm { font-size: 12px; letter-spacing: .06em; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .t-strip .nv .nm { color: var(--nv); } .t-strip .amd .nm { color: var(--amd); } .t-strip .fps .nm { color: #fff; }
-  .t-strip .m { font-size: 15px; color: #fff; } .t-strip .m .v { color: var(--val); }
+  .t-strip .nv .nm { color: var(--nv); --cr: nv; } .t-strip .amd .nm { color: var(--amd); --cr: amd; } .t-strip .fps .nm { color: var(--fpc); --cr: fpc; }
+  .t-strip .m { font-size: 15px; color: var(--c-main, #fff); --cr: main; } .t-strip .m .v { color: var(--val); --cr: val; }
   .t-strip .fps .m { font-size: 20px; }
   .t-strip .lbl, .t-strip .track, .t-strip canvas { display: none; }
 
@@ -161,12 +161,12 @@
   body.theme-tiles #panel { margin: 14px; }
   .t-tiles { display: flex; gap: 8px; }
   .t-tiles .tile { background: rgba(8,8,12,calc(var(--panel-op) + .07)); border-radius: 9px; padding: 9px 14px; min-width: 92px; border-top: 2px solid; }
-  .t-tiles .tile.nv { border-color: var(--nv); } .t-tiles .tile.amd { border-color: var(--amd); } .t-tiles .tile.fps { border-color: #fff; }
-  .t-tiles .cap { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #9aa0aa; margin-bottom: 3px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .t-tiles .tile.nv .cap { color: var(--nv); } .t-tiles .tile.amd .cap { color: var(--amd); }
-  .t-tiles .num { font-size: 24px; color: #fff; line-height: 1; } .t-tiles .num .v { color: var(--val); font-size: .5em; }
+  .t-tiles .tile.nv { border-color: var(--nv); } .t-tiles .tile.amd { border-color: var(--amd); } .t-tiles .tile.fps { border-color: var(--fpc); }
+  .t-tiles .cap { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--c-lbl, #9aa0aa); --cr: lbl; margin-bottom: 3px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .t-tiles .tile.nv .cap { color: var(--nv); --cr: nv; } .t-tiles .tile.amd .cap { color: var(--amd); --cr: amd; } .t-tiles .tile.fps .cap { color: var(--fpc); --cr: fpc; }
+  .t-tiles .num { font-size: 24px; color: var(--c-main, #fff); --cr: main; line-height: 1; } .t-tiles .num .v { color: var(--val); --cr: val; font-size: .5em; }
   .t-tiles .tile.fps .num { font-size: 30px; }
-  .t-tiles .sub { font-size: 11.5px; color: #c4c8d0; margin-top: 4px; } .t-tiles .sub .v { color: var(--val); }
+  .t-tiles .sub { font-size: 11.5px; color: var(--c-lbl, #c4c8d0); --cr: lbl; margin-top: 4px; } .t-tiles .sub .v { color: var(--val); --cr: val; }
   .t-tiles .lbl, .t-tiles .track, .t-tiles canvas { display: none; }
 
   /* -------- TACHO (Ringanzeigen) -------- */
@@ -176,12 +176,12 @@
   .t-gauge .g { display: flex; flex-direction: column; align-items: center; width: 78px; }
   .t-gauge svg { width: 68px; height: 68px; display: block; }
   .t-gauge .trk { fill: none; stroke: rgba(255,255,255,.13); stroke-width: 7; }
-  .t-gauge .ring { fill: none; stroke: var(--gc); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .25s; transform: rotate(-90deg); transform-origin: 50% 50%; }
-  .t-gauge .gv { font-size: 17px; color: #fff; margin-top: -46px; height: 46px; display: flex; align-items: center; } .t-gauge .gv i { font-size: .55em; }
-  .t-gauge .gl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--gc); margin-top: 4px; white-space: nowrap; max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
-  .t-gauge .rest { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; color: #cfd3da; padding: 2px 4px 0; }
+  .t-gauge .ring { fill: none; stroke: var(--gc); --cr: var(--crg); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .25s; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .t-gauge .gv { font-size: 17px; color: var(--c-main, #fff); --cr: main; margin-top: -46px; height: 46px; display: flex; align-items: center; } .t-gauge .gv i { font-size: .55em; }
+  .t-gauge .gl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--gc); --cr: var(--crg); margin-top: 4px; white-space: nowrap; max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
+  .t-gauge .rest { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; color: var(--c-lbl, #cfd3da); --cr: lbl; padding: 2px 4px 0; }
   .t-gauge .rrow { display: flex; gap: 12px; white-space: nowrap; }
-  .t-gauge .rest .row .v { color: var(--val); } .t-gauge .rest .row .k { opacity: .8; }
+  .t-gauge .rest .row .v { color: var(--val); --cr: val; } .t-gauge .rest .row .k { opacity: .8; }
   .t-gauge .lbl, .t-gauge .track, .t-gauge canvas { display: none; }
 
   /* -------- TERMINAL -------- */
@@ -190,20 +190,20 @@
   .t-term::after { content: ''; position: absolute; inset: -9px -12px; pointer-events: none; border-radius: 4px;
     background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }
   body.lay-nosep .t-term::after { display: none; }
-  .t-term .ln { font-size: 14px; line-height: 1.45; color: #c8ffc8; white-space: nowrap; }
+  .t-term .ln { font-size: 14px; line-height: 1.45; color: var(--c-main, #c8ffc8); --cr: main; white-space: nowrap; }
   .t-term .ln + .ln { border-top: 1px dotted rgba(96,200,96,.18); }
-  .t-term .k { display: inline-block; min-width: 42px; color: var(--gc, #5fd35f); }
-  .t-term .v { color: #d8ffd8; } .t-term i { color: #7fb97f; }
-  .t-term .cur::after { content: '▮'; color: #7dff7d; margin-left: 6px; animation: osdBlink 1s steps(1) infinite; }
+  .t-term .k { display: inline-block; min-width: 42px; color: var(--gc, #5fd35f); --cr: var(--crg); }
+  .t-term .v { color: var(--c-main, #d8ffd8); --cr: main; } .t-term i { color: var(--c-unit, #7fb97f); }
+  .t-term .cur::after { content: '▮'; color: var(--c-main, #7dff7d); margin-left: 6px; animation: osdBlink 1s steps(1) infinite; }
   @keyframes osdBlink { 50% { opacity: 0; } }
   .t-term .lbl, .t-term .track, .t-term canvas { display: none; }
 
   /* -------- PUNKTE (horizontal, fast unsichtbar) -------- */
   body.theme-dots #panel { margin: 14px; }
   .t-dots { display: flex; align-items: center; gap: 14px; background: rgba(8,8,12,calc(var(--panel-op) * .7)); border-radius: 999px; padding: 5px 14px; }
-  .t-dots .d { display: flex; align-items: baseline; gap: 5px; font-size: 13px; color: #f2f2f2; white-space: nowrap; }
-  .t-dots .d::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 6px var(--gc); align-self: center; }
-  .t-dots .d .v + .v { margin-left: 2px; } .t-dots .d i { font-size: .6em; opacity: .7; } .t-dots .k { font-size: 10px; color: #9aa0aa; letter-spacing: .08em; }
+  .t-dots .d { display: flex; align-items: baseline; gap: 5px; font-size: 13px; color: var(--c-main, #f2f2f2); --cr: main; white-space: nowrap; }
+  .t-dots .d::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gc); align-self: center; box-shadow: 0 0 6px var(--gc); }
+  .t-dots .d .v + .v { margin-left: 2px; } .t-dots .d i { font-size: .6em; opacity: .7; } .t-dots .k { font-size: 10px; color: var(--c-lbl, #9aa0aa); --cr: lbl; letter-spacing: .08em; }
   .t-dots .lbl, .t-dots .track, .t-dots canvas { display: none; }
 
   /* -------- HUD (Rahmenecken) -------- */
@@ -214,12 +214,12 @@
   .t-hud::after { right: -14px; bottom: -8px; border-left: 0; border-top: 0; }
   .t-hud .m { display: grid; grid-template-columns: 46px 1fr auto; gap: 10px; align-items: center; padding: 4px 0; font-size: 13px; }
   .t-hud .m + .m { border-top: 1px solid rgba(255,255,255,.07); }
-  .t-hud .tl { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gc); }
+  .t-hud .tl { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gc); --cr: var(--crg); }
   .t-hud .ln { height: 3px; background: rgba(255,255,255,.1); position: relative; overflow: hidden; }
-  .t-hud .ln .fill { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: var(--gc); transition: width .2s; }
-  .t-hud .val { color: #fff; font-size: 15px; min-width: 64px; text-align: right; } .t-hud .val i { color: #9aa0aa; }
+  .t-hud .ln .fill { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: var(--gc); --cr: var(--crg); transition: width .2s; }
+  .t-hud .val { color: var(--c-main, #fff); --cr: main; font-size: 15px; min-width: 64px; text-align: right; } .t-hud .val i { color: var(--c-unit, #9aa0aa); }
   .t-hud .val.big { font-size: 20px; }
-  .t-hud .sub { grid-column: 1 / -1; font-size: 11.5px; color: #c4c8d0; padding-left: 56px; margin-top: -2px; } .t-hud .sub .v { color: var(--val); }
+  .t-hud .sub { grid-column: 1 / -1; font-size: 11.5px; color: var(--c-lbl, #c4c8d0); --cr: lbl; padding-left: 56px; margin-top: -2px; } .t-hud .sub .v { color: var(--val); --cr: val; }
   .t-hud .lbl, .t-hud .track, .t-hud canvas { display: none; }
 
   /* -------- Live-Edit -------- */
@@ -352,6 +352,40 @@
     transition: transform .12s, box-shadow .15s, filter .15s; }
   #editDone:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(63,126,232,.5), inset 0 1px 0 rgba(255,255,255,.25); }
   #editDone:active { transform: translateY(0) scale(.97); }
+  /* ===== Klick-Farbmodus (Vorschau im Reiter + Live-Editor "Im Overlay anklicken"): Zeigen hebt alle Teile
+     derselben Rolle hervor (Klasse cr-hl per JS aus der CSS-Rollenmarke --cr), Klick oeffnet den Farbwaehler ===== */
+  body.cmode #panel { cursor: pointer !important; outline-color: #4f8ef7; }
+  body.cmode #panel * { pointer-events: auto; }
+  .cr-hl { outline: 1.5px solid #4f8ef7 !important; outline-offset: 1px; border-radius: 3px; box-shadow: 0 0 0 4px rgba(79,142,247,.28); }
+  svg .cr-hl { outline: none !important; box-shadow: none; filter: drop-shadow(0 0 3px #4f8ef7) drop-shadow(0 0 1px #fff); }
+  #crTip { display: none; position: fixed; z-index: 20; pointer-events: none; padding: 4px 9px; border-radius: 7px; font: 600 12px 'Segoe UI', sans-serif;
+    color: #fff; background: rgba(20,24,34,.96); border: 1px solid rgba(79,142,247,.75); box-shadow: 0 6px 18px rgba(0,0,0,.5); text-shadow: none; white-space: nowrap; }
+  #crTip small { display: block; font-weight: 400; color: #9aa2b5; font-size: 10.5px; }
+  /* Paletten-Chips + Farbwaehler des Live-Editors (Look wie die Edit-Leiste) */
+  .eb-pal { gap: 6px; }
+  .eb-pal button { width: 30px; height: 20px; padding: 0; border-radius: 6px; border: 1px solid rgba(255,255,255,.14); cursor: pointer; background: #222; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr 1fr; transition: transform .1s, border-color .15s, box-shadow .15s; }
+  .eb-pal button span { display: block; }
+  .eb-pal button:hover { transform: translateY(-1px); border-color: rgba(79,142,247,.8); }
+  .eb-pal button.on { border-color: #4f8ef7; box-shadow: 0 0 0 2px rgba(79,142,247,.45); }
+  .eb-pal button.eigen { background: conic-gradient(#ff4d4d, #ffe100, #74e857, #4bd6ff, #c79bff, #ff4d4d); }
+  #ebPick { display: none; position: fixed; z-index: 30; width: 232px; padding: 10px; border-radius: 11px; font-family: 'Segoe UI', sans-serif; text-shadow: none; font-weight: 400;
+    background: linear-gradient(180deg, rgba(24,27,38,.98), rgba(14,16,23,.98)); border: 1px solid rgba(79,142,247,.55); box-shadow: 0 14px 34px rgba(0,0,0,.6); }
+  #ebPick .pk-title { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; color: #e8eaf2; margin-bottom: 8px; }
+  #ebPick .pk-title small { color: #7e879c; font-weight: 400; }
+  #ebPick .pk-sv { position: relative; height: 118px; border-radius: 7px; border: 1px solid rgba(255,255,255,.12); cursor: crosshair; }
+  #ebPick .pk-dot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6); pointer-events: none; }
+  #ebPick .pk-hue { position: relative; height: 12px; margin-top: 9px; border-radius: 6px; cursor: pointer; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  #ebPick .pk-hd { position: absolute; top: -3px; width: 8px; height: 18px; margin-left: -4px; border-radius: 4px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6); pointer-events: none; }
+  #ebPick .pk-row { display: flex; align-items: center; gap: 7px; margin-top: 9px; }
+  #ebPick .pk-prev { width: 24px; height: 24px; border-radius: 6px; border: 1px solid rgba(255,255,255,.14); flex-shrink: 0; }
+  #ebPick .pk-hex { flex: 1; min-width: 0; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; color: #e8eaf2; font: 12px Consolas, 'Cascadia Mono', monospace; padding: 4px 7px; outline: none; }
+  #ebPick .pk-hex:focus { border-color: #4f8ef7; }
+  #ebPick .pk-std { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: #c3c9d6; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+  #ebPick .pk-std:hover { border-color: rgba(79,142,247,.7); color: #fff; }
+  #ebPick .pk-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.08); }
+  #ebPick .pk-chip { width: 19px; height: 19px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); cursor: pointer; padding: 0; transition: transform .1s; }
+  #ebPick .pk-chip:hover { transform: scale(1.18); border-color: #fff; }
+  #ebPick .pk-ok { margin-top: 9px; width: 100%; background: linear-gradient(180deg, #5f9bf9, #3f7ee8); color: #fff; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 </style>
 </head>
 <body class="pos-tl theme-bar">
@@ -394,9 +428,20 @@
       </div>
     </div>
     <div class="eb-fields" id="ebFields"></div>
-    <div class="eb-hint"><b>Ziehen</b> = Position &nbsp;·&nbsp; <b>Mausrad</b> = Größe</div>
+    <div class="eb-lay eb-colors">
+      <div class="eb-ctl">
+        <span class="eb-lbl">Palette</span>
+        <div class="eb-row eb-pal" id="ebPal"></div>
+      </div>
+      <div class="eb-ctl">
+        <span class="eb-lbl">Farben</span>
+        <div class="eb-row eb-togs"><button id="ebCmode" title="Dann einen Text im Overlay anklicken - alle Teile dieser Art bekommen eine neue Farbe">Im Overlay anklicken</button></div>
+      </div>
+    </div>
+    <div class="eb-hint" id="ebHint"><b>Ziehen</b> = Position &nbsp;·&nbsp; <b>Mausrad</b> = Größe</div>
   </div>
   <div id="panel"></div>
+  <div id="crTip"></div>
 
 <script>
   // ===================== Konfiguration & Daten ==========================
@@ -412,7 +457,8 @@
               palette: 'standard', colors: null, limits: { on: true, gpuTempWarn: 75, gpuTemp: 85, cpuTempWarn: 80, cpuTemp: 90, loadWarn: 85, load: 95, fpsMin: 60, fpsCrit: 30, pulse: true },
               layout: { labels: true, units: true, icons: false, sep: true, form: 'rund', glow: false, dense: false },
               font: '' };   // Standard-Design: Balken; font '' = Standardschrift (Consolas-Kette aus dem CSS)
-  // Paletten (Paket 1): Gruppenfarben GPU/CPU/FPS/Netz, Wertfarbe, Akzent. 'eigen' nimmt cfg.colors.
+  // Paletten (Paket 1): Gruppenfarben GPU/CPU/FPS/Netz, Nebenwertfarbe (val), Akzent. 'eigen' nimmt cfg.colors.
+  // Rollenfarben main (Hauptwerte), lbl (Beschriftungen), unit (Einheiten) sind optional: fehlen sie, gilt der Design-Standard.
   const PALETTES = {
     standard: { nv: '#74e857', amd: '#ff8a1e', fpc: '#4bd6ff', netc: '#c79bff', val: '#ffe100', accent: '#74e857' },
     mono:     { nv: '#ffffff', amd: '#ffffff', fpc: '#ffffff', netc: '#ffffff', val: '#ffffff', accent: '#ffffff' },
@@ -421,13 +467,17 @@
     amber:    { nv: '#ffb000', amd: '#ff8c00', fpc: '#ffd166', netc: '#ffb000', val: '#ffcc33', accent: '#ffb000' },
     rgb:      { nv: '#00ff88', amd: '#ff3366', fpc: '#00ccff', netc: '#cc66ff', val: '#ffffff', accent: '#00ccff' },
   };
-  function farben() { const p = cfg.palette === 'eigen' && cfg.colors ? Object.assign({}, PALETTES.standard, cfg.colors) : (PALETTES[cfg.palette] || PALETTES.standard); return p; }
-  function applyFarben() {
-    const p = farben(), r = document.documentElement.style;
+  function farben(pal) { pal = pal || cfg.palette; return pal === 'eigen' && cfg.colors ? Object.assign({}, PALETTES.standard, cfg.colors) : (PALETTES[pal] || PALETTES.standard); }
+  function applyFarben(pal) {   // pal nur fuer die Hover-Vorschau der Paletten-Chips im Live-Editor (zeigt, speichert nichts)
+    const p = farben(pal), r = document.documentElement.style;
     r.setProperty('--nv', p.nv); r.setProperty('--amd', p.amd); r.setProperty('--fpc', p.fpc); r.setProperty('--netc', p.netc); r.setProperty('--val', p.val);
-    r.setProperty('--accent', cfg.palette === 'standard' && cfg.accent ? cfg.accent : p.accent);
+    // Rollenfarben Hauptwerte/Beschriftungen/Einheiten: nur wenn Palette oder eigene Farben sie vorgeben, sonst Design-Standard (CSS-Fallback)
+    for (const [k, v] of [['main', '--c-main'], ['lbl', '--c-lbl'], ['unit', '--c-unit']]) { if (/^#[0-9a-fA-F]{6}$/.test(p[k] || '')) r.setProperty(v, p[k]); else r.removeProperty(v); }
+    r.setProperty('--accent', (pal || cfg.palette) === 'standard' && cfg.accent ? cfg.accent : p.accent);
   }
   const GC = { gpu: 'var(--nv)', cpu: 'var(--amd)', fps: 'var(--fpc)', net: 'var(--netc)' };   // Gruppenfarbe als CSS-Wert fuer neue Designs
+  const GCK = { gpu: 'nv', cpu: 'amd', fps: 'fpc', net: 'netc' };   // Farbschluessel je Gruppe (= Rolle im Klick-Farbmodus)
+  const gcs = cat => `--gc:${GC[cat]};--crg:${GCK[cat]}`;   // Inline-Style: Gruppenfarbe + Rollenmarke (CSS: --cr: var(--crg))
   // Fuer die Live-Edit-Leiste: Design-Namen + Kurzlabels der waehlbaren Werte
   const EB_THEMES = [['compact','Kompakt'],['min','Minimal'],['bar','Balken'],['neon','Neon'],['strip','Leiste'],['tiles','Kacheln'],['gauge','Tacho'],['term','Terminal'],['dots','Punkte'],['hud','HUD']];
   const HORIZ = ['strip','tiles','dots'];   // Designs, die beim Umstieg von alten Einstellungen auf 'mittig' wandern (Migration in index.html)
@@ -451,6 +501,7 @@
   // bietet zusaetzlich alle installierten Schriften (Shell: list-fonts) - eine davon erscheint hier nur als Name.
   const EB_FONTS = [['', 'Standard'], ['Cascadia Mono', 'Cascadia Mono'], ['Lucida Console', 'Lucida Console'], ['Courier New', 'Courier New'],
                     ['Segoe UI', 'Segoe UI'], ['Bahnschrift', 'Bahnschrift'], ['Verdana', 'Verdana'], ['Arial', 'Arial'], ['Impact', 'Impact']];
+  const EB_PAL = [['standard','Standard'],['mono','Monochrom'],['dezent','Dezent'],['pastell','Pastell'],['amber','Amber'],['rgb','RGB-Gaming'],['eigen','Eigene Farben']];
   const EB_FLD = {
     gpu: [['load','Last'],['temp','Temp'],['power','Watt'],['clock','Takt'],['vram','VRAM']],
     cpu: [['load','Last'],['temp','Temp'],['clock','Takt'],['power','Watt'],['ram','RAM']],
@@ -679,23 +730,23 @@
   // Ring (Tacho): Umfang 2*pi*r mit r=28 -> 175.9; Fuellgrad setzt paintValues per stroke-dashoffset
   const RING_C = 175.9;
   function ring(role, cat, inner, label) {
-    return `<div class="g" style="--gc:${GC[cat]}"><svg viewBox="0 0 68 68"><circle class="trk" cx="34" cy="34" r="28"/><circle class="ring" data-ring="${role}" cx="34" cy="34" r="28" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C}"/></svg><div class="gv">${inner}</div><div class="gl">${label}</div></div>`;
+    return `<div class="g" style="${gcs(cat)}"><svg viewBox="0 0 68 68"><circle class="trk" cx="34" cy="34" r="28"/><circle class="ring" data-ring="${role}" cx="34" cy="34" r="28" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C}"/></svg><div class="gv">${inner}</div><div class="gl">${label}</div></div>`;
   }
   function buildGauge() {
     let h = '<div class="osd t-gauge"><div class="rings">', rest = '';   // Ringe in einer Reihe, Restwerte als eigener Block darunter
     for (const cat of orderList()) {
-      if (cat === 'net') { if (catList('net').length) rest += `<div class="rrow"><span class="row grp-net" style="--gc:${GC.net}"><span class="k">NET</span> ${has('net','rate')?'<span class="v" data-role="net.rate">–</span>':''} ${has('net','total')?'<span class="v" data-role="net.total">–</span>':''}</span></div>`; continue; }
+      if (cat === 'net') { if (catList('net').length) rest += `<div class="rrow"><span class="row grp-net" style="${gcs('net')}"><span class="k">NET</span> ${has('net','rate')?'<span class="v" data-role="net.rate">–</span>':''} ${has('net','total')?'<span class="v" data-role="net.total">–</span>':''}</span></div>`; continue; }
       if (!catList(cat).length) continue;
       if (cat === 'fps') {
         if (has('fps','fps')) h += ring('fps.fps', 'fps', '<span class="v" data-role="fps.fps">–</span>', 'FPS');
-        if (has('fps','frametime')) rest += `<div class="rrow"><span class="row" data-row="fps.frametime" style="--gc:${GC.fps}"><span class="k">ms</span> ${val('fps.frametime','')}</span></div>`;
+        if (has('fps','frametime')) rest += `<div class="rrow"><span class="row" data-row="fps.frametime" style="${gcs('fps')}"><span class="k">ms</span> ${val('fps.frametime','')}</span></div>`;
         continue;
       }
       const nm = cat.toUpperCase();
       if (has(cat,'load')) h += ring(cat + '.load', cat, val(cat + '.load', '%'), nm + ' Last');
       if (has(cat,'temp')) h += ring(cat + '.temp', cat, val(cat + '.temp', '°'), nm + ' Temp');
       const rr = rowsFor(cat).filter(x => x !== 'temp');   // je Gruppe eine zentrierte Zeile unter den Ringen
-      if (rr.length) rest += '<div class="rrow">' + rr.map(f => `<span class="row" data-row="${cat}.${f}" style="--gc:${GC[cat]}"><span class="k">${nm} ${LABEL[f]}</span> ${val(cat+'.'+f, UNIT[f])}</span>`).join('') + '</div>';
+      if (rr.length) rest += '<div class="rrow">' + rr.map(f => `<span class="row" data-row="${cat}.${f}" style="${gcs(cat)}"><span class="k">${nm} ${LABEL[f]}</span> ${val(cat+'.'+f, UNIT[f])}</span>`).join('') + '</div>';
     }
     h += '</div>';
     if (rest) h += '<div class="rest">' + rest + '</div>';
@@ -704,10 +755,10 @@
   function buildTerm() {
     let h = '<div class="osd t-term">';
     for (const cat of orderList()) {
-      if (cat === 'net') { if (catList('net').length) h += `<div class="ln grp-net" style="--gc:${GC.net}"><span class="k">NET</span> ${has('net','rate')?'<span class="v" data-role="net.rate">–</span>':''} ${has('net','total')?'<span class="v" data-role="net.total">–</span>':''}</div>`; continue; }
+      if (cat === 'net') { if (catList('net').length) h += `<div class="ln grp-net" style="${gcs('net')}"><span class="k">NET</span> ${has('net','rate')?'<span class="v" data-role="net.rate">–</span>':''} ${has('net','total')?'<span class="v" data-role="net.total">–</span>':''}</div>`; continue; }
       if (!catList(cat).length) continue;
-      if (cat === 'fps') { h += `<div class="ln" style="--gc:${GC.fps}"><span class="k fp">FPS</span> ${has('fps','fps')?'<span class="v" data-role="fps.fps">–</span>':''}${has('fps','frametime')?` <span data-row="fps.frametime">${val('fps.frametime','ms')}</span>`:''}</div>`; continue; }
-      h += `<div class="ln" style="--gc:${GC[cat]}"><span class="k ${cat==='gpu'?'nv':'amd'}">${cat.toUpperCase()}</span>`;
+      if (cat === 'fps') { h += `<div class="ln" style="${gcs('fps')}"><span class="k fp">FPS</span> ${has('fps','fps')?'<span class="v" data-role="fps.fps">–</span>':''}${has('fps','frametime')?` <span data-row="fps.frametime">${val('fps.frametime','ms')}</span>`:''}</div>`; continue; }
+      h += `<div class="ln" style="${gcs(cat)}"><span class="k ${cat==='gpu'?'nv':'amd'}">${cat.toUpperCase()}</span>`;
       const teile = [];
       if (has(cat,'load')) teile.push(val(cat+'.load','%'));
       for (const f of rowsFor(cat)) teile.push(`<span data-row="${cat}.${f}">${val(cat+'.'+f, UNIT[f])}</span>`);
@@ -718,10 +769,10 @@
   function buildDots() {
     let h = '<div class="osd t-dots">';
     for (const cat of orderList()) {
-      if (cat === 'net') { if (catList('net').length && has('net','rate')) h += `<span class="d grp-net" style="--gc:${GC.net}"><span class="k">NET</span><span class="v" data-role="net.rate">–</span></span>`; continue; }
+      if (cat === 'net') { if (catList('net').length && has('net','rate')) h += `<span class="d grp-net" style="${gcs('net')}"><span class="k">NET</span><span class="v" data-role="net.rate">–</span></span>`; continue; }
       if (!catList(cat).length) continue;
-      if (cat === 'fps') { h += `<span class="d fps" style="--gc:${GC.fps}">${has('fps','fps')?'<span class="v" data-role="fps.fps">–</span>':''}${has('fps','frametime')?` <span data-row="fps.frametime">${val('fps.frametime','ms')}</span>`:''}</span>`; continue; }
-      h += `<span class="d ${cat==='gpu'?'nv':'amd'}" style="--gc:${GC[cat]}"><span class="k">${cat.toUpperCase()}</span>`;
+      if (cat === 'fps') { h += `<span class="d fps" style="${gcs('fps')}">${has('fps','fps')?'<span class="v" data-role="fps.fps">–</span>':''}${has('fps','frametime')?` <span data-row="fps.frametime">${val('fps.frametime','ms')}</span>`:''}</span>`; continue; }
+      h += `<span class="d ${cat==='gpu'?'nv':'amd'}" style="${gcs(cat)}"><span class="k">${cat.toUpperCase()}</span>`;
       if (has(cat,'load')) h += val(cat+'.load','%');
       for (const f of rowsFor(cat)) h += ` <span data-row="${cat}.${f}">${val(cat+'.'+f, UNIT[f]==='°C'?'°':UNIT[f])}</span>`;
       h += '</span>';
@@ -731,10 +782,10 @@
   function buildHud() {
     let h = '<div class="osd t-hud">';
     for (const cat of orderList()) {
-      if (cat === 'net') { if (catList('net').length) h += `<div class="m grp-net" style="--gc:${GC.net}"><span class="tl">NET</span><span></span><span class="val"><span data-role="net.rate">–</span></span>${has('net','total')?'<div class="sub">Σ <span class="v" data-role="net.total">–</span></div>':''}</div>`; continue; }
+      if (cat === 'net') { if (catList('net').length) h += `<div class="m grp-net" style="${gcs('net')}"><span class="tl">NET</span><span></span><span class="val"><span data-role="net.rate">–</span></span>${has('net','total')?'<div class="sub">Σ <span class="v" data-role="net.total">–</span></div>':''}</div>`; continue; }
       if (!catList(cat).length) continue;
-      if (cat === 'fps') { h += `<div class="m fps" style="--gc:${GC.fps}"><span class="tl">FPS</span><span class="ln"><span class="fill" data-role="fps.fpsbar"></span></span><span class="val big">${has('fps','fps')?'<span class="v" data-role="fps.fps">–</span>':'–'}</span>${has('fps','frametime')?`<div class="sub" data-row="fps.frametime">${val('fps.frametime','ms')}</div>`:''}</div>`; continue; }
-      h += `<div class="m ${cat==='gpu'?'nv':'amd'}" style="--gc:${GC[cat]}"><span class="tl">${cat.toUpperCase()}</span><span class="ln">${has(cat,'load')?`<span class="fill" data-role="${cat}.loadbar"></span>`:''}</span><span class="val">${has(cat,'load')?val(cat+'.load','%'):'–'}</span>`;
+      if (cat === 'fps') { h += `<div class="m fps" style="${gcs('fps')}"><span class="tl">FPS</span><span class="ln"><span class="fill" data-role="fps.fpsbar"></span></span><span class="val big">${has('fps','fps')?'<span class="v" data-role="fps.fps">–</span>':'–'}</span>${has('fps','frametime')?`<div class="sub" data-row="fps.frametime">${val('fps.frametime','ms')}</div>`:''}</div>`; continue; }
+      h += `<div class="m ${cat==='gpu'?'nv':'amd'}" style="${gcs(cat)}"><span class="tl">${cat.toUpperCase()}</span><span class="ln">${has(cat,'load')?`<span class="fill" data-role="${cat}.loadbar"></span>`:''}</span><span class="val">${has(cat,'load')?val(cat+'.load','%'):'–'}</span>`;
       const subs = rowsFor(cat).map(f => `<span data-row="${cat}.${f}"><span class="k">${LABEL[f]}</span> ${val(cat+'.'+f, UNIT[f])}</span>`);
       if (subs.length) h += `<div class="sub">${subs.join(' · ')}</div>`;
       h += '</div>';
@@ -752,7 +803,7 @@
     const w = ftCanvas.width, h = ftCanvas.height;
     ftCtx.clearRect(0,0,w,h);
     const peak = Math.max(20, ...ftBuf);
-    ftCtx.strokeStyle = '#6fe86f'; ftCtx.lineWidth = 1.5; ftCtx.beginPath();
+    ftCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--fpc').trim() || '#6fe86f'; ftCtx.lineWidth = 1.5; ftCtx.beginPath();   // FPS-Gruppenfarbe
     for (let i = 0; i < FT_MAX; i++) { const x = (i/(FT_MAX-1))*w, y = h-(ftBuf[i]/peak)*(h-2)-1; i?ftCtx.lineTo(x,y):ftCtx.moveTo(x,y); }
     ftCtx.stroke();
   }
@@ -895,11 +946,145 @@
   }
   // (kein Aufruf beim Laden: Standardwerte stehen schon im CSS; applyConfig setzt alles, sobald die Config kommt)
 
+  // ===================== Klick-Farbmodus ================================
+  // Jedes gefaerbte Element traegt im CSS seine Rolle als --cr (nv/amd/fpc/netc = Gruppe, main = Hauptwerte,
+  // val = Nebenwerte, lbl = Beschriftungen, unit = Einheiten). Zeigen hebt alle Teile derselben Rolle hervor,
+  // Klick liefert die Rolle: in der Reiter-Vorschau (?preview=1) ans Hauptfenster, im Live-Editor an den
+  // eigenen Farbwaehler (#ebPick). Kein Element wird einzeln gefaerbt - immer die ganze Rolle.
+  const IS_PREVIEW = /[?&]preview=1/.test(location.search);
+  const CR_LABEL = { nv: 'GPU', amd: 'CPU', fpc: 'FPS', netc: 'Netz', main: 'Hauptwerte', val: 'Nebenwerte', lbl: 'Beschriftungen', unit: 'Einheiten' };
+  const CR_AUTO = ['main', 'lbl', 'unit'];   // Rollen ohne Palettenwert: '' = Design-Standard
+  const crTip = document.getElementById('crTip');
+  let crMode = false, crHl = '';
+  function crOf(el) { return el && el.nodeType === 1 ? (getComputedStyle(el).getPropertyValue('--cr').trim() || '') : ''; }
+  function crLeaf(el) { return el.matches('.fill, .ring') || [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); }
+  function crHighlight(role) {
+    if (role === crHl) return;
+    crHl = role;
+    panel.querySelectorAll('.cr-hl').forEach(e => e.classList.remove('cr-hl'));
+    if (!role) return;
+    for (const el of panel.querySelectorAll('*')) if (crOf(el) === role && crLeaf(el)) el.classList.add('cr-hl');
+  }
+  function rgbToHex(c) { const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c || ''); return m ? '#' + [m[1], m[2], m[3]].map(x => (+x).toString(16).padStart(2, '0')).join('') : ''; }
+  // aktuelle Farbe einer Rolle: aus der Palette/eigenen Farben, sonst (Auto-Rollen) die gerade gerenderte Farbe des Elements
+  function crColor(role, el) { const p = farben(), v = p[role]; if (/^#[0-9a-fA-F]{6}$/.test(v || '')) return { color: v, auto: false }; return { color: rgbToHex(getComputedStyle(el).color) || '#ffffff', auto: CR_AUTO.includes(role) }; }
+  function crSet(on) { crMode = !!on; document.body.classList.toggle('cmode', crMode); if (!crMode) { crHighlight(''); crTip.style.display = 'none'; ebPickClose(false); } }
+  panel.addEventListener('mousemove', e => {
+    if (!crMode) return;
+    const role = crOf(e.target);
+    crHighlight(role);
+    if (!role) { crTip.style.display = 'none'; return; }
+    crTip.innerHTML = CR_LABEL[role] + '<small>Klick = Farbe wählen</small>';
+    crTip.style.display = 'block';
+    const x = Math.min(e.clientX + 16, window.innerWidth - crTip.offsetWidth - 8), y = Math.min(e.clientY + 18, window.innerHeight - crTip.offsetHeight - 8);
+    crTip.style.left = x + 'px'; crTip.style.top = y + 'px';
+  });
+  panel.addEventListener('mouseleave', () => { if (crMode) { crHighlight(''); crTip.style.display = 'none'; } });
+  panel.addEventListener('click', e => {
+    if (!crMode) return;
+    const role = crOf(e.target); if (!role) return;
+    e.preventDefault(); e.stopPropagation();
+    const c = crColor(role, e.target);
+    if (IS_PREVIEW) { window.parent.postMessage({ t: 'osd-pick', key: role, label: CR_LABEL[role], color: c.color, auto: c.auto, x: e.clientX, y: e.clientY }, '*'); return; }
+    ebPickOpen(role, c, e.clientX, e.clientY);
+  });
+
+  // --- Farbwaehler des Live-Editors (Fenster im Spiel; die Reiter-Vorschau nutzt den Waehler des Hauptfensters) ---
+  const PK_GENERIC = ['#ffffff', '#d0d4d8', '#9aa0aa', '#6f7688', '#ffe100', '#74e857', '#4bd6ff', '#ff8a1e', '#c79bff', '#ff4d4d'];
+  function hexToHsv(hex) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0;
+    if (d) { h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360; }
+    return { h, s: mx ? d / mx : 0, v: mx };
+  }
+  function hsvToHex(h, s, v) { const f = n => { const k = (n + h / 60) % 6; const c = v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); return Math.round(c * 255).toString(16).padStart(2, '0'); }; return '#' + f(5) + f(3) + f(1); }
+  let pk = null;   // { role, hsv, orig (colors-Objekt vor dem Oeffnen), origPal, sent }
+  function ebPickEl() {
+    let el = document.getElementById('ebPick'); if (el) return el;
+    el = document.createElement('div'); el.id = 'ebPick';
+    el.innerHTML = '<div class="pk-title"><span class="pk-name"></span><small>alle Teile dieser Art</small></div>'
+      + '<div class="pk-sv"><div class="pk-dot"></div></div><div class="pk-hue"><div class="pk-hd"></div></div>'
+      + '<div class="pk-row"><span class="pk-prev"></span><input class="pk-hex" maxlength="7" spellcheck="false"><button type="button" class="pk-std"></button></div>'
+      + '<div class="pk-chips"></div><button type="button" class="pk-ok">Fertig</button>';
+    document.body.appendChild(el);
+    const sv = el.querySelector('.pk-sv'), hue = el.querySelector('.pk-hue'), hex = el.querySelector('.pk-hex');
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    const normHex = t => { t = t.trim().toLowerCase(); if (!t.startsWith('#')) t = '#' + t; return /^#[0-9a-f]{6}$/.test(t) ? t : null; };
+    function dragOn(area, fn) {
+      area.addEventListener('pointerdown', e => { area.setPointerCapture(e.pointerId); fn(e, true); e.preventDefault(); e.stopPropagation(); });
+      area.addEventListener('pointermove', e => { if (area.hasPointerCapture(e.pointerId)) fn(e, true); });
+      area.addEventListener('pointerup', e => { area.releasePointerCapture(e.pointerId); fn(e, false); });
+    }
+    dragOn(sv, (e, live) => { const r = sv.getBoundingClientRect(); pkSet({ s: clamp((e.clientX - r.left) / r.width, 0, 1), v: clamp(1 - (e.clientY - r.top) / r.height, 0, 1) }, live); });
+    dragOn(hue, (e, live) => { const r = hue.getBoundingClientRect(); pkSet({ h: clamp((e.clientX - r.left) / r.width, 0, 0.9999) * 360 }, live); });
+    hex.addEventListener('input', () => { const t = normHex(hex.value); if (t) { pk.hsv = hexToHsv(t); pkApply(true); } });
+    hex.addEventListener('change', () => { const t = normHex(hex.value); if (t) { pk.hsv = hexToHsv(t); pkApply(false); } else pkPaint(); });
+    el.querySelector('.pk-std').addEventListener('click', () => {   // Auto-Rollen: zurueck auf Design-Standard; Gruppen/Nebenwerte: Standardpalette
+      const c = Object.assign({}, cfg.colors || {});
+      if (CR_AUTO.includes(pk.role)) delete c[pk.role]; else c[pk.role] = PALETTES.standard[pk.role];
+      cfg.colors = c; applyFarben(); pk.hsv = hexToHsv(crColor(pk.role, panel).color); pkPaint(); pkSend();
+    });
+    el.querySelector('.pk-chips').addEventListener('click', e => { const c = e.target.closest('.pk-chip'); if (c) { pk.hsv = hexToHsv(c.dataset.c); pkApply(false); } });
+    el.querySelector('.pk-ok').addEventListener('click', () => ebPickClose(false));
+    el.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); ebPickClose(true); } else if (e.key === 'Enter' && e.target !== hex) { e.preventDefault(); ebPickClose(false); } });
+    el.addEventListener('pointerdown', e => e.stopPropagation());   // Panel-Drag/Klick nicht ausloesen
+    el.addEventListener('wheel', e => e.stopPropagation());
+    return el;
+  }
+  function pkPaint() {
+    const el = ebPickEl(), { h, s, v } = pk.hsv, c = hsvToHex(h, s, v);
+    el.querySelector('.pk-sv').style.background = 'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(' + h + ' 100% 50%))';
+    const dot = el.querySelector('.pk-dot'); dot.style.left = (s * 100) + '%'; dot.style.top = ((1 - v) * 100) + '%';
+    el.querySelector('.pk-hd').style.left = (h / 360 * 100) + '%';
+    el.querySelector('.pk-prev').style.background = c;
+    const hex = el.querySelector('.pk-hex'); if (document.activeElement !== hex) hex.value = c;
+  }
+  function pkSet(p, live) { Object.assign(pk.hsv, p); pkApply(live); }
+  function pkApply(live) {   // Farbe sofort ins Overlay (eigene Palette), beim Loslassen an die Shell
+    const c = hsvToHex(pk.hsv.h, pk.hsv.s, pk.hsv.v);
+    cfg.colors = Object.assign({}, PALETTES[pk.origPal] || PALETTES.standard, cfg.colors || {}, { [pk.role]: c }); cfg.palette = 'eigen';
+    delete cfg.colors.accent;
+    applyFarben(); pkPaint(); renderEditbar(false);
+    if (!live) pkSend();
+  }
+  function pkSend() { pk.sent = true; if (ipcRenderer) ipcRenderer.invoke('osd-edit-colors', { palette: cfg.palette, colors: cfg.colors }); }
+  function ebPickOpen(role, c, x, y) {
+    const el = ebPickEl();
+    if (pk) ebPickClose(false);
+    // Start aus einer festen Palette: deren Farben werden die Basis der eigenen Farben (sonst spraengen alle anderen Rollen auf Standard)
+    const basis = cfg.palette === 'eigen' ? (cfg.colors || {}) : Object.assign({}, PALETTES[cfg.palette] || PALETTES.standard);
+    delete basis.accent;
+    pk = { role, hsv: hexToHsv(c.color), orig: cfg.colors ? JSON.parse(JSON.stringify(cfg.colors)) : null, origPal: cfg.palette, sent: false };
+    if (cfg.palette !== 'eigen') cfg.colors = basis;
+    el.querySelector('.pk-name').textContent = CR_LABEL[role];
+    el.querySelector('.pk-std').textContent = CR_AUTO.includes(role) ? 'Automatisch' : 'Standard';
+    const seen = new Set(), list = [];
+    for (const p of Object.values(PALETTES)) { const v = p[role]; if (v && !seen.has(v)) { seen.add(v); list.push(v); } }
+    for (const v of PK_GENERIC) if (list.length < 10 && !seen.has(v)) { seen.add(v); list.push(v); }
+    el.querySelector('.pk-chips').innerHTML = list.map(v => '<button type="button" class="pk-chip" data-c="' + v + '" style="background:' + v + '" title="' + v + '"></button>').join('');
+    el.style.display = 'block';
+    // neben dem Panel (rechts, sonst links), damit das Overlay beim Faerben sichtbar bleibt; passt beides nicht: am Klickpunkt
+    const pr = panel.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    const left = pr.right + 12 + w <= window.innerWidth - 8 ? pr.right + 12 : pr.left - 12 - w >= 8 ? pr.left - 12 - w : x + 14;
+    el.style.left = Math.max(8, Math.min(left, window.innerWidth - w - 8)) + 'px';
+    el.style.top = Math.max(8, Math.min(y - 40, window.innerHeight - h - 8)) + 'px';
+    pkPaint(); el.querySelector('.pk-hex').focus({ preventScroll: true }); el.querySelector('.pk-hex').blur();
+  }
+  function ebPickClose(revert) {
+    if (!pk) return;
+    const el = document.getElementById('ebPick');
+    if (revert) { cfg.colors = pk.orig; cfg.palette = pk.origPal; applyFarben(); renderEditbar(false); if (pk.sent && ipcRenderer) ipcRenderer.invoke('osd-edit-colors', { palette: cfg.palette, colors: cfg.colors }); }
+    if (el) el.style.display = 'none';
+    pk = null;
+  }
+  document.addEventListener('pointerdown', e => { if (pk && !e.target.closest('#ebPick')) ebPickClose(false); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && crMode && !pk && editing) { crSet(false); renderEditbar(false); } });
+
   // ===================== Live-Edit + IPC ===============================
   let editing = false, drag = null;
   function setEdit(on) { editing = on; document.body.classList.toggle('edit', on);
     if (on) renderEditbar(true);
-    if (!on) { panel.style.left = panel.style.top = panel.style.right = panel.style.bottom = ''; scheduleBounds(); } }
+    if (!on) { panel.style.left = panel.style.top = panel.style.right = panel.style.bottom = ''; crSet(false); scheduleBounds(); } }
 
   // --- Live-Edit-Leiste: Design durchschalten, Deckkraft, Werte an/aus ---------
   function renderEditbar(full) {
@@ -916,6 +1101,10 @@
     // Form + Darstellungsschalter spiegeln cfg.layout (Standardwerte wie in applyLayout)
     const lay = cfg.layout || {};
     { const f = cfg.font || '', e = EB_FONTS.find(x => x[0] === f); document.getElementById('ebFontName').textContent = e ? e[1] : f; }
+    // Paletten-Chips (drei Gruppenfarben als Streifen) + eigene Farben; Farbmodus-Knopf spiegelt crMode
+    document.getElementById('ebPal').innerHTML = EB_PAL.map(([k, nm]) => { const p = PALETTES[k]; return '<button data-pal="' + k + '" class="' + (k === 'eigen' ? 'eigen' : '') + (cfg.palette === k ? ' on' : '') + '" title="' + nm + '">' + (p ? '<span style="background:' + p.nv + '"></span><span style="background:' + p.amd + '"></span><span style="background:' + p.fpc + '"></span>' : '') + '</button>'; }).join('');
+    document.getElementById('ebCmode').classList.toggle('on', crMode);
+    document.getElementById('ebHint').innerHTML = crMode ? '<b>Klick</b> auf einen Text im Overlay = Farbe f\u00fcr alle Teile dieser Art &nbsp;\u00b7&nbsp; <b>Esc</b> = Farbmodus aus' : '<b>Ziehen</b> = Position &nbsp;\u00b7&nbsp; <b>Mausrad</b> = Gr\u00f6\u00dfe';
     // Schalter ohne Wirkung im aktuellen Design sind gesperrt (LAY_CAPS)
     document.querySelectorAll('#ebForm button').forEach(b => { b.classList.toggle('on', (lay.form || 'rund') === b.dataset.form); b.disabled = !layCan('form'); b.title = b.disabled ? 'In diesem Design ohne Wirkung' : ''; });
     document.querySelectorAll('#ebLay button').forEach(b => { b.classList.toggle('on', ebLayAn(lay, b.dataset.lay)); b.disabled = !layCan(b.dataset.lay); b.title = b.disabled ? 'In diesem Design ohne Wirkung' : ''; });
@@ -1043,6 +1232,14 @@
   }
   document.getElementById('ebForm').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) ebSetLayout({ form: b.dataset.form }); });
   document.getElementById('ebLay').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const k = b.dataset.lay; ebSetLayout({ [k]: !ebLayAn(cfg.layout || {}, k) }); });
+  document.getElementById('ebPal').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    cfg.palette = b.dataset.pal; applyFarben(); renderEditbar(false);
+    if (ipcRenderer) ipcRenderer.invoke('osd-edit-palette', cfg.palette);   // Shell schreibt osdPalette, eigene Farben bleiben gespeichert
+  });
+  document.getElementById('ebPal').addEventListener('mouseover', (e) => { const b = e.target.closest('button'); if (b) applyFarben(b.dataset.pal); });   // Hover zeigt die Palette
+  document.getElementById('ebPal').addEventListener('mouseleave', () => applyFarben());
+  document.getElementById('ebCmode').addEventListener('click', () => { crSet(!crMode); renderEditbar(false); });
   document.getElementById('ebCorners').addEventListener('click', (e) => {
     const btn = e.target.closest('.eb-corner'); if (!btn) return;
     const corner = btn.dataset.corner;
@@ -1052,7 +1249,7 @@
     if (ipcRenderer) ipcRenderer.invoke('osd-edit-corner', corner);
   });
   panel.addEventListener('pointerdown', (e) => {
-    if (!editing || e.target.closest('#editDone')) return;
+    if (!editing || crMode || e.target.closest('#editDone')) return;   // Farbmodus: Klick waehlt Rolle, kein Verschieben
     const r = panel.getBoundingClientRect();
     drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
     document.body.classList.remove('pos-tl','pos-tc','pos-tr','pos-bl','pos-bc','pos-br');
@@ -1095,9 +1292,31 @@
     }
   } catch (e) {}
 
+  // Beispielwerte fuer Reiter-Vorschau und Browser-Demo (keine echten Geraete)
+  const DEMO = { gpu: { brand: 'NVIDIA', name: 'GeForce RTX', load: 45, temp: 62, power: 210, clock: 2730, vram: 8420 },
+                 cpu: { brand: 'AMD', name: 'Ryzen 9', load: 38, temp: 68, power: 95, clock: 5000, ram: 24560 },
+                 fps: 144, frametime: 6.9, api: 'D3D12', net: null };
+  function demoTick() { data.fps = 138 + Math.round(Math.random() * 12); data.frametime = +(1000 / data.fps).toFixed(1); data.gpu.load = 40 + Math.round(Math.random() * 20); pushFrametime(data.frametime); paintValues(); }
   let ipcRenderer = null;
-  try { ipcRenderer = require('electron').ipcRenderer; } catch (e) {}
-  if (ipcRenderer) {
+  if (!IS_PREVIEW) try { ipcRenderer = require('electron').ipcRenderer; } catch (e) {}
+  if (IS_PREVIEW) {
+    // -------- Vorschau im Einstellungsreiter (iframe in index.html): Config per postMessage vom Hauptfenster,
+    // Beispielwerte, Klick-Farbmodus immer an (Klick meldet die Rolle ans Hauptfenster, das den Farbwaehler oeffnet),
+    // Panelmasse ans Hauptfenster (das den Rahmen passend macht). Kein Shell-Kanal: osd-bounds o. ae. gehen hier nie raus.
+    document.body.style.opacity = '1';
+    data = JSON.parse(JSON.stringify(DEMO));
+    window.addEventListener('message', (e) => {
+      const m = e.data || {};
+      if (m.t === 'cfg' && m.cfg) applyConfig(m.cfg);
+      else if (m.t === 'hl') crHighlight(m.key || '');   // Zeigen auf eine Farbkachel im Reiter hebt die Rolle hier hervor
+    });
+    crSet(true);
+    renderPanel();
+    const meld = () => { const r = panel.getBoundingClientRect(); window.parent.postMessage({ t: 'osd-size', w: Math.ceil(r.width + 28), h: Math.ceil(r.height + 28) }, '*'); };
+    try { new ResizeObserver(meld).observe(panel); } catch (e) {}
+    setInterval(demoTick, 600);
+    window.parent.postMessage({ t: 'osd-ready' }, '*');
+  } else if (ipcRenderer) {
     ipcRenderer.on('osd-data', (e, d) => updateOsd(d));
     ipcRenderer.on('osd-config', (e, c) => applyConfig(c));
     ipcRenderer.on('osd-edit', (e, on) => setEdit(on));
@@ -1119,11 +1338,9 @@
   } else {
     // -------- Demo-Modus (im Browser ohne Electron): Beispielwerte + Theme-Umschalter
     document.body.style.opacity = '1'   // kein Shell-Fade hier -> Default (unsichtbar) sofort aufheben
-    data = { gpu:{brand:'NVIDIA',name:'RTX 4080 SUPER',load:45,temp:62,power:210,clock:2730,vram:8420},
-             cpu:{brand:'AMD',name:'7950X3D',load:38,temp:68,power:95,clock:5000,ram:24560},
-             fps:144, frametime:6.9, api:'D3D12' };
+    data = JSON.parse(JSON.stringify(DEMO));
     renderPanel();
-    let n = 0; setInterval(() => { data.fps = 138 + Math.round(Math.random()*12); data.frametime = +(1000/data.fps).toFixed(1); data.gpu.load = 40+Math.round(Math.random()*20); pushFrametime(data.frametime); paintValues(); }, 300);
+    setInterval(demoTick, 300);
     const themes = ['compact','min','bar','neon','strip','tiles','gauge','term','dots','hud'];
     const sw = document.createElement('div');
     sw.style.cssText = 'position:fixed;top:8px;left:8px;display:flex;gap:6px;font-family:sans-serif;font-weight:400;z-index:99';

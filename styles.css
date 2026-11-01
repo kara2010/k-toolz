@@ -538,7 +538,23 @@ body::before {
 }
 /* Paket 1: Farben, Form, Layout-Schalter, Grenzwerte */
 /* Farbfelder: fuenf nebeneinander auch in der halben Karte, je Farbe ein Zuruecksetzen auf die Standardpalette */
-.osd-colors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 6px; margin-top: 10px; }
+/* Farbkarte: Paletten-Chips, Vorschau-Overlay (iframe osd.html?preview=1, bei Platzmangel verkleinert), acht Rollen-Kacheln */
+.osd-palchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.osd-palchip { display: flex; align-items: center; gap: 7px; padding: 4px 9px 4px 5px; border-radius: 8px; border: 1px solid #333; background: #1b1b1b; color: #bbb; font-size: 12px; cursor: pointer; transition: border-color .15s, transform .1s, background .15s; }
+.osd-palchip:hover { border-color: #555; color: #eee; transform: translateY(-1px); }
+.osd-palchip.on { border-color: var(--accent); color: #fff; background: rgba(var(--accent-rgb), .12); box-shadow: 0 0 0 1px rgba(var(--accent-rgb), .35); }
+.osd-palchip .sw { display: grid; grid-template-columns: 1fr 1fr 1fr; width: 27px; height: 16px; border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); flex-shrink: 0; }
+.osd-palchip .sw i { display: block; }
+.osd-palchip.eigen .sw { background: conic-gradient(#ff4d4d, #ffe100, #74e857, #4bd6ff, #c79bff, #ff4d4d); }
+.osd-colorbody { position: relative; margin-top: 10px; }
+.osd-prev { display: flex; justify-content: center; padding: 8px; border-radius: 9px; border: 1px solid #2a2a2e; overflow: hidden; min-height: 60px;
+  background: linear-gradient(158deg, #1d2b24, #0f171d 62%, #101a22); }
+.osd-prev-scale { transform-origin: 0 0; width: 0; height: 0; }
+.osd-prev iframe { display: block; border: 0; width: 0; height: 0; background: transparent; }   /* kein color-scheme hier: ein abweichendes Schema macht den iframe-Hintergrund in Chromium undurchsichtig weiss */
+.osd-prev-hint { font-size: 11.5px; color: #8a8a90; margin: 6px 0 0; }
+.osd-colors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px; margin-top: 10px; }
+.osd-swatch.auto { background: repeating-linear-gradient(45deg, #2a2a2e 0 5px, #1e1e20 5px 10px) !important; position: relative; }
+.osd-swatch.auto::after { content: 'A'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #8a8a90; }
 .osd-color { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #bbb; min-width: 0; }
 .osd-color input[type="color"] { display: none; }   /* nur noch Wertspeicher - Kachel + eigener Farbwaehler (osdPickerOpen) uebernehmen */
 .osd-swatch { width: 100%; height: 24px; padding: 0; border: 1px solid #333; border-radius: 6px; background: #1b1b1b; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); transition: border-color .15s, transform .1s; }
