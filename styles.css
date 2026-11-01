@@ -547,6 +547,33 @@ body::before {
 .osd-togglegrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 14px; padding: 4px 0 2px 86px; }
 .osd-mini { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #bbb; cursor: pointer; }
 .osd-mini input { accent-color: var(--accent); }
+/* PlainOSD-Reiter als Karten (Umbau 1.11.2026): zweispaltig, breite Karten ueber beide Spalten, Datenquellen eingeklappt */
+.osd-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.osd-card { background: #1c1c1e; border: 1px solid #2a2a2e; border-radius: 10px; padding: 14px 16px 16px; min-width: 0; }
+.osd-card.wide { grid-column: 1 / -1; }
+.osd-card-title { margin: 0 0 2px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: #cfcfd6; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.osd-card-title .n { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0; flex-shrink: 0; }
+.osd-card-sub { font-size: 12px; color: #8a8a90; margin: 0 0 10px; }
+.osd-card .osd-field { margin-top: 8px; }
+.osd-card .osd-togglegrid { padding-left: 0; margin-top: 10px; }
+.osd-card .setting-toggle-row { margin-top: 6px; }
+.osd-card .osd-board-tip { margin-top: 0; }
+.osd-hk-label { display: block; font-size: 12px; color: #bbb; margin: 10px 0 4px; }
+.osd-hk-label:first-of-type { margin-top: 0; }
+.osd-pos-row { display: flex; gap: 22px; align-items: flex-start; }
+.osd-pos-row .osd-corners { flex: 0 0 auto; }
+.osd-pos-sliders { flex: 1; min-width: 0; }
+.osd-pos-sliders .osd-field { margin: 0 0 8px; }
+.osd-pos-hint { margin: 0; }
+.osd-pos-hint .hotkey-display { margin: 0 4px; }
+.osd-card-details summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.osd-card-details summary::-webkit-details-marker { display: none; }
+.osd-card-details summary::after { content: '⌄'; color: #777; font-size: 16px; flex-shrink: 0; }
+.osd-card-details[open] summary::after { content: '⌃'; }
+.osd-card-details summary .osd-card-title { margin: 0; }
+.osd-card-info { font-size: 12px; color: #8a8a90; flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-panel[data-panel="overlay"] { container-type: inline-size; }   /* Spaltenzahl haengt am Reiter, nicht am Fenster */
+@container (max-width: 720px) { .osd-cards { grid-template-columns: 1fr; } .osd-card.wide { grid-column: auto; } }
 .osd-limits { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 6px; max-width: 420px; }
 .osd-limit { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #bbb; }
 .osd-limit b { width: 66px; text-align: center; font-weight: 600; font-size: 11px; color: #888; letter-spacing: .04em; }
