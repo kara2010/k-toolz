@@ -468,6 +468,7 @@
                   <span class="osd-color"><input type="color" id="setOsdColUnit" value="#c8c8c8" data-auto="1"><span class="osd-color-nm"><label>Einheiten</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColUnit')">↺</button></span></span>
                   <span class="osd-color"><input type="color" id="setOsdColAcc" value="#74e857" data-auto="1"><span class="osd-color-nm"><label>Rahmen</label><button type="button" class="osd-color-reset" title="Automatisch (wie im Design)" onclick="osdColorReset('setOsdColAcc')">↺</button></span></span>
                 </div>
+                <div id="osdPicker" class="osd-picker" tabindex="-1"></div>
               </div>
             </div>
 
@@ -4543,13 +4544,12 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     }
     let osdPick = null   // { el, inp, id, hsv, orig, origAuto, saved, savedAuto, snap }
     function osdPickerInit() {
-      if (document.getElementById('osdPicker')) return
-      const el = document.createElement('div'); el.id = 'osdPicker'; el.className = 'osd-picker'; el.tabIndex = -1
+      const el = document.getElementById('osdPicker'); if (el.dataset.init) return   // Markup statisch (ui-check), Inhalt einmalig
+      el.dataset.init = '1'
       el.innerHTML = '<div class="osd-pick-sv" tabindex="0"><div class="osd-pick-dot"></div></div>'
         + '<div class="osd-pick-hue" tabindex="0"><div class="osd-pick-hd"></div></div>'
         + '<div class="osd-pick-row"><span class="osd-pick-prev"></span><input class="osd-pick-hex" maxlength="7" spellcheck="false" aria-label="Hex"><button type="button" class="osd-color-reset osd-pick-reset" title="Standardfarbe">↺</button></div>'
         + '<div class="osd-pick-chips"></div>'
-      document.getElementById('osdColorBody').appendChild(el)   // Bezugsrahmen fuer die Platzierung: Vorschau + Kacheln
       const sv = el.querySelector('.osd-pick-sv'), hue = el.querySelector('.osd-pick-hue'), hex = el.querySelector('.osd-pick-hex'), chips = el.querySelector('.osd-pick-chips')
       const clamp = (x, a, b) => Math.max(a, Math.min(b, x))
       const normHex = t => { t = t.trim().toLowerCase(); if (!t.startsWith('#')) t = '#' + t; return /^#[0-9a-f]{6}$/.test(t) ? t : null }

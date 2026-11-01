@@ -448,6 +448,7 @@
   </div>
   <div id="panel"></div>
   <div id="crTip"></div>
+  <div id="ebPick"></div>
 
 <script>
   // ===================== Konfiguration & Daten ==========================
@@ -1006,13 +1007,12 @@
   function hsvToHex(h, s, v) { const f = n => { const k = (n + h / 60) % 6; const c = v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); return Math.round(c * 255).toString(16).padStart(2, '0'); }; return '#' + f(5) + f(3) + f(1); }
   let pk = null;   // { role, hsv, orig (colors-Objekt vor dem Oeffnen), origPal, sent }
   function ebPickEl() {
-    let el = document.getElementById('ebPick'); if (el) return el;
-    el = document.createElement('div'); el.id = 'ebPick';
+    const el = document.getElementById('ebPick'); if (el.dataset.init) return el;   // Markup statisch (ui-check), Inhalt einmalig
+    el.dataset.init = '1';
     el.innerHTML = '<div class="pk-title"><span class="pk-name"></span><small>alle Teile dieser Art</small></div>'
       + '<div class="pk-sv"><div class="pk-dot"></div></div><div class="pk-hue"><div class="pk-hd"></div></div>'
       + '<div class="pk-row"><span class="pk-prev"></span><input class="pk-hex" maxlength="7" spellcheck="false"><button type="button" class="pk-std"></button></div>'
       + '<div class="pk-chips"></div><button type="button" class="pk-ok">Fertig</button>';
-    document.body.appendChild(el);
     const sv = el.querySelector('.pk-sv'), hue = el.querySelector('.pk-hue'), hex = el.querySelector('.pk-hex');
     const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
     const normHex = t => { t = t.trim().toLowerCase(); if (!t.startsWith('#')) t = '#' + t; return /^#[0-9a-f]{6}$/.test(t) ? t : null; };
