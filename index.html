@@ -404,7 +404,7 @@
               <p class="osd-card-sub">Wie das Overlay aussieht.</p>
               <div class="osd-field">
                 <span class="osd-field-label">Design</span>
-                <select id="setOsdTheme" class="sort-select" style="flex:1" onchange="onOsdSettingChange()">
+                <select id="setOsdTheme" class="sort-select" style="flex:1" onchange="osdLayCapsApply(); onOsdSettingChange()">
                   <option value="compact">Kompakt</option>
                   <option value="min">Minimal</option>
                   <option value="bar">Balken</option>
@@ -1407,6 +1407,7 @@ const I18N_EN = {
   'Live-Edit am Overlay': 'Live edit on the overlay',
   'Derselbe Schalter wie Afterburners eigener OSD-Hotkey. Das PlainOSD-Panel bleibt davon unberührt.': 'The same switch as Afterburner\'s own OSD hotkey. The PlainOSD panel is not affected.',
   'Datenquellen & Einrichtung': 'Data sources & setup',
+  'In diesem Design ohne Wirkung': 'No effect in this design',
   'Standardfarbe': 'Default color',
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
   'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, K-Toolz ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
@@ -4322,7 +4323,8 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         document.getElementById('setOsdLayLabels').checked = l.labels !== false; document.getElementById('setOsdLayUnits').checked = l.units !== false
         document.getElementById('setOsdLayIcons').checked = !!l.icons; document.getElementById('setOsdLaySep').checked = l.sep !== false
         document.getElementById('setOsdLayGlow').checked = !!l.glow; document.getElementById('setOsdLayDense').checked = !!l.dense
-        setOsdForm(l.form || 'rund', false) }
+        setOsdForm(l.form || 'rund', false)
+        osdLayCapsApply() }
       { const g = s.osdLimits || {}
         document.getElementById('setOsdLimOn').checked = g.on !== false; document.getElementById('setOsdLimPulse').checked = g.pulse !== false
         // Warnschwelle fehlt in alten Einstellungen: dann wie bisher zehn unter Alarm bzw. halbes FPS-Minimum
@@ -4368,6 +4370,32 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     const OSD_COL_STD = { setOsdColGpu: '#74e857', setOsdColCpu: '#ff8a1e', setOsdColFps: '#4bd6ff', setOsdColNet: '#c79bff', setOsdColVal: '#ffe100' }   // = Standardpalette in osd.html
     function osdColorReset(id) { document.getElementById(id).value = OSD_COL_STD[id]; onOsdColorInput() }   // eine Farbe zurueck auf Werkseinstellung
     function setOsdForm(f, apply = true) { osdForm = f; document.querySelectorAll('#osdFormSeg button').forEach(b => b.classList.toggle('active', b.dataset.form === f)); if (apply) onOsdSettingChange() }
+    // Welche Layout-Option in welchem Design wirkt - KOPIE von LAY_CAPS in osd.html (dort gemessen), muss identisch bleiben.
+    const OSD_LAY_CAPS = {
+      compact: ['labels','units','icons','dense','form','glow'],
+      min:     ['labels','units','icons','dense'],
+      bar:     ['labels','units','icons','dense','form','glow'],
+      neon:    ['labels','units','icons','sep','dense','form','glow'],
+      strip:   ['units','icons','sep','dense','form','glow'],
+      tiles:   ['units','icons','sep','dense','form','glow'],
+      gauge:   ['labels','units','form','glow'],
+      term:    ['labels','units','icons','sep','dense','form','glow'],
+      dots:    ['labels','units','icons','form','glow'],
+      hud:     ['labels','units','sep','dense','form','glow'],
+    }
+    const OSD_LAY_IDS = { labels: 'setOsdLayLabels', units: 'setOsdLayUnits', icons: 'setOsdLayIcons', sep: 'setOsdLaySep', glow: 'setOsdLayGlow', dense: 'setOsdLayDense' }
+    // Schalter sperren, die im gewaehlten Design keine Wirkung haben (Design-Select + Laden)
+    function osdLayCapsApply() {
+      const caps = OSD_LAY_CAPS[document.getElementById('setOsdTheme').value] || OSD_LAY_CAPS.bar
+      const hint = window.tr('In diesem Design ohne Wirkung')
+      for (const [k, id] of Object.entries(OSD_LAY_IDS)) {
+        const cb = document.getElementById(id), ok = caps.includes(k), lab = cb.closest('label')
+        cb.disabled = !ok; if (lab) { lab.classList.toggle('off', !ok); lab.title = ok ? '' : hint }
+      }
+      const seg = document.getElementById('osdFormSeg'), okF = caps.includes('form')
+      seg.classList.toggle('off', !okF); seg.title = okF ? '' : hint
+      seg.querySelectorAll('button').forEach(b => { b.disabled = !okF })
+    }
     // WICHTIG: osdEnabled NUR mitschicken, wenn wirklich die Checkbox bedient wurde.
     // Sonst ueberschrieb jede Regler-Bewegung den per Alt+O gesetzten Zustand mit dem
     // (veralteten) Checkbox-Stand -> das eingeblendete OSD verschwand beim Schieben.

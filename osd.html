@@ -306,6 +306,7 @@
   .eb-togs { gap: 5px; flex-wrap: wrap; max-width: 420px; }
   .eb-togs button { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); }
   .eb-togs button.on { color: #fff; background: rgba(79,142,247,.32); border-color: #4f8ef7; box-shadow: 0 0 8px rgba(79,142,247,.45), inset 0 0 4px rgba(79,142,247,.35); }
+  .eb-seg button:disabled, .eb-togs button:disabled { opacity: .28; cursor: default; pointer-events: none; box-shadow: none; }   /* im Design ohne Wirkung */
   .eb-fields { display: flex; flex-direction: column; gap: 5px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
   .eb-frow { display: flex; align-items: center; gap: 7px; padding: 3px 5px; border-radius: 8px;
     border-left: 2px solid var(--gc, #666);
@@ -418,6 +419,22 @@
   // Fuer die Live-Edit-Leiste: Design-Namen + Kurzlabels der waehlbaren Werte
   const EB_THEMES = [['compact','Kompakt'],['min','Minimal'],['bar','Balken'],['neon','Neon'],['strip','Leiste'],['tiles','Kacheln'],['gauge','Tacho'],['term','Terminal'],['dots','Punkte'],['hud','HUD']];
   const HORIZ = ['strip','tiles','dots'];   // Designs, die beim Umstieg von alten Einstellungen auf 'mittig' wandern (Migration in index.html)
+  // Welche Layout-Option in welchem Design ueberhaupt wirkt (gemessen am DOM/CSS je Design, 1.11.2026):
+  // nur dann sind die Schalter im Live-Editor und im Einstellungsreiter anklickbar.
+  // QUELLE DER WAHRHEIT - index.html (OSD_LAY_CAPS) ist eine Kopie und muss identisch bleiben.
+  const LAY_CAPS = {
+    compact: ['labels','units','icons','dense','form','glow'],
+    min:     ['labels','units','icons','dense'],
+    bar:     ['labels','units','icons','dense','form','glow'],
+    neon:    ['labels','units','icons','sep','dense','form','glow'],
+    strip:   ['units','icons','sep','dense','form','glow'],
+    tiles:   ['units','icons','sep','dense','form','glow'],
+    gauge:   ['labels','units','form','glow'],
+    term:    ['labels','units','icons','sep','dense','form','glow'],
+    dots:    ['labels','units','icons','form','glow'],
+    hud:     ['labels','units','sep','dense','form','glow'],
+  };
+  function layCan(k) { return (LAY_CAPS[cfg.theme] || LAY_CAPS.bar).includes(k); }
   const EB_FLD = {
     gpu: [['load','Last'],['temp','Temp'],['power','Watt'],['clock','Takt'],['vram','VRAM']],
     cpu: [['load','Last'],['temp','Temp'],['clock','Takt'],['power','Watt'],['ram','RAM']],
@@ -873,8 +890,9 @@
     ebc.innerHTML = posSet.map(([c, sym, ti]) => `<button class="eb-corner${c === cur ? ' on' : ''}" data-corner="${c}" title="${ti}">${sym}</button>`).join('');
     // Form + Darstellungsschalter spiegeln cfg.layout (Standardwerte wie in applyLayout)
     const lay = cfg.layout || {};
-    document.querySelectorAll('#ebForm button').forEach(b => b.classList.toggle('on', (lay.form || 'rund') === b.dataset.form));
-    document.querySelectorAll('#ebLay button').forEach(b => b.classList.toggle('on', ebLayAn(lay, b.dataset.lay)));
+    // Schalter ohne Wirkung im aktuellen Design sind gesperrt (LAY_CAPS)
+    document.querySelectorAll('#ebForm button').forEach(b => { b.classList.toggle('on', (lay.form || 'rund') === b.dataset.form); b.disabled = !layCan('form'); b.title = b.disabled ? 'In diesem Design ohne Wirkung' : ''; });
+    document.querySelectorAll('#ebLay button').forEach(b => { b.classList.toggle('on', ebLayAn(lay, b.dataset.lay)); b.disabled = !layCan(b.dataset.lay); b.title = b.disabled ? 'In diesem Design ohne Wirkung' : ''; });
     // Reihenfolge wie im Panel (orderList) - vorher stand hier stur die
     // Definitionsfolge, der Editor zeigte also eine ANDERE Reihenfolge als das OSD.
     const box = document.getElementById('ebFields');
