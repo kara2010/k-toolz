@@ -537,9 +537,14 @@ body::before {
   font-variant-numeric: tabular-nums;
 }
 /* Paket 1: Farben, Form, Layout-Schalter, Grenzwerte */
-.osd-colors { flex-wrap: wrap; gap: 10px 14px; }
-.osd-color { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #bbb; cursor: pointer; }
-.osd-color input[type="color"] { width: 30px; height: 24px; padding: 0; border: 1px solid #333; border-radius: 6px; background: #1b1b1b; cursor: pointer; }
+/* Farbfelder: fuenf nebeneinander auch in der halben Karte, je Farbe ein Zuruecksetzen auf die Standardpalette */
+.osd-colors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 6px; margin-top: 10px; }
+.osd-color { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #bbb; min-width: 0; }
+.osd-color input[type="color"] { width: 100%; height: 24px; padding: 0; border: 1px solid #333; border-radius: 6px; background: #1b1b1b; cursor: pointer; }
+.osd-color-nm { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+.osd-color-nm label { cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.osd-color-reset { background: none; border: 0; color: #666; font-size: 13px; line-height: 1; padding: 2px 3px; cursor: pointer; border-radius: 4px; flex-shrink: 0; }
+.osd-color-reset:hover { color: var(--accent); background: rgba(255,255,255,.06); }
 .osd-seg { display: inline-flex; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
 .osd-seg button { background: #1b1b1b; border: 0; color: #999; font: inherit; font-size: 13px; padding: 6px 14px; cursor: pointer; }
 .osd-seg button + button { border-left: 1px solid #333; }
