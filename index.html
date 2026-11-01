@@ -4530,9 +4530,16 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       for (const p of Object.values(OSD_PALETTES)) { const c = p[k]; if (!seen.has(c)) { seen.add(c); list.push(c) } }
       el.querySelector('.osd-pick-chips').innerHTML = list.map(c => '<button type="button" class="osd-pick-chip" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></button>').join('')
       el.style.display = 'block'
-      const cell = inp.closest('.osd-color')   // unter der Kachel, innerhalb des Rasters halten
+      const cell = inp.closest('.osd-color')   // horizontal: unter der Kachel, innerhalb des Rasters halten
       el.style.left = Math.max(0, Math.min(cell.offsetLeft, row.clientWidth - el.offsetWidth)) + 'px'
-      el.style.top = (cell.offsetTop + cell.offsetHeight + 6) + 'px'
+      // vertikal: Platz im SICHTBAREN Teil des scrollenden Reiters berechnen - unten, wenn er dort
+      // ganz hineinpasst; sonst oben ueber der Kachel; passt es nirgends, unten + ins Bild scrollen.
+      const scroller = document.getElementById('settingsView'), sr = scroller.getBoundingClientRect(), cr = cell.getBoundingClientRect()
+      const sichtOben = Math.max(sr.top, 0), sichtUnten = Math.min(sr.bottom, window.innerHeight), h = el.offsetHeight + 6
+      const passtUnten = cr.bottom + h <= sichtUnten, passtOben = cr.top - h >= sichtOben
+      el.classList.toggle('up', !passtUnten && passtOben)
+      el.style.top = (!passtUnten && passtOben) ? (cell.offsetTop - h) + 'px' : (cell.offsetTop + cell.offsetHeight + 6) + 'px'
+      if (!passtUnten && !passtOben) el.scrollIntoView({ block: 'nearest' })
       document.querySelectorAll('.osd-swatch').forEach(s => s.classList.toggle('open', s.dataset.for === id))
       el._paint(); el.querySelector('.osd-pick-sv').focus()
     }
