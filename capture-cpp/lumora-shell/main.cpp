@@ -5812,6 +5812,14 @@ static json handleChannel(const std::string& channel, const json& args) {
         sendToUi("osd-settings-changed", nullptr);
         return true;
     }
+    // Hover-Vorschau aus dem Einstellungsreiter (Design-/Paletten-Menue): Teil-Config nur ANZEIGEN,
+    // nichts speichern. null = gespeicherten Stand wiederherstellen. Sichtbarkeit regelt der Reiter
+    // wie bisher ueber 'osd-preview'.
+    if (channel == "osd-preview-cfg") {
+        if (args.size() >= 1 && args[0].is_object()) sendToOsd("osd-config", args[0]);
+        else applyOsdConfig();
+        return true;
+    }
     if (channel == "setup-osd") {   // Einstellungen -> Overlay -> "OSD einrichten": Dialog+UAC sofort anbieten
         json s = loadSettings(); s["osdSetupDeclined"] = false; writeFile(settingsPath(), s.dump(2));
         ensureOsdSetup();   // zeigt nur, was wirklich fehlt (FPS-Task/PawnIO/Sensor-Task)

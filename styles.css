@@ -799,6 +799,22 @@ body::before {
 
 .sort-select:focus { border-color: var(--accent); }
 
+/* Eigenes Aufklappmenue (PlainOSD Design/Palette): Eintraege reagieren auf Hover -> Vorschau im Overlay.
+   Das native <select> kann das nicht (Chromium zeichnet seine Liste ausserhalb der Seite). */
+.osd-menu { position: relative; min-width: 0; }
+.osd-menu-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  background: #111; border: 1px solid #2a2a2a; border-radius: 7px; padding: 6px 8px; color: #aaa; font: inherit; font-size: 12px; cursor: pointer; text-align: left; }
+.osd-menu-btn:focus { outline: none; border-color: var(--accent); }
+.osd-menu-caret { color: #666; font-size: 11px; flex-shrink: 0; }
+.osd-menu.open .osd-menu-caret { color: var(--accent); }
+.osd-menu-list { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 60; padding: 4px;
+  background: #1b1b1d; border: 1px solid #333; border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.55); max-height: 340px; overflow-y: auto; }
+.osd-menu.open .osd-menu-list { display: block; }
+.osd-menu-item { padding: 7px 10px; border-radius: 6px; color: #c8c8cc; font-size: 12.5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.osd-menu-item.hl { background: rgba(var(--accent-rgb), 0.16); color: #fff; }
+.osd-menu-item.on { color: var(--accent); }
+.osd-menu-item.on::after { content: ' ✓'; }
+
 /* Aufnahme-Quelle: eigenes Dropdown mit App-Icons (natives <select> kann keine Bilder). */
 .src-dd { position: relative; }
 .src-dd-trigger {

@@ -4355,6 +4355,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
           ipcRenderer.invoke('set-app-settings', { osdCorner: oc, osdCornerV2: true })
         }
         setOsdCorner(oc, false) }
+      osdMenuInit('setOsdTheme', 'theme'); osdMenuInit('setOsdPalette', 'palette'); osdMenuSync()   // Menues (idempotent) + Knopftext nachziehen
       osdLastCfg = buildOsdCfg()   // Bezugsstand fuer das Differenz-Senden
     }
     ipcRenderer.on('osd-settings-changed', async () => {   // Shell: Live-Edit hat Settings geschrieben
@@ -4366,7 +4367,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     function limZahl(id, min, max, std) { const el = document.getElementById(id); let n = parseInt(el.value, 10); if (!Number.isFinite(n)) n = std; n = Math.max(min, Math.min(max, n)); el.value = n; return n }
     function osdColorsRowShow() { document.getElementById('osdColorsRow').style.display = document.getElementById('setOsdPalette').value === 'eigen' ? 'grid' : 'none' }
     function onOsdPaletteChange() { osdColorsRowShow(); onOsdSettingChange() }
-    function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdColorsRowShow(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
+    function onOsdColorInput() { document.getElementById('setOsdPalette').value = 'eigen'; osdMenuSync(); osdColorsRowShow(); onOsdSettingChange() }   // Farbe anfassen = eigene Palette
     const OSD_COL_STD = { setOsdColGpu: '#74e857', setOsdColCpu: '#ff8a1e', setOsdColFps: '#4bd6ff', setOsdColNet: '#c79bff', setOsdColVal: '#ffe100' }   // = Standardpalette in osd.html
     function osdColorReset(id) { document.getElementById(id).value = OSD_COL_STD[id]; onOsdColorInput() }   // eine Farbe zurueck auf Werkseinstellung
     function setOsdForm(f, apply = true) { osdForm = f; document.querySelectorAll('#osdFormSeg button').forEach(b => b.classList.toggle('active', b.dataset.form === f)); if (apply) onOsdSettingChange() }
@@ -4384,6 +4385,58 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       hud:     ['labels','units','sep','dense','form','glow'],
     }
     const OSD_LAY_IDS = { labels: 'setOsdLayLabels', units: 'setOsdLayUnits', icons: 'setOsdLayIcons', sep: 'setOsdLaySep', glow: 'setOsdLayGlow', dense: 'setOsdLayDense' }
+    // --- Eigenes Aufklappmenue fuer Design + Palette mit Hover-Vorschau im Overlay ---------------
+    // Das native <select> bleibt (versteckt) als Wertspeicher - alle Leser/Handler bleiben unveraendert.
+    // Ueberfahren eines Eintrags zeigt ihn nur im Overlay (osd-preview-cfg, nichts gespeichert);
+    // Verlassen/Escape stellt den gespeicherten Stand wieder her; Klick waehlt und loest 'change' aus.
+    const osdMenus = []
+    function osdMenuInit(selId, key) {
+      const sel = document.getElementById(selId); if (!sel || sel.dataset.menu) return
+      sel.dataset.menu = '1'
+      const wrap = document.createElement('div'); wrap.className = 'osd-menu'; wrap.style.flex = sel.style.flex || ''
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'osd-menu-btn'; btn.setAttribute('aria-haspopup', 'listbox')
+      const list = document.createElement('div'); list.className = 'osd-menu-list'; list.setAttribute('role', 'listbox')
+      wrap.append(btn, list); sel.parentNode.insertBefore(wrap, sel); sel.style.display = 'none'
+      let open = false, hovered = null, hl = -1
+      const items = () => [...list.querySelectorAll('.osd-menu-item')]
+      function render() {
+        const cur = sel.options[sel.selectedIndex]
+        btn.innerHTML = '<span class="osd-menu-txt"></span><span class="osd-menu-caret">▾</span>'
+        btn.firstChild.textContent = cur ? cur.text : ''
+        list.innerHTML = ''
+        for (const o of sel.options) { const it = document.createElement('div'); it.className = 'osd-menu-item' + (o.value === sel.value ? ' on' : ''); it.setAttribute('role', 'option'); it.dataset.v = o.value; it.textContent = o.text; list.appendChild(it) }
+      }
+      function preview(v) {   // v = Wert zum Zeigen, null = zurueck auf gespeichert
+        if (v === hovered) return
+        hovered = v
+        if (v == null) { ipcRenderer.invoke('osd-preview-cfg', null); osdPreviewSoon(900) }
+        else { osdPreview(true); ipcRenderer.invoke('osd-preview-cfg', { [key]: v }) }
+      }
+      function setHl(i, withPreview) { const its = items(); if (!its.length) return; hl = (i + its.length) % its.length; its.forEach((x, j) => x.classList.toggle('hl', j === hl)); its[hl].scrollIntoView({ block: 'nearest' }); if (withPreview) preview(its[hl].dataset.v) }
+      function show(on) {
+        if (on === open) return
+        open = on; wrap.classList.toggle('open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false')
+        if (on) { render(); hl = -1; setHl(sel.selectedIndex, false) }
+        else { if (hovered != null) preview(null); items().forEach(x => x.classList.remove('hl')) }
+      }
+      function choose(v) { hovered = null; show(false); if (sel.value !== v) { sel.value = v; sel.dispatchEvent(new Event('change')) }; ipcRenderer.invoke('osd-preview-cfg', null); btn.focus() }
+      btn.addEventListener('click', () => show(!open))
+      list.addEventListener('mouseover', e => { const it = e.target.closest('.osd-menu-item'); if (it) { setHl(items().indexOf(it), false); preview(it.dataset.v) } })
+      list.addEventListener('mouseleave', () => { if (open) preview(null) })
+      list.addEventListener('click', e => { const it = e.target.closest('.osd-menu-item'); if (it) choose(it.dataset.v) })
+      wrap.addEventListener('keydown', e => {
+        if (!open) { if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(true) } return }
+        if (e.key === 'ArrowDown') { e.preventDefault(); setHl(hl + 1, true) }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setHl(hl - 1, true) }
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const it = items()[hl]; if (it) choose(it.dataset.v) }
+        else if (e.key === 'Escape' || e.key === 'Tab') { show(false) }
+      })
+      document.addEventListener('pointerdown', e => { if (open && !wrap.contains(e.target)) show(false) })
+      sel.addEventListener('change', render)
+      render()
+      osdMenus.push(render)
+    }
+    function osdMenuSync() { osdMenus.forEach(r => r()) }   // nach programmatischem Setzen von sel.value (Laden, Farbe anfassen)
     // Schalter sperren, die im gewaehlten Design keine Wirkung haben (Design-Select + Laden)
     function osdLayCapsApply() {
       const caps = OSD_LAY_CAPS[document.getElementById('setOsdTheme').value] || OSD_LAY_CAPS.bar
