@@ -608,6 +608,11 @@ body::before {
 .osd-limit span { flex: 1; }
 .osd-limit input { width: 66px; background: #1b1b1b; border: 1px solid #333; border-radius: 6px; color: #ddd; font: inherit; font-size: 13px; padding: 5px 8px; text-align: right; }
 .osd-limit i { font-style: normal; color: #777; min-width: 26px; }
+/* je Wert an/aus: Haekchen vor dem Namen; abgeschaltete Zeile gedimmt, Schwellenfelder gesperrt */
+.osd-lim-on { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.osd-limit input[type="checkbox"] { width: auto; padding: 0; margin: 0; accent-color: var(--accent); }
+.osd-limit.off input[type="number"], .osd-limit.off i { opacity: .35; }
+.osd-limit.off .osd-lim-on { color: #777; }
 .osd-corners {
   display: grid;
   grid-template-columns: repeat(3, 34px);

@@ -518,10 +518,10 @@
               </div>
               <div class="osd-limits">
                 <div class="osd-limit osd-limit-head"><span></span><b>Warnung</b><b>Alarm</b><i></i></div>
-                <div class="osd-limit"><span>GPU-Temperatur</span><input type="number" id="setOsdLimGpuTempWarn" min="30" max="120" value="75" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimGpuTemp" min="30" max="120" value="85" onchange="onOsdSettingChange()"><i>°C</i></div>
-                <div class="osd-limit"><span>CPU-Temperatur</span><input type="number" id="setOsdLimCpuTempWarn" min="30" max="120" value="80" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimCpuTemp" min="30" max="120" value="90" onchange="onOsdSettingChange()"><i>°C</i></div>
-                <div class="osd-limit"><span>Auslastung</span><input type="number" id="setOsdLimLoadWarn" min="10" max="100" value="85" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimLoad" min="10" max="100" value="95" onchange="onOsdSettingChange()"><i>%</i></div>
-                <div class="osd-limit"><span>FPS unter</span><input type="number" id="setOsdLimFps" min="5" max="500" value="60" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimFpsCrit" min="1" max="500" value="30" onchange="onOsdSettingChange()"><i>FPS</i></div>
+                <div class="osd-limit"><span><label class="osd-lim-on" title="Grenzwert aktiv"><input type="checkbox" id="setOsdLimGpuTempOn" checked onchange="osdLimRowsSync(); onOsdSettingChange()"> GPU-Temperatur</label></span><input type="number" id="setOsdLimGpuTempWarn" min="30" max="120" value="75" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimGpuTemp" min="30" max="120" value="85" onchange="onOsdSettingChange()"><i>°C</i></div>
+                <div class="osd-limit"><span><label class="osd-lim-on" title="Grenzwert aktiv"><input type="checkbox" id="setOsdLimCpuTempOn" checked onchange="osdLimRowsSync(); onOsdSettingChange()"> CPU-Temperatur</label></span><input type="number" id="setOsdLimCpuTempWarn" min="30" max="120" value="80" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimCpuTemp" min="30" max="120" value="90" onchange="onOsdSettingChange()"><i>°C</i></div>
+                <div class="osd-limit"><span><label class="osd-lim-on" title="Grenzwert aktiv"><input type="checkbox" id="setOsdLimLoadOn" checked onchange="osdLimRowsSync(); onOsdSettingChange()"> Auslastung</label></span><input type="number" id="setOsdLimLoadWarn" min="10" max="100" value="85" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimLoad" min="10" max="100" value="95" onchange="onOsdSettingChange()"><i>%</i></div>
+                <div class="osd-limit"><span><label class="osd-lim-on" title="Grenzwert aktiv"><input type="checkbox" id="setOsdLimFpsOn" checked onchange="osdLimRowsSync(); onOsdSettingChange()"> FPS unter</label></span><input type="number" id="setOsdLimFps" min="5" max="500" value="60" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimFpsCrit" min="1" max="500" value="30" onchange="onOsdSettingChange()"><i>FPS</i></div>
               </div>
             </div>
 
@@ -1416,6 +1416,7 @@ const I18N_EN = {
   'In diesem Design ohne Wirkung': 'No effect in this design',
   'Farbe wählen': 'Pick color',
   'Schrift': 'Font',
+  'Grenzwert aktiv': 'Limit active',
   'Standard (Consolas)': 'Default (Consolas)',
   'Standardfarbe': 'Default color',
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
@@ -4341,7 +4342,11 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         document.getElementById('setOsdLimGpuTemp').value = gt; document.getElementById('setOsdLimGpuTempWarn').value = g.gpuTempWarn || gt - 10
         document.getElementById('setOsdLimCpuTemp').value = ct; document.getElementById('setOsdLimCpuTempWarn').value = g.cpuTempWarn || ct - 10
         document.getElementById('setOsdLimLoad').value = ld; document.getElementById('setOsdLimLoadWarn').value = g.loadWarn || ld - 10
-        document.getElementById('setOsdLimFps').value = fm; document.getElementById('setOsdLimFpsCrit').value = g.fpsCrit || Math.round(fm / 2) }
+        document.getElementById('setOsdLimFps').value = fm; document.getElementById('setOsdLimFpsCrit').value = g.fpsCrit || Math.round(fm / 2)
+        // je Wert an/aus (fehlt in alten Einstellungen = an)
+        document.getElementById('setOsdLimGpuTempOn').checked = g.gpuTempOn !== false; document.getElementById('setOsdLimCpuTempOn').checked = g.cpuTempOn !== false
+        document.getElementById('setOsdLimLoadOn').checked = g.loadOn !== false; document.getElementById('setOsdLimFpsOn').checked = g.fpsOn !== false
+        osdLimRowsSync() }
       renderGpuOptions(s.osdGpu || 'auto')
       renderOsdFields(s.osdFields, s.osdOrder)
       document.getElementById('osdSetupRow').style.display = s.osdSetupDeclined ? 'flex' : 'none'
@@ -4586,6 +4591,13 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       osdPick = null
       if (osdPrevOn) osdPreviewSoon(900)   // Vorschau (Chips/Ziehen) immer beenden - sonst blieb das OSD nach dem Schliessen ohne Aenderung an
     }
+    // Grenzwert-Zeilen: abgeschalteter Wert -> Schwellenfelder gesperrt und Zeile gedimmt
+    function osdLimRowsSync() {
+      for (const id of ['setOsdLimGpuTempOn', 'setOsdLimCpuTempOn', 'setOsdLimLoadOn', 'setOsdLimFpsOn']) {
+        const cb = document.getElementById(id), row = cb.closest('.osd-limit'), on = cb.checked
+        row.classList.toggle('off', !on); row.querySelectorAll('input[type="number"]').forEach(i => { i.disabled = !on })
+      }
+    }
     // Schalter sperren, die im gewaehlten Design keine Wirkung haben (Design-Select + Laden)
     function osdLayCapsApply() {
       const caps = OSD_LAY_CAPS[document.getElementById('setOsdTheme').value] || OSD_LAY_CAPS.bar
@@ -4622,7 +4634,9 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
                      gpuTempWarn: limZahl('setOsdLimGpuTempWarn', 30, 120, 75), gpuTemp: limZahl('setOsdLimGpuTemp', 30, 120, 85),
                      cpuTempWarn: limZahl('setOsdLimCpuTempWarn', 30, 120, 80), cpuTemp: limZahl('setOsdLimCpuTemp', 30, 120, 90),
                      loadWarn: limZahl('setOsdLimLoadWarn', 10, 100, 85), load: limZahl('setOsdLimLoad', 10, 100, 95),
-                     fpsMin: limZahl('setOsdLimFps', 5, 500, 60), fpsCrit: limZahl('setOsdLimFpsCrit', 1, 500, 30) },
+                     fpsMin: limZahl('setOsdLimFps', 5, 500, 60), fpsCrit: limZahl('setOsdLimFpsCrit', 1, 500, 30),
+                     gpuTempOn: document.getElementById('setOsdLimGpuTempOn').checked, cpuTempOn: document.getElementById('setOsdLimCpuTempOn').checked,
+                     loadOn: document.getElementById('setOsdLimLoadOn').checked, fpsOn: document.getElementById('setOsdLimFpsOn').checked },
       }
     }
     function onOsdSettingChange(fromEnabledToggle) {

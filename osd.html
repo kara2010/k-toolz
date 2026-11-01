@@ -823,8 +823,9 @@
         if (f === 'load' || f === 'temp') setRing(cat + '.' + f, v == null ? 0 : Number(v) / 100);
       }
       // Grenzwerte: Temperatur und Last ab Warnschwelle gelb, ab Alarmschwelle rot (optional pulsierend)
-      setLimit(cat + '.temp', d ? d.temp : null, cat === 'gpu' ? L.gpuTempWarn : L.cpuTempWarn, cat === 'gpu' ? L.gpuTemp : L.cpuTemp, false);
-      setLimit(cat + '.load', d ? d.load : null, L.loadWarn, L.load, false);
+      // je Wert abschaltbar (gpuTempOn/cpuTempOn/loadOn/fpsOn; fehlt = an): aus -> Wert null -> keine Stufe, Klassen weg
+      setLimit(cat + '.temp', (L[cat + 'TempOn'] === false || !d) ? null : d.temp, cat === 'gpu' ? L.gpuTempWarn : L.cpuTempWarn, cat === 'gpu' ? L.gpuTemp : L.cpuTemp, false);
+      setLimit(cat + '.load', (L.loadOn === false || !d) ? null : d.load, L.loadWarn, L.load, false);
     }
     // Netz: vorformatierte Texte aus der Shell; ohne laufende Zaehlung Gruppe weg
     {
@@ -840,7 +841,7 @@
       if (data.frametime != null) setRole('fps.frametime', fmtVal('frametime', data.frametime));
       setRow('fps.frametime', data.frametime != null);
       if (data.fps != null) { setRing('fps.fps', Number(data.fps) / 240); const fb = panel.querySelector('[data-role="fps.fpsbar"]'); if (fb) fb.style.width = Math.max(0, Math.min(100, Number(data.fps) / 240 * 100)) + '%'; }
-      setLimit('fps.fps', data.fps, L.fpsMin, L.fpsCrit, true);
+      setLimit('fps.fps', L.fpsOn === false ? null : data.fps, L.fpsMin, L.fpsCrit, true);
     }
   }
 
