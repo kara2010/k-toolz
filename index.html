@@ -482,8 +482,10 @@
               <span class="osd-field-label">Position</span>
               <div class="osd-corners" id="osdCorners">
                 <button class="osd-corner" data-corner="tl" onclick="setOsdCorner('tl')" title="Oben links">◤</button>
+                <button class="osd-corner" data-corner="tc" onclick="setOsdCorner('tc')" title="Oben mittig">▀</button>
                 <button class="osd-corner" data-corner="tr" onclick="setOsdCorner('tr')" title="Oben rechts">◥</button>
                 <button class="osd-corner" data-corner="bl" onclick="setOsdCorner('bl')" title="Unten links">◣</button>
+                <button class="osd-corner" data-corner="bc" onclick="setOsdCorner('bc')" title="Unten mittig">▄</button>
                 <button class="osd-corner" data-corner="br" onclick="setOsdCorner('br')" title="Unten rechts">◢</button>
               </div>
             </div>
@@ -1365,6 +1367,8 @@ const I18N_EN = {
   'Auslastung': 'Load',
   'FPS unter': 'FPS below',
   'Bei Alarm pulsieren': 'Pulse on alarm',
+  'Oben mittig': 'Top center',
+  'Unten mittig': 'Bottom center',
   'Hotkeys pausieren bei bestimmten Programmen': 'Pause hotkeys for specific programs',
   'Programmnamen durch Komma getrennt (die .exe darf auch weggelassen werden). Solange eines davon im Vordergrund läuft, reagiert K-Toolz auf keinen deiner Hotkeys – weder Tastatur noch Gamepad. Sinnvoll bei Spielen, die dieselben Tasten selbst brauchen, etwa Virtual Pinball.': 'Program names separated by commas (the .exe may be omitted). While one of them is in the foreground, K-Toolz ignores all your hotkeys – keyboard and gamepad alike. Useful for games that need the same keys themselves, such as Virtual Pinball.',
 
@@ -4083,7 +4087,14 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       document.getElementById('osdScaleVal').textContent = Math.round(oScale * 100) + '%'
       document.getElementById('setOsdOpacity').value = oOp
       document.getElementById('osdOpacityVal').textContent = Math.round(oOp * 100) + '%'
-      setOsdCorner(s.osdCorner || 'tl', false)
+      { let oc = s.osdCorner || 'tl'
+        // Bis 4.0.2 sassen Leiste/Kacheln/Punkte immer mittig, die gespeicherte Ecke war egal. Jetzt gilt die
+        // Position fuer jedes Design -> einmalig auf 'mittig' umschreiben, damit sich fuer Bestandsnutzer nichts verschiebt.
+        if (!s.osdCornerV2) {
+          if (['strip','tiles','dots'].includes(s.osdTheme) && /^[tb][lr]$/.test(oc)) oc = oc[0] + 'c'
+          ipcRenderer.invoke('set-app-settings', { osdCorner: oc, osdCornerV2: true })
+        }
+        setOsdCorner(oc, false) }
       appSettingsCache.toggleHotkey = s.toggleHotkey || ''
       appSettingsCache.osdHotkey = s.osdHotkey != null ? s.osdHotkey : 'Alt+O'
       appSettingsCache.osdEditHotkey = s.osdEditHotkey != null ? s.osdEditHotkey : 'Alt+Shift+O'

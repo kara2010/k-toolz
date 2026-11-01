@@ -71,6 +71,8 @@
   body.pos-tr #panel { top: 0;    right: 0; }
   body.pos-bl #panel { bottom: 0; left: 0; }
   body.pos-br #panel { bottom: 0; right: 0; }
+  body.pos-tc #panel { top: 0;    left: 50%; transform: translateX(-50%); }
+  body.pos-bc #panel { bottom: 0; left: 50%; transform: translateX(-50%); }
   .osd i { font-style: normal; font-size: .6em; margin-left: 2px; opacity: .95; }
   .hidden { display: none !important; }
 
@@ -142,8 +144,6 @@
 
   /* -------- LEISTE (horizontal) -------- */
   body.theme-strip #panel { margin: 14px; }
-  body.theme-strip.pos-tl #panel, body.theme-strip.pos-tr #panel { left: 50%; right: auto; transform: translateX(-50%); }
-  body.theme-strip.pos-bl #panel, body.theme-strip.pos-br #panel { left: 50%; right: auto; transform: translateX(-50%); }
   .t-strip { display: flex; align-items: center; background: rgba(8,8,12,var(--panel-op));
     border-radius: 9px; padding: 8px 4px; backdrop-filter: blur(2px); }
   .t-strip .seg { display: flex; align-items: baseline; gap: 7px; padding: 2px 15px; }
@@ -156,8 +156,6 @@
 
   /* -------- KACHELN (horizontal) -------- */
   body.theme-tiles #panel { margin: 14px; }
-  body.theme-tiles.pos-tl #panel, body.theme-tiles.pos-tr #panel,
-  body.theme-tiles.pos-bl #panel, body.theme-tiles.pos-br #panel { left: 50%; right: auto; transform: translateX(-50%); }
   .t-tiles { display: flex; gap: 8px; }
   .t-tiles .tile { background: rgba(8,8,12,calc(var(--panel-op) + .07)); border-radius: 9px; padding: 9px 14px; min-width: 92px; border-top: 2px solid; }
   .t-tiles .tile.nv { border-color: var(--nv); } .t-tiles .tile.amd { border-color: var(--amd); } .t-tiles .tile.fps { border-color: #fff; }
@@ -199,7 +197,6 @@
 
   /* -------- PUNKTE (horizontal, fast unsichtbar) -------- */
   body.theme-dots #panel { margin: 14px; }
-  body.theme-dots.pos-tl #panel, body.theme-dots.pos-tr #panel, body.theme-dots.pos-bl #panel, body.theme-dots.pos-br #panel { left: 50%; right: auto; transform: translateX(-50%); }
   .t-dots { display: flex; align-items: center; gap: 14px; background: rgba(8,8,12,calc(var(--panel-op) * .7)); border-radius: 999px; padding: 5px 14px; }
   .t-dots .d { display: flex; align-items: baseline; gap: 5px; font-size: 13px; color: #f2f2f2; white-space: nowrap; }
   .t-dots .d::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 6px var(--gc); align-self: center; }
@@ -257,8 +254,8 @@
                      to   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1); } }
   /* Leiste IMMER gegenueber vom OSD, damit sie es nie verdeckt (v.a. horizontale
      Themes, die oben/unten mittig sitzen): OSD oben -> Leiste unten und umgekehrt. */
-  body.pos-tl #editbar, body.pos-tr #editbar { top: auto; bottom: 16px; }
-  body.pos-bl #editbar, body.pos-br #editbar { top: 16px; bottom: auto; }
+  body.pos-tl #editbar, body.pos-tc #editbar, body.pos-tr #editbar { top: auto; bottom: 16px; }
+  body.pos-bl #editbar, body.pos-bc #editbar, body.pos-br #editbar { top: 16px; bottom: auto; }
   #editbar b { color: #fff; font-weight: 600; }
   .eb-top { display: flex; align-items: stretch; gap: 0; }
   /* Sektionen als "Karten": Label OBEN, Kontrolle darunter, feine Trenner dazwischen */
@@ -284,9 +281,8 @@
     box-shadow: 0 0 0 4px rgba(79,142,247,.18), 0 1px 4px rgba(0,0,0,.5); transition: box-shadow .15s; }
   #ebOpacity:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(79,142,247,.28), 0 1px 4px rgba(0,0,0,.5); }
   /* Positions-Ecken: Mini-Monitor-Raster */
-  .eb-corners { display: grid; grid-template-columns: repeat(2, 22px); grid-auto-rows: 22px; gap: 4px;
+  .eb-corners { display: grid; grid-template-columns: repeat(3, 22px); grid-auto-rows: 22px; gap: 4px;
     padding: 5px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; }
-  .eb-corners.horiz { grid-template-columns: 22px; }   /* nur oben/unten -> untereinander */
   .eb-corner { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: #99a0b2;
     border-radius: 5px; cursor: pointer; font-size: 11px; line-height: 1; padding: 0;
     transition: background .15s, border-color .15s, color .15s, box-shadow .15s; }
@@ -399,7 +395,7 @@
   const GC = { gpu: 'var(--nv)', cpu: 'var(--amd)', fps: 'var(--fpc)', net: 'var(--netc)' };   // Gruppenfarbe als CSS-Wert fuer neue Designs
   // Fuer die Live-Edit-Leiste: Design-Namen + Kurzlabels der waehlbaren Werte
   const EB_THEMES = [['compact','Kompakt'],['min','Minimal'],['bar','Balken'],['neon','Neon'],['strip','Leiste'],['tiles','Kacheln'],['gauge','Tacho'],['term','Terminal'],['dots','Punkte'],['hud','HUD']];
-  const HORIZ = ['strip','tiles','dots'];   // mittig oben/unten statt in einer Ecke
+  const HORIZ = ['strip','tiles','dots'];   // Designs, die beim Umstieg von alten Einstellungen auf 'mittig' wandern (Migration in index.html)
   const EB_FLD = {
     gpu: [['load','Last'],['temp','Temp'],['power','Watt'],['clock','Takt'],['vram','VRAM']],
     cpu: [['load','Last'],['temp','Temp'],['clock','Takt'],['power','Watt'],['ram','RAM']],
@@ -428,8 +424,8 @@
     const r = panel.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) return;
     const dpr = window.devicePixelRatio || 1, M = 14;   // Rand ums Panel (ersetzt das alte margin)
-    const corner = ['tl','tr','bl','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
-    const horiz = HORIZ.some(t => document.body.classList.contains('theme-' + t));
+    const corner = ['tl','tc','tr','bl','bc','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
+    const horiz = corner[1] === 'c';   // mittig -> Shell zentriert das Fenster horizontal
     const w = Math.ceil((r.width  + 2 * M) * dpr), h = Math.ceil((r.height + 2 * M) * dpr);
     // Hysterese: Designs mit Inhaltsbreite (Leiste, Punkte, ...) werden mit jeder Ziffer schmaler/breiter
     // (855 -> 1200 MHz). Wachsen sofort melden (sonst abgeschnitten), Schrumpfen erst ab 16 CSS-px -
@@ -814,7 +810,7 @@
     if (c.layout) { cfg.layout = Object.assign({}, cfg.layout, c.layout); applyLayout(); }
     applyFarben();
     document.body.classList.toggle('lim-pulse', !!(cfg.limits && cfg.limits.on !== false && cfg.limits.pulse !== false));
-    if (c.corner) { document.body.classList.remove('pos-tl','pos-tr','pos-bl','pos-br'); document.body.classList.add('pos-' + c.corner); }
+    if (c.corner) { document.body.classList.remove('pos-tl','pos-tc','pos-tr','pos-bl','pos-bc','pos-br'); document.body.classList.add('pos-' + c.corner); }
     if (c.opacity != null) { cfg.opacity = c.opacity; document.documentElement.style.setProperty('--panel-op', c.opacity); }
     if (rebuild) renderPanel();
     else { paintValues(); scheduleBounds(); }   // Farben/Grenzwerte/Layout sofort anwenden; Ecke/Deckkraft: Fenster nachziehen
@@ -844,15 +840,11 @@
     if (full) document.getElementById('ebOpacity').value = cfg.opacity != null ? cfg.opacity : 0.55;
     // Positions-Knoepfe je Theme: horizontale Themes (Leiste/Kacheln) sitzen mittig
     // oben/unten -> nur oben/unten anbieten; vertikale Themes -> vier Ecken.
-    const horiz = HORIZ.includes(cfg.theme);
-    const cur = ['tl','tr','bl','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
-    const posSet = horiz
-      ? [['tl','▀','Oben'],['bl','▄','Unten']]
-      : [['tl','◤','Oben links'],['tr','◥','Oben rechts'],['bl','◣','Unten links'],['br','◢','Unten rechts']];
-    const curActive = horiz ? (cur[0] === 't' ? 'tl' : 'bl') : cur;
+    const cur = ['tl','tc','tr','bl','bc','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
+    // Sechs Positionen fuer jedes Design (vorher: horizontale Designs nur oben/unten mittig, alle anderen nur Ecken)
+    const posSet = [['tl','◤','Oben links'],['tc','▀','Oben mittig'],['tr','◥','Oben rechts'],['bl','◣','Unten links'],['bc','▄','Unten mittig'],['br','◢','Unten rechts']];
     const ebc = document.getElementById('ebCorners');
-    ebc.classList.toggle('horiz', horiz);
-    ebc.innerHTML = posSet.map(([c, sym, ti]) => `<button class="eb-corner${c === curActive ? ' on' : ''}" data-corner="${c}" title="${ti}">${sym}</button>`).join('');
+    ebc.innerHTML = posSet.map(([c, sym, ti]) => `<button class="eb-corner${c === cur ? ' on' : ''}" data-corner="${c}" title="${ti}">${sym}</button>`).join('');
     // Reihenfolge wie im Panel (orderList) - vorher stand hier stur die
     // Definitionsfolge, der Editor zeigte also eine ANDERE Reihenfolge als das OSD.
     const box = document.getElementById('ebFields');
@@ -963,7 +955,7 @@
   document.getElementById('ebCorners').addEventListener('click', (e) => {
     const btn = e.target.closest('.eb-corner'); if (!btn) return;
     const corner = btn.dataset.corner;
-    document.body.classList.remove('pos-tl','pos-tr','pos-bl','pos-br');
+    document.body.classList.remove('pos-tl','pos-tc','pos-tr','pos-bl','pos-bc','pos-br');
     document.body.classList.add('pos-' + corner);
     renderEditbar(false);   // aktiver Button + Leisten-Seite (via CSS) nachziehen
     if (ipcRenderer) ipcRenderer.invoke('osd-edit-corner', corner);
@@ -972,7 +964,7 @@
     if (!editing || e.target.closest('#editDone')) return;
     const r = panel.getBoundingClientRect();
     drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-    document.body.classList.remove('pos-tl','pos-tr','pos-bl','pos-br');
+    document.body.classList.remove('pos-tl','pos-tc','pos-tr','pos-bl','pos-bc','pos-br');
     panel.style.right = panel.style.bottom = ''; panel.style.margin = '0'; panel.style.transform = 'none';
     panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px';
     try { panel.setPointerCapture(e.pointerId); } catch (er) {}
@@ -983,7 +975,7 @@
     if (!drag) return; drag = null;
     const r = panel.getBoundingClientRect();
     const cx = r.left + r.width/2, cy = r.top + r.height/2;
-    const corner = (cy < window.innerHeight/2 ? 't' : 'b') + (cx < window.innerWidth/2 ? 'l' : 'r');
+    const corner = (cy < window.innerHeight/2 ? 't' : 'b') + (cx < window.innerWidth/3 ? 'l' : cx > window.innerWidth*2/3 ? 'r' : 'c');   // Drittel: links/mittig/rechts
     panel.style.left = panel.style.top = panel.style.margin = panel.style.transform = '';
     document.body.classList.add('pos-' + corner);
     renderEditbar(false);   // Ecken-Button + Leisten-Seite an die neue Position anpassen

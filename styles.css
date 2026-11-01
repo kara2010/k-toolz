@@ -556,7 +556,7 @@ body::before {
 .osd-limit i { font-style: normal; color: #777; min-width: 26px; }
 .osd-corners {
   display: grid;
-  grid-template-columns: repeat(2, 34px);
+  grid-template-columns: repeat(3, 34px);
   grid-auto-rows: 34px;
   gap: 5px;
 }
