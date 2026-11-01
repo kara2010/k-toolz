@@ -5797,8 +5797,16 @@ static json handleChannel(const std::string& channel, const json& args) {
         // Gruppen-Reihenfolge auch aus dem Live-Editor: bisher liess sie sich nur in
         // den Einstellungen aendern, der Editor zeigte sogar stets die Standardfolge.
         else if (channel == "osd-edit-order" && args[0].is_array()) s["osdOrder"] = args[0];
+        // Form + Darstellungsschalter (Beschriftungen/Einheiten/Symbole/Trenner/Leuchtrahmen/Dicht):
+        // dieselben Optionen wie Karte 1 im Einstellungsreiter, jetzt auch aus dem Live-Editor.
+        else if (channel == "osd-edit-layout" && args[0].is_object()) s["osdLayout"] = args[0];
         writeFile(settingsPath(), s.dump(2));
         applyOsdConfig();
+        // Einstellungsreiter nachziehen: der hielt sonst den Stand von VOR dem Live-Edit und
+        // schickte ihn beim naechsten Klick komplett zurueck (Befund: Design sprang nach
+        // 'Dicht' auf das zuvor in der App gewaehlte Tacho-Design). index.html laedt daraufhin
+        // get-app-settings neu, falls der PlainOSD-Reiter offen ist.
+        sendToUi("osd-settings-changed", nullptr);
         return true;
     }
     if (channel == "setup-osd") {   // Einstellungen -> Overlay -> "OSD einrichten": Dialog+UAC sofort anbieten

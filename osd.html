@@ -294,6 +294,18 @@
      sichtbare Griffe), aber auf EINE Zeile je Gruppe verdichtet - ueber dem Spiel
      ist Hoehe knapp. Gezogen wird genauso: Marken innerhalb ihrer Zeile, ganze
      Gruppen am Griff links. */
+  /* Zweite Zeile: Form + Darstellungsschalter - dieselben Optionen wie Karte 1 im Einstellungsreiter,
+     damit der Live-Editor nichts anbietet, was die App nicht kennt (und umgekehrt) */
+  .eb-lay { display: flex; align-items: stretch; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
+  .eb-lay .eb-ctl { justify-content: flex-start; }   /* Form oben neben der (zweizeiligen) Darstellung, nicht unten haengend */
+  .eb-seg { display: inline-flex; gap: 3px; padding: 3px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; min-height: 0; }
+  .eb-seg button, .eb-togs button { font-family: inherit; font-size: 11.5px; line-height: 1; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    color: #99a0b2; background: transparent; border: 1px solid transparent; transition: background .15s, border-color .15s, color .15s, box-shadow .15s; }
+  .eb-seg button:hover, .eb-togs button:hover { color: #fff; background: rgba(79,142,247,.14); border-color: rgba(79,142,247,.7); }
+  .eb-seg button.on { color: #fff; background: rgba(79,142,247,.32); border-color: #4f8ef7; }
+  .eb-togs { gap: 5px; flex-wrap: wrap; max-width: 420px; }
+  .eb-togs button { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); }
+  .eb-togs button.on { color: #fff; background: rgba(79,142,247,.32); border-color: #4f8ef7; box-shadow: 0 0 8px rgba(79,142,247,.45), inset 0 0 4px rgba(79,142,247,.35); }
   .eb-fields { display: flex; flex-direction: column; gap: 5px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
   .eb-frow { display: flex; align-items: center; gap: 7px; padding: 3px 5px; border-radius: 8px;
     border-left: 2px solid var(--gc, #666);
@@ -358,6 +370,16 @@
         <div class="eb-row"><div class="eb-corners" id="ebCorners"></div></div>
       </div>
       <button id="editDone">Fertig</button>
+    </div>
+    <div class="eb-lay">
+      <div class="eb-ctl">
+        <span class="eb-lbl">Form</span>
+        <div class="eb-row eb-seg" id="ebForm"><button data-form="rund">Rund</button><button data-form="eckig">Eckig</button><button data-form="pille">Pille</button></div>
+      </div>
+      <div class="eb-ctl">
+        <span class="eb-lbl">Darstellung</span>
+        <div class="eb-row eb-togs" id="ebLay"><button data-lay="labels">Beschriftungen</button><button data-lay="units">Einheiten</button><button data-lay="icons">Symbole</button><button data-lay="sep">Trennlinien</button><button data-lay="glow">Leuchtrahmen</button><button data-lay="dense">Dicht</button></div>
+      </div>
     </div>
     <div class="eb-fields" id="ebFields"></div>
     <div class="eb-hint"><b>Ziehen</b> = Position &nbsp;·&nbsp; <b>Mausrad</b> = Größe</div>
@@ -845,6 +867,10 @@
     const posSet = [['tl','◤','Oben links'],['tc','▀','Oben mittig'],['tr','◥','Oben rechts'],['bl','◣','Unten links'],['bc','▄','Unten mittig'],['br','◢','Unten rechts']];
     const ebc = document.getElementById('ebCorners');
     ebc.innerHTML = posSet.map(([c, sym, ti]) => `<button class="eb-corner${c === cur ? ' on' : ''}" data-corner="${c}" title="${ti}">${sym}</button>`).join('');
+    // Form + Darstellungsschalter spiegeln cfg.layout (Standardwerte wie in applyLayout)
+    const lay = cfg.layout || {};
+    document.querySelectorAll('#ebForm button').forEach(b => b.classList.toggle('on', (lay.form || 'rund') === b.dataset.form));
+    document.querySelectorAll('#ebLay button').forEach(b => b.classList.toggle('on', ebLayAn(lay, b.dataset.lay)));
     // Reihenfolge wie im Panel (orderList) - vorher stand hier stur die
     // Definitionsfolge, der Editor zeigte also eine ANDERE Reihenfolge als das OSD.
     const box = document.getElementById('ebFields');
@@ -952,6 +978,15 @@
     renderEditbar(false);   // Marke wandert sofort zwischen "im Overlay" und "ausgeblendet"
     if (ipcRenderer) ipcRenderer.invoke('osd-edit-fields', nf);
   });
+  // Layout-Schalter: labels/units/sep sind standardmaessig AN (nur false schaltet aus), der Rest AUS
+  function ebLayAn(l, k) { return ['labels','units','sep'].includes(k) ? l[k] !== false : !!l[k]; }
+  function ebSetLayout(patch) {
+    cfg.layout = Object.assign({}, cfg.layout, patch);
+    applyLayout(); renderEditbar(false);   // sofort sichtbar, Knoepfe nachziehen
+    if (ipcRenderer) ipcRenderer.invoke('osd-edit-layout', cfg.layout);   // Shell schreibt osdLayout + zieht beide Fenster nach
+  }
+  document.getElementById('ebForm').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) ebSetLayout({ form: b.dataset.form }); });
+  document.getElementById('ebLay').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const k = b.dataset.lay; ebSetLayout({ [k]: !ebLayAn(cfg.layout || {}, k) }); });
   document.getElementById('ebCorners').addEventListener('click', (e) => {
     const btn = e.target.closest('.eb-corner'); if (!btn) return;
     const corner = btn.dataset.corner;

@@ -4092,48 +4092,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       document.getElementById('setHotkeyPauseExes').value = s.hotkeyPauseExes || ''
       document.getElementById('setIbAuto').checked = s.inputBridgeAutoActivate !== false
       { const e = document.getElementById('setNetStats'); if (e) e.checked = !!s.netStats; netStatsAn = !!s.netStats }
-      document.getElementById('setOsdEnabled').checked = !!s.osdEnabled
-      document.getElementById('setOsdTheme').value = s.osdTheme || 'bar'
-      // Paket 1: Palette, eigene Farben, Layout-Baukasten, Grenzwerte
-      document.getElementById('setOsdPalette').value = s.osdPalette || 'standard'
-      { const c = s.osdColors || {}; const setC = (id, v, std) => { document.getElementById(id).value = /^#[0-9a-fA-F]{6}$/.test(v || '') ? v : std }
-        setC('setOsdColGpu', c.nv, '#74e857'); setC('setOsdColCpu', c.amd, '#ff8a1e'); setC('setOsdColFps', c.fpc, '#4bd6ff'); setC('setOsdColNet', c.netc, '#c79bff'); setC('setOsdColVal', c.val, '#ffe100') }
-      osdColorsRowShow()
-      { const l = s.osdLayout || {}
-        document.getElementById('setOsdLayLabels').checked = l.labels !== false; document.getElementById('setOsdLayUnits').checked = l.units !== false
-        document.getElementById('setOsdLayIcons').checked = !!l.icons; document.getElementById('setOsdLaySep').checked = l.sep !== false
-        document.getElementById('setOsdLayGlow').checked = !!l.glow; document.getElementById('setOsdLayDense').checked = !!l.dense
-        setOsdForm(l.form || 'rund', false) }
-      { const g = s.osdLimits || {}
-        document.getElementById('setOsdLimOn').checked = g.on !== false; document.getElementById('setOsdLimPulse').checked = g.pulse !== false
-        // Warnschwelle fehlt in alten Einstellungen: dann wie bisher zehn unter Alarm bzw. halbes FPS-Minimum
-        const gt = g.gpuTemp || 85, ct = g.cpuTemp || 90, ld = g.load || 95, fm = g.fpsMin || 60
-        document.getElementById('setOsdLimGpuTemp').value = gt; document.getElementById('setOsdLimGpuTempWarn').value = g.gpuTempWarn || gt - 10
-        document.getElementById('setOsdLimCpuTemp').value = ct; document.getElementById('setOsdLimCpuTempWarn').value = g.cpuTempWarn || ct - 10
-        document.getElementById('setOsdLimLoad').value = ld; document.getElementById('setOsdLimLoadWarn').value = g.loadWarn || ld - 10
-        document.getElementById('setOsdLimFps').value = fm; document.getElementById('setOsdLimFpsCrit').value = g.fpsCrit || Math.round(fm / 2) }
-      renderGpuOptions(s.osdGpu || 'auto')
-      renderOsdFields(s.osdFields, s.osdOrder)
-      document.getElementById('osdSetupRow').style.display = s.osdSetupDeclined ? 'flex' : 'none'
-      // Datenquellen live anzeigen (GPU/CPU/FPS) – beantwortet "woher kommen die Werte".
-      ipcRenderer.invoke('osd-sources').then(q => {
-        const el = document.getElementById('osdSourcesInfo')
-        if (el && q) { el.textContent = 'GPU: ' + q.gpu + ' · CPU: ' + q.cpu + ' · FPS: ' + q.fps; el.style.display = 'inline' }
-      }).catch(() => {})
-      document.getElementById('setOsdFpsSource').value = s.osdFpsSource || 'auto'
-      const oScale = s.osdScale || 1, oOp = s.osdOpacity != null ? s.osdOpacity : 0.55
-      document.getElementById('setOsdScale').value = oScale
-      document.getElementById('osdScaleVal').textContent = Math.round(oScale * 100) + '%'
-      document.getElementById('setOsdOpacity').value = oOp
-      document.getElementById('osdOpacityVal').textContent = Math.round(oOp * 100) + '%'
-      { let oc = s.osdCorner || 'tl'
-        // Bis 4.0.2 sassen Leiste/Kacheln/Punkte immer mittig, die gespeicherte Ecke war egal. Jetzt gilt die
-        // Position fuer jedes Design -> einmalig auf 'mittig' umschreiben, damit sich fuer Bestandsnutzer nichts verschiebt.
-        if (!s.osdCornerV2) {
-          if (['strip','tiles','dots'].includes(s.osdTheme) && /^[tb][lr]$/.test(oc)) oc = oc[0] + 'c'
-          ipcRenderer.invoke('set-app-settings', { osdCorner: oc, osdCornerV2: true })
-        }
-        setOsdCorner(oc, false) }
+      fillOsdUi(s)
       { const src = document.getElementById('osdEditHotkeyDisplay'), dst = document.getElementById('osdEditHotkeyEcho')
         if (src && dst && !src.dataset.echo) { src.dataset.echo = '1'; const sync = () => { dst.textContent = src.textContent }; sync(); new MutationObserver(sync).observe(src, { childList: true, characterData: true, subtree: true }) } }
       appSettingsCache.toggleHotkey = s.toggleHotkey || ''
@@ -4348,6 +4307,58 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       onOsdSettingChange()
     }
 
+    // PlainOSD-Reiter aus den Settings fuellen. Eigene Funktion, weil der Reiter das auch NACH
+    // einem Live-Edit im Spiel (osd-settings-changed) tun muss - sonst hielt er den alten Stand
+    // und der naechste Klick (z. B. 'Dicht') schickte das veraltete Design zurueck ans Overlay.
+    function fillOsdUi(s) {
+      document.getElementById('setOsdEnabled').checked = !!s.osdEnabled
+      document.getElementById('setOsdTheme').value = s.osdTheme || 'bar'
+      // Paket 1: Palette, eigene Farben, Layout-Baukasten, Grenzwerte
+      document.getElementById('setOsdPalette').value = s.osdPalette || 'standard'
+      { const c = s.osdColors || {}; const setC = (id, v, std) => { document.getElementById(id).value = /^#[0-9a-fA-F]{6}$/.test(v || '') ? v : std }
+        setC('setOsdColGpu', c.nv, '#74e857'); setC('setOsdColCpu', c.amd, '#ff8a1e'); setC('setOsdColFps', c.fpc, '#4bd6ff'); setC('setOsdColNet', c.netc, '#c79bff'); setC('setOsdColVal', c.val, '#ffe100') }
+      osdColorsRowShow()
+      { const l = s.osdLayout || {}
+        document.getElementById('setOsdLayLabels').checked = l.labels !== false; document.getElementById('setOsdLayUnits').checked = l.units !== false
+        document.getElementById('setOsdLayIcons').checked = !!l.icons; document.getElementById('setOsdLaySep').checked = l.sep !== false
+        document.getElementById('setOsdLayGlow').checked = !!l.glow; document.getElementById('setOsdLayDense').checked = !!l.dense
+        setOsdForm(l.form || 'rund', false) }
+      { const g = s.osdLimits || {}
+        document.getElementById('setOsdLimOn').checked = g.on !== false; document.getElementById('setOsdLimPulse').checked = g.pulse !== false
+        // Warnschwelle fehlt in alten Einstellungen: dann wie bisher zehn unter Alarm bzw. halbes FPS-Minimum
+        const gt = g.gpuTemp || 85, ct = g.cpuTemp || 90, ld = g.load || 95, fm = g.fpsMin || 60
+        document.getElementById('setOsdLimGpuTemp').value = gt; document.getElementById('setOsdLimGpuTempWarn').value = g.gpuTempWarn || gt - 10
+        document.getElementById('setOsdLimCpuTemp').value = ct; document.getElementById('setOsdLimCpuTempWarn').value = g.cpuTempWarn || ct - 10
+        document.getElementById('setOsdLimLoad').value = ld; document.getElementById('setOsdLimLoadWarn').value = g.loadWarn || ld - 10
+        document.getElementById('setOsdLimFps').value = fm; document.getElementById('setOsdLimFpsCrit').value = g.fpsCrit || Math.round(fm / 2) }
+      renderGpuOptions(s.osdGpu || 'auto')
+      renderOsdFields(s.osdFields, s.osdOrder)
+      document.getElementById('osdSetupRow').style.display = s.osdSetupDeclined ? 'flex' : 'none'
+      // Datenquellen live anzeigen (GPU/CPU/FPS) – beantwortet "woher kommen die Werte".
+      ipcRenderer.invoke('osd-sources').then(q => {
+        const el = document.getElementById('osdSourcesInfo')
+        if (el && q) { el.textContent = 'GPU: ' + q.gpu + ' · CPU: ' + q.cpu + ' · FPS: ' + q.fps; el.style.display = 'inline' }
+      }).catch(() => {})
+      document.getElementById('setOsdFpsSource').value = s.osdFpsSource || 'auto'
+      const oScale = s.osdScale || 1, oOp = s.osdOpacity != null ? s.osdOpacity : 0.55
+      document.getElementById('setOsdScale').value = oScale
+      document.getElementById('osdScaleVal').textContent = Math.round(oScale * 100) + '%'
+      document.getElementById('setOsdOpacity').value = oOp
+      document.getElementById('osdOpacityVal').textContent = Math.round(oOp * 100) + '%'
+      { let oc = s.osdCorner || 'tl'
+        // Bis 4.0.2 sassen Leiste/Kacheln/Punkte immer mittig, die gespeicherte Ecke war egal. Jetzt gilt die
+        // Position fuer jedes Design -> einmalig auf 'mittig' umschreiben, damit sich fuer Bestandsnutzer nichts verschiebt.
+        if (!s.osdCornerV2) {
+          if (['strip','tiles','dots'].includes(s.osdTheme) && /^[tb][lr]$/.test(oc)) oc = oc[0] + 'c'
+          ipcRenderer.invoke('set-app-settings', { osdCorner: oc, osdCornerV2: true })
+        }
+        setOsdCorner(oc, false) }
+      osdLastCfg = buildOsdCfg()   // Bezugsstand fuer das Differenz-Senden
+    }
+    ipcRenderer.on('osd-settings-changed', async () => {   // Shell: Live-Edit hat Settings geschrieben
+      if (settingsTab !== 'overlay') return
+      try { fillOsdUi(await ipcRenderer.invoke('get-app-settings')) } catch (e) {}
+    })
     // --- OSD-Layout (live): jede Änderung wirkt sofort aufs Overlay ------------
     let osdCorner = 'tl', osdForm = 'rund'
     function limZahl(id, min, max, std) { const el = document.getElementById(id); let n = parseInt(el.value, 10); if (!Number.isFinite(n)) n = std; n = Math.max(min, Math.min(max, n)); el.value = n; return n }
@@ -4360,8 +4371,9 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // WICHTIG: osdEnabled NUR mitschicken, wenn wirklich die Checkbox bedient wurde.
     // Sonst ueberschrieb jede Regler-Bewegung den per Alt+O gesetzten Zustand mit dem
     // (veralteten) Checkbox-Stand -> das eingeblendete OSD verschwand beim Schieben.
-    function onOsdSettingChange(fromEnabledToggle) {
-      const cfg = {
+    let osdLastCfg = null
+    function buildOsdCfg() {
+      return {
         osdRenderer: 'window',
         osdTheme: document.getElementById('setOsdTheme').value,
         osdFields: osdFieldsState,
@@ -4381,8 +4393,16 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
                      loadWarn: limZahl('setOsdLimLoadWarn', 10, 100, 85), load: limZahl('setOsdLimLoad', 10, 100, 95),
                      fpsMin: limZahl('setOsdLimFps', 5, 500, 60), fpsCrit: limZahl('setOsdLimFpsCrit', 1, 500, 30) },
       }
-      if (fromEnabledToggle) cfg.osdEnabled = document.getElementById('setOsdEnabled').checked
-      ipcRenderer.invoke('set-app-settings', cfg)
+    }
+    function onOsdSettingChange(fromEnabledToggle) {
+      // Nur senden, was sich gegenueber dem zuletzt geladenen/gesendeten Stand geaendert hat.
+      // Vorher ging der KOMPLETTE Reiterstand raus - und ueberschrieb damit alles, was der
+      // Live-Edit im Spiel inzwischen gesetzt hatte (Design, Position, Groesse, Deckkraft).
+      const cfg = buildOsdCfg(), send = {}
+      for (const k of Object.keys(cfg)) if (!osdLastCfg || JSON.stringify(cfg[k]) !== JSON.stringify(osdLastCfg[k])) send[k] = cfg[k]
+      osdLastCfg = cfg
+      if (fromEnabledToggle) send.osdEnabled = document.getElementById('setOsdEnabled').checked
+      if (Object.keys(send).length) ipcRenderer.invoke('set-app-settings', send)
       // JEDE Layout-Aenderung (Design, Werte, FPS-Quelle, Regler, Ecke) zeigt das Overlay
       // kurz - sonst sieht man bei ausgeschaltetem OSD gar nicht, was die Aenderung bewirkt.
       // NICHT beim Ein-/Ausschalten selbst: da ist der Zustand ja gerade die Aussage.
