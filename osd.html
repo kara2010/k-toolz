@@ -44,6 +44,7 @@
   @keyframes osdPulse { 50% { opacity: .45; } }
   /* ===== Layout-Baukasten (body.lay-*) ===== */
   body.lay-nolabels .k, body.lay-nolabels .lbl, body.lay-nolabels .gl { display: none !important; }
+  body.lay-nolabels .t-strip .nm, body.lay-nolabels .t-tiles .cap { display: none !important; }   /* Leiste/Kacheln: Gruppenname ist dort die Beschriftung */
   body.lay-nounits .osd i { display: none !important; }
   body.lay-icons .nv .name::before, body.lay-icons .nv .nm::before, body.lay-icons .nv .cap::before, body.lay-icons .k.nv::before, body.lay-icons .d.nv::before, body.lay-icons .tl.nv::before { content: '▣ '; }
   body.lay-icons .amd .name::before, body.lay-icons .amd .nm::before, body.lay-icons .amd .cap::before, body.lay-icons .k.amd::before, body.lay-icons .d.amd::before, body.lay-icons .tl.amd::before { content: '◩ '; }
@@ -427,8 +428,8 @@
     min:     ['labels','units','icons','dense'],
     bar:     ['labels','units','icons','dense','form','glow'],
     neon:    ['labels','units','icons','sep','dense','form','glow'],
-    strip:   ['units','icons','sep','dense','form','glow'],
-    tiles:   ['units','icons','sep','dense','form','glow'],
+    strip:   ['labels','units','icons','sep','dense','form','glow'],
+    tiles:   ['labels','units','icons','sep','dense','form','glow'],
     gauge:   ['labels','units','form','glow'],
     term:    ['labels','units','icons','sep','dense','form','glow'],
     dots:    ['labels','units','icons','form','glow'],
