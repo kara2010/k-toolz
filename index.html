@@ -512,16 +512,16 @@
                 <span class="setting-toggle-label">Grenzwerte einfärben</span>
                 <label class="switch"><input type="checkbox" id="setOsdLimOn" checked onchange="onOsdSettingChange()"><span class="switch-slider"></span></label>
               </div>
+              <div class="setting-toggle-row">
+                <span class="setting-toggle-label">Bei Alarm pulsieren</span>
+                <label class="switch"><input type="checkbox" id="setOsdLimPulse" checked onchange="onOsdSettingChange()"><span class="switch-slider"></span></label>
+              </div>
               <div class="osd-limits">
                 <div class="osd-limit osd-limit-head"><span></span><b>Warnung</b><b>Alarm</b><i></i></div>
                 <div class="osd-limit"><span>GPU-Temperatur</span><input type="number" id="setOsdLimGpuTempWarn" min="30" max="120" value="75" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimGpuTemp" min="30" max="120" value="85" onchange="onOsdSettingChange()"><i>°C</i></div>
                 <div class="osd-limit"><span>CPU-Temperatur</span><input type="number" id="setOsdLimCpuTempWarn" min="30" max="120" value="80" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimCpuTemp" min="30" max="120" value="90" onchange="onOsdSettingChange()"><i>°C</i></div>
                 <div class="osd-limit"><span>Auslastung</span><input type="number" id="setOsdLimLoadWarn" min="10" max="100" value="85" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimLoad" min="10" max="100" value="95" onchange="onOsdSettingChange()"><i>%</i></div>
                 <div class="osd-limit"><span>FPS unter</span><input type="number" id="setOsdLimFps" min="5" max="500" value="60" onchange="onOsdSettingChange()"><input type="number" id="setOsdLimFpsCrit" min="1" max="500" value="30" onchange="onOsdSettingChange()"><i>FPS</i></div>
-              </div>
-              <div class="setting-toggle-row">
-                <span class="setting-toggle-label">Bei Alarm pulsieren</span>
-                <label class="switch"><input type="checkbox" id="setOsdLimPulse" checked onchange="onOsdSettingChange()"><span class="switch-slider"></span></label>
               </div>
             </div>
 
