@@ -4612,18 +4612,26 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       el.querySelector('.osd-pick-chips').innerHTML = list.map(c => '<button type="button" class="osd-pick-chip" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></button>').join('')
       el.querySelector('.osd-pick-reset').title = OSD_COL_AUTO.includes(id) ? window.tr('Automatisch (wie im Design)') : window.tr('Standardfarbe')
       el.style.display = 'block'
-      const cell = inp.closest('.osd-color'), hr = host.getBoundingClientRect()
+      const cell = inp.closest('.osd-color'), hr = host.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight + 6
       const ar = anchor || cell.getBoundingClientRect()   // Bezug: Klickpunkt in der Vorschau oder die Kachel
-      // horizontal: am Bezug, innerhalb der Karte halten
-      el.style.left = Math.max(0, Math.min(ar.left - hr.left, host.clientWidth - el.offsetWidth)) + 'px'
-      // vertikal: Platz im SICHTBAREN Teil des scrollenden Reiters berechnen - unten, wenn er dort
-      // ganz hineinpasst; sonst oben ueber dem Bezug; passt es nirgends, unten + ins Bild scrollen.
       const scroller = document.getElementById('settingsView'), sr = scroller.getBoundingClientRect()
-      const sichtOben = Math.max(sr.top, 0), sichtUnten = Math.min(sr.bottom, window.innerHeight), h = el.offsetHeight + 6
-      const passtUnten = ar.bottom + h <= sichtUnten, passtOben = ar.top - h >= sichtOben
-      el.classList.toggle('up', !passtUnten && passtOben)
-      el.style.top = ((!passtUnten && passtOben) ? (ar.top - hr.top - h) : (ar.bottom - hr.top + 6)) + 'px'
-      if (!passtUnten && !passtOben) el.scrollIntoView({ block: 'nearest' })
+      const sichtOben = Math.max(sr.top, 0), sichtUnten = Math.min(sr.bottom, window.innerHeight)
+      const p = anchor && anchor.panel, rechtsFrei = window.innerWidth - 8
+      if (p && (p.right + 12 + w <= rechtsFrei || p.left - 12 - w >= 8)) {
+        // Klick in der Vorschau: neben das Overlay (rechts, sonst links), oben buendig mit dem Panel - das Overlay bleibt beim Faerben sichtbar
+        const x = p.right + 12 + w <= rechtsFrei ? p.right + 12 : p.left - 12 - w
+        const y = Math.max(sichtOben + 4, Math.min(p.top, sichtUnten - h))
+        el.classList.remove('up'); el.style.left = (x - hr.left) + 'px'; el.style.top = (y - hr.top) + 'px'
+      } else {
+        // horizontal: am Bezug, innerhalb der Karte halten
+        el.style.left = Math.max(0, Math.min(ar.left - hr.left, host.clientWidth - w)) + 'px'
+        // vertikal: Platz im SICHTBAREN Teil des scrollenden Reiters berechnen - unten, wenn er dort
+        // ganz hineinpasst; sonst oben ueber dem Bezug; passt es nirgends, unten + ins Bild scrollen.
+        const passtUnten = ar.bottom + h <= sichtUnten, passtOben = ar.top - h >= sichtOben
+        el.classList.toggle('up', !passtUnten && passtOben)
+        el.style.top = ((!passtUnten && passtOben) ? (ar.top - hr.top - h) : (ar.bottom - hr.top + 6)) + 'px'
+        if (!passtUnten && !passtOben) el.scrollIntoView({ block: 'nearest' })
+      }
       osdPrevHl(k)   // Rolle in der Vorschau hervorheben, solange der Waehler offen ist
       document.querySelectorAll('.osd-swatch').forEach(s => s.classList.toggle('open', s.dataset.for === id))
       el._paint(); el.querySelector('.osd-pick-sv').focus()
@@ -4660,8 +4668,10 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         else if (m.t === 'osd-pick') {
           const id = OSD_COL_ID[m.key]; if (!id) return
           // Bezug: Klickspalte, aber ober-/unterhalb des ganzen Vorschau-Rahmens - so bleibt das Overlay beim Faerben sichtbar
-          const r = fr.getBoundingClientRect(), wr = document.getElementById('osdPrevWrap').getBoundingClientRect(), x = r.left + m.x * osdPrevK
-          osdPickerOpen(id, { left: x, top: wr.top, right: x, bottom: wr.bottom }, m.auto ? m.color : null)
+          const r = fr.getBoundingClientRect(), wr = document.getElementById('osdPrevWrap').getBoundingClientRect(), x = r.left + m.x * osdPrevK, p = m.panel
+          // Panelflaeche in Fensterkoordinaten: der Waehler setzt sich NEBEN das Overlay (rechts, sonst links), sonst unter die Vorschau
+          const panel = p ? { left: r.left + p.left * osdPrevK, top: r.top + p.top * osdPrevK, right: r.left + p.right * osdPrevK, bottom: r.top + p.bottom * osdPrevK } : null
+          osdPickerOpen(id, { left: x, top: wr.top, right: x, bottom: wr.bottom, panel }, m.auto ? m.color : null)
         }
       })
     }
