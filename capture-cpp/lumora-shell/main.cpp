@@ -4072,11 +4072,28 @@ static std::string gpuNameFirst() {
     return "GPU";
 }
 // ADL-Sensoren eines Adapters -> GPU-JSON (temp/clock/power/load), VRAM via DXGI.
+// GPU-3D-Last wie der Taskmanager: Summe der 3D-Engine-Instanzen (PDH, Delta ueber den 200-ms-Tick). null = Zaehler nicht da.
+static json pdhGpuLoad() {
+    if (!g_pdhGpu) return nullptr;
+    DWORD bs = 0, cnt = 0;
+    PdhGetFormattedCounterArrayW(g_pdhGpu, PDH_FMT_DOUBLE, &bs, &cnt, nullptr);
+    if (!bs) return nullptr;
+    std::vector<uint8_t> buf(bs);
+    auto* items = (PDH_FMT_COUNTERVALUE_ITEM_W*)buf.data();
+    if (PdhGetFormattedCounterArrayW(g_pdhGpu, PDH_FMT_DOUBLE, &bs, &cnt, items) != ERROR_SUCCESS) return nullptr;
+    double sum = 0; for (DWORD i = 0; i < cnt; ++i) sum += items[i].FmtValue.doubleValue;
+    return (int)(std::min)(100.0, sum + 0.5);
+}
 static json readAdlGpu(int idx, const std::string& rawName) {
     luadl::GpuVals v = luadl::read(idx, rawName);
     if (!v.ok) return nullptr;
+    // Auslastung: ADL liefert gfxActivity als Momentaufnahme - auf APUs springt sie zwischen 0, 66 und 99 (Befund
+    // 02.11., Taskmanager zeigte stetig 13-15 %). Deshalb zuerst die 3D-Engine-Last des Systems (Taskmanager-Metrik),
+    // der Treiberwert nur als Ersatz, wenn der Zaehler fehlt.
+    json load = pdhGpuLoad();
+    if (load.is_null() && v.hasLoad) load = v.load;
     return { {"brand", "AMD"}, {"name", cleanAmdName(v.name)},
-             {"load", v.hasLoad ? json(v.load) : json(nullptr)},
+             {"load", load},
              {"temp", v.hasTemp ? json(v.temp) : json(nullptr)},
              {"power", v.hasPower ? json(v.power) : json(nullptr)},
              {"clock", v.hasClock ? json(v.clock) : json(nullptr)},
@@ -4124,19 +4141,7 @@ static json readGpuPdh() {
     // "NVIDIA GeForce RTX 2060" springen.
     std::string name = cleanNvidiaName(cleanAmdName(narrow(pd.Description)));
     std::string brand = pd.VendorId == 0x10DE ? "NVIDIA" : pd.VendorId == 0x1002 ? "AMD" : pd.VendorId == 0x8086 ? "INTEL" : "GPU";
-    json load = nullptr, vram = nullptr;
-    // GPU-3D-Last: Summe aller 3D-Engine-Instanzen (Wildcard-Counter -> Array)
-    if (g_pdhGpu) {
-        DWORD bs = 0, cnt = 0;
-        PdhGetFormattedCounterArrayW(g_pdhGpu, PDH_FMT_DOUBLE, &bs, &cnt, nullptr);
-        if (bs) { std::vector<uint8_t> buf(bs);
-            auto* items = (PDH_FMT_COUNTERVALUE_ITEM_W*)buf.data();
-            if (PdhGetFormattedCounterArrayW(g_pdhGpu, PDH_FMT_DOUBLE, &bs, &cnt, items) == ERROR_SUCCESS) {
-                double sum = 0; for (DWORD i = 0; i < cnt; ++i) sum += items[i].FmtValue.doubleValue;
-                load = (int)(std::min)(100.0, sum + 0.5);
-            }
-        }
-    }
+    json load = pdhGpuLoad(), vram = nullptr;   // GPU-3D-Last: Summe aller 3D-Engine-Instanzen (Taskmanager-Metrik)
     ComPtr<IDXGIAdapter3> a3; pick.As(&a3);   // echter VRAM-Verbrauch (wie Taskmanager)
     if (a3) { DXGI_QUERY_VIDEO_MEMORY_INFO mi{};
         if (SUCCEEDED(a3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &mi))) vram = (long long)(mi.CurrentUsage / 1048576);
