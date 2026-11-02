@@ -75,7 +75,7 @@
         "@type": "SoftwareApplication",
         "@id": "https://lumora-streaming.de/#app",
         "name": "Lumora",
-        "softwareVersion": "4.0.3",
+        "softwareVersion": "4.0.4",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
         "license": "https://www.gnu.org/licenses/agpl-3.0.html",
@@ -1054,8 +1054,17 @@
     <div class="changelog">
       <div class="release">
         <div class="release-head">
-          <span class="release-ver">4.0.3</span>
+          <span class="release-ver">4.0.4</span>
           <span class="release-tag">aktuell</span>
+        </div>
+        <ul>
+          <li><strong>Farbwähler neben dem Overlay</strong> – in den PlainOSD-Einstellungen öffnet sich der Farbwähler nach einem Klick in der Vorschau neben dem Overlay statt darunter – das Overlay bleibt beim Färben sichtbar, auch auf großen Bildschirmen.</li>
+          <li><strong>Vorschau auf Englisch</strong> – läuft K-Toolz auf Englisch, nennt die Vorschau im PlainOSD-Reiter die Textarten und den Klick-Hinweis ebenfalls auf Englisch.</li>
+        </ul>
+      </div>
+      <div class="release">
+        <div class="release-head">
+          <span class="release-ver">4.0.3</span>
         </div>
         <ul>
           <li><strong>Zehn Designs, sechs Positionen</strong> – Tacho mit Ringanzeigen, Terminal, Punkte und HUD mit Rahmenecken sind neu. Jedes Design sitzt wahlweise oben oder unten, links, mittig oder rechts.</li>
@@ -1097,6 +1106,7 @@
           <li><strong>Analyse-Werkbank</strong> – passt sich hohen Bildschirmskalierungen an und zeigt ihr Urteil als ganzen Satz.</li>
         </ul>
       </div>
+      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.10</span>
@@ -1108,7 +1118,6 @@
           <li>Auf Notebooks mit Hybrid-Grafik hält das Overlay die Grafikkartenwerte bei kurzen Sensor-Aussetzern fest, statt zu flackern und den Namen der Grafikkarte sekündlich zu wechseln.</li>
         </ul>
       </div>
-      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">3.2.9</span>
@@ -1539,7 +1548,7 @@
       </div>
       </div><!-- /#changelogRest -->
     </div>
-    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Ältere Versionen anzeigen (40)</button>
+    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Ältere Versionen anzeigen (41)</button>
   </div>
 </section>
 
@@ -1956,7 +1965,7 @@
     if (!rest || !btn) return;
     var open = rest.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Weniger anzeigen' : 'Ältere Versionen anzeigen (40)';
+    btn.textContent = open ? 'Weniger anzeigen' : 'Ältere Versionen anzeigen (41)';
   }
 
   function toggleFeatures() {
