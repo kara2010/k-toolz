@@ -13,7 +13,9 @@ $stage = "$shell\stage"
 # osd-Rauchtest als Bau-Sperre (Schritt 0b). Die Nummer 3.2.6 bleibt verbrannt -
 # wer sie gezogen hatte, bekaeme dieselbe Nummer nie erneut als Update angeboten
 # (der Updater vergleicht nur die Versionsnummer, s. RELEASE.md 12).
-$version = "4.0.4"   # 4.0.4: PlainOSD-Reiter: Farbwaehler nach Klick in der Vorschau neben dem Overlay
+$version = "4.0.5"   # 4.0.5: AMD-GPU-Auslastung aus dem 3D-Engine-Zaehler (Taskmanager-Metrik) statt der ADL-
+                     #        Momentaufnahme, die auf APUs zwischen 0/66/99 sprang (Befund Mini-PC, 02.11.).
+$prev_4_0_4 = ""  # 4.0.4: PlainOSD-Reiter: Farbwaehler nach Klick in der Vorschau neben dem Overlay
                      #        (Fensterrand als Grenze); Reiter-Vorschau mit englischen Rollennamen bei
                      #        englischer Oberflaeche; Panelflaeche in der Klick-Nachricht der Vorschau.
 $prev_4_0_3 = ""  # 4.0.3: PlainOSD-Ausbau: zehn Designs (Tacho/Terminal/Punkte/HUD neu), sechs
