@@ -246,6 +246,10 @@
      (body{opacity:0}) und von jeder verirrten 'osd-fade'-Nachricht ausnehmen. */
   body.edit { opacity: 1 !important; transition: none !important; }
   /* ===== Live-Edit-Leiste: Lumora-Look (Glas-Panel, Sektionen, Akzent #4f8ef7) ===== */
+  #profToast { position: fixed; z-index: 30; pointer-events: none; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .18s; }
+  #profToast span { background: rgba(79,142,247,.94); color: #fff; font: 600 12.5px/1.3 "Segoe UI", system-ui, sans-serif; padding: 5px 12px; border-radius: 7px;
+                    box-shadow: 0 4px 18px rgba(0,0,0,.45); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #profToast.an { opacity: 1; }
   #editbar { display: none; position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
     z-index: 10; flex-direction: column; gap: 10px; white-space: nowrap; padding: 13px 16px 11px;
     background: linear-gradient(180deg, rgba(24,27,38,.97), rgba(14,16,23,.97));
@@ -398,6 +402,14 @@
   <div id="editbar">
     <div class="eb-top">
       <div class="eb-ctl">
+        <span class="eb-lbl">Profil</span>
+        <div class="eb-row">
+          <button class="eb-arrow" id="ebProfPrev" title="Vorheriges Profil">‹</button>
+          <span class="eb-theme" id="ebProfName">Standard</span>
+          <button class="eb-arrow" id="ebProfNext" title="Nächstes Profil">›</button>
+        </div>
+      </div>
+      <div class="eb-ctl">
         <span class="eb-lbl">Design</span>
         <div class="eb-row">
           <button class="eb-arrow" id="ebPrev" title="Vorheriges Design">‹</button>
@@ -447,6 +459,7 @@
     <div class="eb-hint" id="ebHint"><b>Ziehen</b> = Position &nbsp;·&nbsp; <b>Mausrad</b> = Größe</div>
   </div>
   <div id="panel"></div>
+  <div id="profToast"><span></span></div>
   <div id="crTip"></div>
   <div id="ebPick"></div>
 
@@ -464,6 +477,7 @@
               palette: 'standard', colors: null, limits: { on: true, gpuTempWarn: 75, gpuTemp: 85, cpuTempWarn: 80, cpuTemp: 90, loadWarn: 85, load: 95, fpsMin: 60, fpsCrit: 30, pulse: true },
               layout: { labels: true, units: true, icons: false, sep: true, form: 'rund', glow: false, dense: false },
               font: '' };   // Standard-Design: Balken; font '' = Standardschrift (Consolas-Kette aus dem CSS)
+  const CFG_STD = JSON.parse(JSON.stringify(cfg));   // Werkseinstellung: Profilwerte, die nicht gesetzt sind (null von der Shell), setzen hierauf zurueck
   // Paletten (Paket 1): Gruppenfarben GPU/CPU/FPS/Netz, Nebenwertfarbe (val), Akzent. 'eigen' nimmt cfg.colors.
   // Rollenfarben main (Hauptwerte), lbl (Beschriftungen), unit (Einheiten) sind optional: fehlen sie, gilt der Design-Standard.
   const PALETTES = {
@@ -543,7 +557,7 @@
     const dpr = window.devicePixelRatio || 1, M = 14;   // Rand ums Panel (ersetzt das alte margin)
     const corner = ['tl','tc','tr','bl','bc','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
     const horiz = corner[1] === 'c';   // mittig -> Shell zentriert das Fenster horizontal
-    const w = Math.ceil((r.width  + 2 * M) * dpr), h = Math.ceil((r.height + 2 * M) * dpr);
+    const w = Math.ceil((Math.max(r.width, _toastW) + 2 * M) * dpr), h = Math.ceil((Math.max(r.height, _toastH) + 2 * M) * dpr);   // _toast*: Profil-Einblendung
     // Hysterese: Designs mit Inhaltsbreite (Leiste, Punkte, ...) werden mit jeder Ziffer schmaler/breiter
     // (855 -> 1200 MHz). Wachsen sofort melden (sonst abgeschnitten), Schrumpfen erst ab 16 CSS-px -
     // sonst rueckt das zentrierte Fenster bei jedem Wert ein paar Pixel hin und her (gemessen: +-21 px).
@@ -553,6 +567,7 @@
     ipcRenderer.invoke('osd-bounds', { w, h, corner, horiz });
   }
   let _lastB = { key: '', w: 0, h: 0 };
+  let _toastW = 0, _toastH = 0;   // Profil-Einblendung: Flaeche, die das Overlay-Fenster kurzzeitig mindestens braucht
   let _rbRaf = 0;
   function scheduleBounds() { if (_rbRaf) return; _rbRaf = requestAnimationFrame(() => { _rbRaf = 0; reportBounds(); }); }
   try { new ResizeObserver(scheduleBounds).observe(panel); } catch (e) {}
@@ -915,9 +930,56 @@
   }
 
   // ===================== Config anwenden ================================
+  // Profilname kurz ueber dem Panel zeigen. Position bei jedem Aufruf neu: Ecke/Groesse haengen am Profil.
+  let _profToastT = 0;
+  function profToast(name) {
+    const t = document.getElementById('profToast'); if (!t || !name) return;
+    t.firstChild.textContent = (UI_EN ? 'Profile: ' : 'Profil: ') + name;
+    // Breiter/hoeher als ein kleines Panel (Minimal: nur FPS)? Dann waechst die gemeldete Flaeche fuer die
+    // Dauer der Einblendung mit (_toastW/_toastH in reportBounds) - das Overlay-Fenster ist auf sie zugeschnitten.
+    // Das Panel sitzt im Fenster immer oben links, die Shell setzt das FENSTER in die Ecke. Waechst das Fenster
+    // an einer rechten/unteren/mittigen Ecke, ruecken Fenster und Panel nach innen - deshalb wird das Panel
+    // waehrenddessen um genau diesen Zuwachs zurueckgeschoben (CSS translate), auf dem Bildschirm steht es still.
+    const zeig = () => {
+      if (IS_PREVIEW) {   // Vorschau: das Panel sitzt wirklich in der Ecke, kein Fenster-Zuschnitt -> nur ausrichten
+        const r = panel.getBoundingClientRect(), sp = t.firstChild, z = parseFloat(panel.style.zoom) || 1;
+        const W = Math.max(r.width, (sp.scrollWidth + 2) * z), H = Math.max(Math.min(r.height, 44 * z), (sp.offsetHeight + 4) * z);
+        const corner = ['tl','tc','tr','bl','bc','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
+        t.style.zoom = String(z);
+        t.style.left = (corner[1] === 'r' ? r.right - W : corner[1] === 'c' ? r.left + (r.width - W) / 2 : r.left) / z + 'px';
+        t.style.top = (corner[0] === 'b' ? r.bottom - H : r.top) / z + 'px';
+        t.style.width = W / z + 'px'; t.style.height = H / z + 'px'; t.classList.add('an'); return;
+      }
+      panel.style.translate = '';
+      const r = panel.getBoundingClientRect(), sp = t.firstChild;
+      const W = Math.max(r.width, Math.ceil(sp.scrollWidth) + 2), H = Math.max(Math.min(r.height, 44), Math.ceil(sp.offsetHeight) + 4);
+      const corner = ['tl','tc','tr','bl','bc','br'].find(c => document.body.classList.contains('pos-' + c)) || 'tl';
+      // Versatz aus denselben ganzzahligen Fenstermassen, die reportBounds meldet (sonst 1 px Rundungsruck)
+      const dpr = window.devicePixelRatio || 1, M = 14, ganz = v => Math.ceil((v + 2 * M) * dpr) / dpr;
+      const dW = ganz(W) - ganz(r.width), dH = Math.max(0, ganz(H) - ganz(r.height));
+      const dx = corner[1] === 'r' ? dW : corner[1] === 'c' ? dW / 2 : 0, dy = corner[0] === 'b' ? dH : 0;
+      panel.style.translate = (dx || dy) ? dx + 'px ' + dy + 'px' : '';
+      // Einblendung buendig an der verankerten Seite des Panels
+      t.style.left = r.left + 'px';
+      t.style.top = (corner[0] === 'b' ? r.top + dy + r.height - H : r.top) + 'px';
+      t.style.width = W + 'px'; t.style.height = H + 'px';
+      t.classList.add('an');
+      _toastW = W; _toastH = H; _lastB = { key: '', w: 0, h: 0 }; scheduleBounds();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(zeig));   // erst nach dem Neuaufbau durch die neue Konfiguration messen
+    clearTimeout(_profToastT);
+    _profToastT = setTimeout(() => { t.classList.remove('an'); if (IS_PREVIEW) return; setTimeout(() => { _toastW = 0; _toastH = 0; panel.style.translate = ''; _lastB = { key: '', w: 0, h: 0 }; scheduleBounds(); }, 200); }, 1500);
+  }
   function applyConfig(c) {
     if (!c) return;
     let rebuild = false;
+    // null heisst "im aktiven Profil nicht gesetzt" = Werkseinstellung. Ohne das bliebe nach einem
+    // Profilwechsel der Wert des vorherigen Profils stehen (die Zweige unten greifen nur bei Werten).
+    if (c.fields === null) { cfg.fields = JSON.parse(JSON.stringify(CFG_STD.fields)); rebuild = true; }
+    if (c.order === null && cfg.order) { delete cfg.order; rebuild = true; }
+    if (c.layout === null) { cfg.layout = Object.assign({}, CFG_STD.layout); applyLayout(); }
+    if (c.limits === null) cfg.limits = Object.assign({}, CFG_STD.limits);
+    if (c.profil !== undefined) { const pn = document.getElementById('ebProfName'); if (pn) pn.textContent = c.profil || 'Standard'; }
     if (c.theme && c.theme !== cfg.theme) { cfg.theme = c.theme; rebuild = true; }
     if (c.fields) { cfg.fields = c.fields; rebuild = true; }
     if (c.order) { cfg.order = c.order; rebuild = true; }
@@ -1201,6 +1263,8 @@
     if (ipcRenderer) ipcRenderer.invoke('osd-edit-theme', EB_THEMES[ni][0]);
   }
   document.getElementById('ebPrev').addEventListener('click', () => ebStepTheme(-1));
+  document.getElementById('ebProfPrev').addEventListener('click', () => { if (ipcRenderer) ipcRenderer.invoke('osd-edit-profile', -1); });
+  document.getElementById('ebProfNext').addEventListener('click', () => { if (ipcRenderer) ipcRenderer.invoke('osd-edit-profile', 1); });
   document.getElementById('ebNext').addEventListener('click', () => ebStepTheme(1));
   function ebStepFont(dir) {   // nicht in der Liste (installierte Schrift aus dem Reiter) -> von 'Standard' aus weiter
     const i = EB_FONTS.findIndex(t => t[0] === (cfg.font || ''));
@@ -1316,6 +1380,7 @@
       const m = e.data || {};
       if (m.t === 'cfg' && m.cfg) { applyConfig(m.cfg); if (m.cfg.scale != null) panel.style.zoom = String(m.cfg.scale); }   // scale: Website-Vorschau (in der App zoomt die Shell das Fenster)
       else if (m.t === 'hl') crHighlight(m.key || '');
+      else if (m.t === 'toast') profToast(m.name || '');   // Profilwechsel in der Website-Vorschau
       else if (m.t === 'data' && m.d) {   // echte Messwerte (Shell -> Hauptfenster -> hier): ersetzen die Beispielwerte Teil fuer Teil
         const d = Object.assign({}, m.d);
         if ('gpu' in d || 'cpu' in d) live.hw = true;
@@ -1334,6 +1399,7 @@
     ipcRenderer.on('osd-data', (e, d) => updateOsd(d));
     ipcRenderer.on('osd-config', (e, c) => applyConfig(c));
     ipcRenderer.on('osd-edit', (e, on) => setEdit(on));
+    ipcRenderer.on('osd-toast', (e, name) => profToast(name));
     // Shell nach dem Live-Edit: Hysterese-Gedaechtnis loeschen und die Panel-Masse neu melden
     ipcRenderer.on('osd-remeasure', () => { _lastB = { key: '', w: 0, h: 0 }; scheduleBounds(); });
     // Sanftes Ein-/Ausblenden (osdFadeVisual in main.cpp) per CSS-Opacity statt der an

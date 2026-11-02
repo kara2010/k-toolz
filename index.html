@@ -158,6 +158,13 @@
               <span class="switch-slider"></span>
             </label>
           </div>
+          <div class="meta-row osd-prof-row" id="detailOsdProfRow" style="display:none">
+            <div class="meta-text">
+              <span class="meta-label-main">PlainOSD-Profil</span>
+              <span class="meta-sublabel">Wechselt beim Spielstart automatisch und nach dem Spiel zurück zum Grundprofil.</span>
+            </div>
+            <select id="detailOsdProf" class="sort-select" onchange="onDetailOsdProf()"></select>
+          </div>
         </div>
 
         <div class="detail-actions">
@@ -399,6 +406,30 @@
           <!-- Sieben Karten in Reihenfolge der Nutzungshaeufigkeit; alle IDs/Handler unveraendert (Umbau 1.11.2026) -->
           <div class="osd-cards">
 
+            <!-- PlainOSD-Profile: alle Karten darunter gehoeren zum aktiven Profil (osd-profiles.json in der Shell) -->
+            <div class="osd-card wide osd-prof-card" id="osdProfCard">
+              <h3 class="osd-card-title"><span class="n">★</span>Profil</h3>
+              <p class="osd-card-sub">Alles darunter gehört zum aktiven Profil und wird dort automatisch gespeichert.</p>
+              <div class="osd-prof-chips" id="osdProfChips"></div>
+              <p class="settings-hint osd-prof-auto" id="osdProfAuto" style="display:none"></p>
+              <div class="osd-prof-new" id="osdProfNew" style="display:none">
+                <span class="osd-hk-label">Vorlage wählen:</span>
+                <div class="osd-prof-tpl" id="osdProfTpl"></div>
+              </div>
+              <div class="osd-prof-actions">
+                <button class="btn-browse" onclick="osdProfDuplicate()">Duplizieren</button>
+                <button class="btn-browse" onclick="osdProfRename()">Umbenennen</button>
+                <button class="btn-cancel" id="osdProfDelBtn" onclick="osdProfDelete()">Löschen</button>
+              </div>
+              <span class="osd-hk-label">Programme außerhalb der Bibliothek</span>
+              <p class="settings-hint">Verknüpft mit dem gerade gewählten Profil. Läuft das Programm im Vordergrund, wechselt das OSD automatisch dorthin. Spiele aus der Bibliothek verknüpfst du in ihren Details.</p>
+              <div class="osd-prof-progs" id="osdProfProgs"></div>
+              <div class="osd-prof-progadd">
+                <input type="text" id="osdProfProgInput" placeholder="z. B. spiel.exe" autocomplete="off" spellcheck="false" maxlength="80" onkeydown="if (event.key === 'Enter') osdProfProgAdd()">
+                <button class="btn-browse" onclick="osdProfProgAdd()">Verknüpfen</button>
+              </div>
+            </div>
+
             <div class="osd-card">
               <h3 class="osd-card-title"><span class="n">1</span>Design</h3>
               <p class="osd-card-sub">Wie das Overlay aussieht.</p>
@@ -556,6 +587,20 @@
                 <button class="btn-browse" id="osdEditHotkeyBtn" onclick="toggleHotkeyCapture('osdEdit')">Ändern</button>
                 <button class="btn-cancel" onclick="clearHotkey('osdEdit')">Aus</button>
               </div>
+              <span class="osd-hk-label">Nächstes Profil</span>
+              <div class="hotkey-row">
+                <span class="hotkey-kind" title="Tastatur">⌨️</span>
+                <span class="hotkey-display" id="osdProfHotkeyDisplay">Alt+P</span>
+                <button class="btn-browse" id="osdProfHotkeyBtn" onclick="toggleHotkeyCapture('osdProf')">Ändern</button>
+                <button class="btn-cancel" onclick="clearHotkey('osdProf')">Aus</button>
+              </div>
+              <div class="hotkey-row">
+                <span class="hotkey-kind" title="Gamepad">🎮</span>
+                <span class="hotkey-display" id="gpProfHotkeyDisplay">—</span>
+                <button class="btn-browse" id="gpProfHotkeyCaptureBtn" onclick="toggleGpHotkeyCapture('prof')">Aufnehmen</button>
+                <button class="btn-cancel" onclick="clearGpHotkey('prof')">Aus</button>
+              </div>
+              <p class="settings-hint" id="gpProfHotkeyHint" style="display:none"></p>
               <span class="osd-hk-label">Afterburner-OSD ein-/ausblenden</span>
               <div class="hotkey-row">
                 <span class="hotkey-kind" title="Tastatur">⌨️</span>
@@ -2114,6 +2159,47 @@ const I18N_EN = {
   "— AMD-Hardware-Encoding-API (Radeon-GPUs) · AMD · MIT ·": "— AMD hardware encoding API (Radeon GPUs) · AMD · MIT ·",
   "— Intel-oneVPL-Dispatcher für QuickSync-Hardware-Encoding · Intel Corporation · MIT ·": "— Intel oneVPL dispatcher for QuickSync hardware encoding · Intel Corporation · MIT ·",
   "— Rendering der Benutzeroberfläche (Chromium-basiert, Windows-Systemkomponente) · Microsoft · BSD (Loader) ·": "— renders the user interface (Chromium-based, Windows system component) · Microsoft · BSD (loader) ·",
+  // PlainOSD-Profile
+  "Alles darunter gehört zum aktiven Profil und wird dort automatisch gespeichert.": "Everything below belongs to the active profile and is saved there automatically.",
+  "Vorlage wählen:": "Choose a template:",
+  "Duplizieren": "Duplicate",
+  "Umbenennen": "Rename",
+  "Löschen": "Delete",
+  "Programme außerhalb der Bibliothek": "Programs outside the library",
+  "Verknüpft mit dem gerade gewählten Profil. Läuft das Programm im Vordergrund, wechselt das OSD automatisch dorthin. Spiele aus der Bibliothek verknüpfst du in ihren Details.": "Linked to the currently selected profile. When the program is in the foreground, the OSD switches to it automatically. Link games from the library in their details.",
+  "z. B. spiel.exe": "e.g. game.exe",
+  "Nächstes Profil": "Next profile",
+  "PlainOSD-Profil": "PlainOSD profile",
+  "Wechselt beim Spielstart automatisch und nach dem Spiel zurück zum Grundprofil.": "Switches automatically when the game starts and back to the default profile afterwards.",
+  "Grundprofil": "Default profile",
+  "Grundprofil (kein eigenes)": "Default profile (none of its own)",
+  "+ Neues Profil": "+ New profile",
+  "Werkseinstellung": "Factory default",
+  "Kompetitiv": "Competitive",
+  "Benchmark": "Benchmark",
+  "Streamer": "Streamer",
+  "Leiste": "Strip",
+  "Kacheln": "Tiles",
+  "Tacho": "Gauge",
+  "Punkte": "Dots",
+  "oben links": "top left",
+  "oben mittig": "top center",
+  "oben rechts": "top right",
+  "unten links": "bottom left",
+  "unten mittig": "bottom center",
+  "unten rechts": "bottom right",
+  "Spiel verknüpft": "game linked",
+  "Spiele verknüpft": "games linked",
+  "Programm verknüpft": "program linked",
+  "Programme verknüpft": "programs linked",
+  "Automatisch aktiv durch": "Active automatically because of",
+  "nach dem Spiel zurück zu": "back to",
+  "Das letzte Profil bleibt immer erhalten.": "The last profile always stays.",
+  "Noch keine Programme verknüpft.": "No programs linked yet.",
+  "Verknüpfung lösen": "Unlink",
+  "Kopie": "copy",
+  "Dieses Profil löschen?": "Delete this profile?",
+  "Verknüpfte Spiele und Programme nutzen danach das Grundprofil.": "Linked games and programs will use the default profile afterwards.",
   "— optionale Community-Artworks (eigener API-Key) ·": "— optional community artwork (your own API key) ·",
 }
 function lumoraLangEffective() {
@@ -3053,6 +3139,7 @@ function applyI18n() {
       const hdrOn = g.hdr === true
       document.getElementById('hdrToggle').checked = hdrOn
       updateHdrSubLabel(hdrOn)
+      detailOsdProfFill()
       updateDetailInfo(g)
       updateCoverHero(g)
       refreshLaunchBtn()   // Fremdstart-Status (external-running) gilt pro Spiel
@@ -4121,6 +4208,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       document.getElementById('setIbAuto').checked = s.inputBridgeAutoActivate !== false
       { const e = document.getElementById('setNetStats'); if (e) e.checked = !!s.netStats; netStatsAn = !!s.netStats }
       fillOsdUi(s)
+      osdProfLoad()
       osdPrevData(settingsTab === 'overlay')   // echte Messwerte fuer die Vorschau nur, solange der PlainOSD-Reiter offen ist
       { const src = document.getElementById('osdEditHotkeyDisplay'), dst = document.getElementById('osdEditHotkeyEcho')
         if (src && dst && !src.dataset.echo) { src.dataset.echo = '1'; const sync = () => { dst.textContent = src.textContent }; sync(); new MutationObserver(sync).observe(src, { childList: true, characterData: true, subtree: true }) } }
@@ -4128,6 +4216,8 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       appSettingsCache.osdHotkey = s.osdHotkey != null ? s.osdHotkey : 'Alt+O'
       appSettingsCache.osdEditHotkey = s.osdEditHotkey != null ? s.osdEditHotkey : 'Alt+Shift+O'
       appSettingsCache.osdAbHotkey = s.osdAbHotkey != null ? s.osdAbHotkey : 'Alt+B'
+      appSettingsCache.osdProfHotkey = s.osdProfHotkey != null ? s.osdProfHotkey : 'Alt+P'
+      appSettingsCache.gamepadOsdProfHotkey = Array.isArray(s.gamepadOsdProfHotkey) ? s.gamepadOsdProfHotkey : []
       appSettingsCache.streamHotkey = s.streamHotkey || ''
       appSettingsCache.gamepadHotkey = Array.isArray(s.gamepadHotkey) ? s.gamepadHotkey : []
       appSettingsCache.gamepadOsdHotkey = Array.isArray(s.gamepadOsdHotkey) ? s.gamepadOsdHotkey : []
@@ -4135,6 +4225,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       refreshHotkeyDisplay('osd')
       refreshHotkeyDisplay('osdEdit')
       refreshHotkeyDisplay('osdAb')
+      refreshHotkeyDisplay('osdProf')
       refreshHotkeyDisplay('stream')
       appSettingsCache.analyzeHotkey = s.analyzeHotkey !== undefined ? s.analyzeHotkey : 'Alt+A'
       refreshHotkeyDisplay('analyze')
@@ -4144,6 +4235,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       refreshGpHotkeyDisplay('osd')
       refreshGpHotkeyDisplay('analyze')
       refreshGpHotkeyDisplay('ab')
+      refreshGpHotkeyDisplay('prof')
       document.getElementById('setStreamQuality').value = s.streamQuality || '1080'
       document.getElementById('setStreamFps').value = String(s.streamFps || 60)
       document.getElementById('setStreamEncoder').value = s.streamEncoder || 'auto'
@@ -4402,6 +4494,149 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       if (settingsTab !== 'overlay') return
       try { fillOsdUi(await ipcRenderer.invoke('get-app-settings')) } catch (e) {}
     })
+    // ---- PlainOSD-Profile ------------------------------------------------------------
+    // Die Shell haelt die Profile (osd-profiles.json); die osd*-Einstellungen bleiben die
+    // Arbeitskopie. Ein Wechsel schreibt sie in der Shell um und schickt 'osd-settings-changed'
+    // (-> fillOsdUi) sowie 'osd-profiles' (-> Karte + Spiel-Details).
+    let osdProfiles = null
+    const OSD_THEME_NAME = { compact: 'Kompakt', min: 'Minimal', bar: 'Balken', neon: 'Neon', strip: 'Leiste', tiles: 'Kacheln', gauge: 'Tacho', term: 'Terminal', dots: 'Punkte', hud: 'HUD' }
+    const OSD_CORNER_NAME = { tl: 'oben links', tc: 'oben mittig', tr: 'oben rechts', bl: 'unten links', bc: 'unten mittig', br: 'unten rechts' }
+    const OSD_ALLE_LIMITS = { on: true, pulse: true, gpuTempWarn: 75, gpuTemp: 85, cpuTempWarn: 80, cpuTemp: 90, loadWarn: 85, load: 95, fpsMin: 60, fpsCrit: 30 }
+    // Vorlagen: erzeugen ein neues, frei aenderbares Profil. Nur Felder, die das OSD wirklich hat.
+    const OSD_VORLAGEN = [
+      { key: 'leer', name: 'Werkseinstellung', werte: {} },
+      { key: 'minimal', name: 'Minimal', werte: { osdTheme: 'min', osdFields: { gpu: [], cpu: [], fps: ['fps'], net: [] }, osdCorner: 'tr', osdScale: 0.9, osdOpacity: 0.45 } },
+      { key: 'kompetitiv', name: 'Kompetitiv', werte: { osdTheme: 'compact', osdPalette: 'dezent', osdFields: { gpu: ['load'], cpu: ['load'], fps: ['fps', 'frametime', 'graph'], net: [] }, osdOrder: ['fps', 'gpu', 'cpu', 'net'], osdCorner: 'tl', osdScale: 1, osdOpacity: 0.5 } },
+      { key: 'benchmark', name: 'Benchmark', werte: { osdTheme: 'tiles', osdFields: { gpu: ['load', 'temp', 'power', 'clock', 'vram'], cpu: ['load', 'temp', 'clock', 'power', 'ram'], fps: ['fps', 'frametime', 'graph'], net: [] }, osdCorner: 'tc', osdScale: 1, osdOpacity: 0.6, osdLimits: OSD_ALLE_LIMITS } },
+      { key: 'streamer', name: 'Streamer', werte: { osdTheme: 'bar', osdFields: { gpu: ['load'], cpu: ['load'], fps: ['fps'], net: ['rate', 'total'] }, osdCorner: 'tl', osdScale: 1.2, osdOpacity: 0.75 } },
+    ]
+    async function osdProfLoad() {
+      try { osdProfiles = await ipcRenderer.invoke('osd-profiles-get') } catch (e) {}
+      osdProfRender(); detailOsdProfFill()
+    }
+    ipcRenderer.on('osd-profiles', (e, p) => { osdProfiles = p; osdProfRender(); detailOsdProfFill() })
+    setTimeout(osdProfLoad, 0)   // Spiel-Details brauchen die Liste auch ohne Besuch des PlainOSD-Reiters
+    function osdProfIds() { return osdProfiles && Array.isArray(osdProfiles.reihe) ? osdProfiles.reihe.filter(id => osdProfiles.profile && osdProfiles.profile[id]) : [] }
+    function osdProfName(id) { const p = osdProfiles && osdProfiles.profile && osdProfiles.profile[id]; return p ? (p.name || id) : '' }
+    function osdProfFarben(w) {   // drei Gruppenfarben fuer die Mini-Vorschau (Palette oder eigene Farben)
+      const pal = (w && w.osdPalette) || 'standard', std = OSD_PALETTES.standard
+      const q = pal === 'eigen' ? Object.assign({}, std, (w && w.osdColors) || {}) : (OSD_PALETTES[pal] || std)
+      return [q.nv || std.nv, q.amd || std.amd, q.fpc || std.fpc]
+    }
+    function osdProfZahl(n, eins, viele) { return n + ' ' + window.tr(n === 1 ? eins : viele) }
+    function osdProfRender() {
+      const box = document.getElementById('osdProfChips'); if (!box) return
+      box.textContent = ''
+      if (!osdProfiles) return
+      const ids = osdProfIds()
+      for (const id of ids) {
+        const w = (osdProfiles.profile[id] || {}).werte || {}
+        const b = document.createElement('button'); b.type = 'button'
+        b.className = 'osd-prof-chip' + (id === osdProfiles.aktiv ? ' on' : '')
+        b.onclick = () => { if (id !== osdProfiles.aktiv) ipcRenderer.invoke('osd-profile-activate', id) }
+        const mini = document.createElement('span'); mini.className = 'osd-prof-mini'
+        for (const c of osdProfFarben(w)) { const i = document.createElement('i'); i.style.background = c; mini.appendChild(i) }
+        const txt = document.createElement('span'); txt.className = 'osd-prof-txt'
+        const nm = document.createElement('b'); nm.textContent = osdProfName(id); txt.appendChild(nm)
+        const sub = document.createElement('small')
+        const teile = [window.tr(OSD_THEME_NAME[w.osdTheme || 'bar'] || 'Balken'), window.tr(OSD_CORNER_NAME[w.osdCorner || 'tl'] || 'oben links')]
+        const nSp = (typeof games !== 'undefined' ? games : []).filter(g => g && g.osdProfile === id).length
+        const nPr = Object.values(osdProfiles.programme || {}).filter(x => x === id).length
+        if (nSp) teile.push(osdProfZahl(nSp, 'Spiel verknüpft', 'Spiele verknüpft'))
+        if (nPr) teile.push(osdProfZahl(nPr, 'Programm verknüpft', 'Programme verknüpft'))
+        sub.textContent = teile.join(' · '); txt.appendChild(sub)
+        if (id === osdProfiles.grund) { const t = document.createElement('em'); t.textContent = window.tr('Grundprofil'); txt.appendChild(t) }
+        b.appendChild(mini); b.appendChild(txt); box.appendChild(b)
+      }
+      const neu = document.createElement('button'); neu.type = 'button'; neu.className = 'osd-prof-chip neu'
+      neu.textContent = window.tr('+ Neues Profil')
+      neu.onclick = () => { const n = document.getElementById('osdProfNew'); n.style.display = n.style.display === 'none' ? '' : 'none' }
+      box.appendChild(neu)
+      // Vorlagen
+      const tpl = document.getElementById('osdProfTpl')
+      if (tpl && !tpl.childElementCount) for (const v of OSD_VORLAGEN) {
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-browse'; x.textContent = window.tr(v.name)
+        x.onclick = () => osdProfFromTemplate(v); tpl.appendChild(x)
+      }
+      // Automatik-Hinweis
+      const au = document.getElementById('osdProfAuto')
+      if (au) {
+        if (osdProfiles.auto) {
+          const q = String(osdProfiles.autoQuelle || ''), g = (typeof games !== 'undefined' ? games : []).find(x => x && x.path === q)
+          au.textContent = window.tr('Automatisch aktiv durch') + ' ' + (g ? g.name : q) + ' – ' + window.tr('nach dem Spiel zurück zu') + ' „' + osdProfName(osdProfiles.grund) + '“.'
+          au.style.display = ''
+        } else au.style.display = 'none'
+      }
+      const del = document.getElementById('osdProfDelBtn')
+      if (del) { del.disabled = ids.length <= 1; del.title = ids.length <= 1 ? window.tr('Das letzte Profil bleibt immer erhalten.') : '' }
+      // Programme des aktiven Profils
+      const pl = document.getElementById('osdProfProgs')
+      if (pl) {
+        pl.textContent = ''
+        const eig = Object.entries(osdProfiles.programme || {}).filter(([exe, id]) => id === osdProfiles.aktiv).map(([exe]) => exe).sort()
+        if (!eig.length) { const e = document.createElement('span'); e.className = 'osd-prof-leer'; e.textContent = window.tr('Noch keine Programme verknüpft.'); pl.appendChild(e) }
+        for (const exe of eig) {
+          const c = document.createElement('span'); c.className = 'osd-prof-prog'; c.textContent = exe
+          const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕'; x.title = window.tr('Verknüpfung lösen')
+          x.onclick = () => ipcRenderer.invoke('osd-profile-program', exe, null)
+          c.appendChild(x); pl.appendChild(c)
+        }
+      }
+    }
+    function osdProfFreierName(basis) {
+      const namen = new Set(osdProfIds().map(osdProfName)); if (!namen.has(basis)) return basis
+      for (let i = 2; ; i++) if (!namen.has(basis + ' ' + i)) return basis + ' ' + i
+    }
+    async function osdProfFromTemplate(v) {
+      document.getElementById('osdProfNew').style.display = 'none'
+      await ipcRenderer.invoke('osd-profile-create', { name: osdProfFreierName(window.tr(v.name)), werte: v.werte })
+    }
+    async function osdProfDuplicate() {
+      if (!osdProfiles) return
+      const name = await window.lumoraPrompt(window.tr('Profilname:'), osdProfFreierName(osdProfName(osdProfiles.aktiv) + ' (' + window.tr('Kopie') + ')'))
+      if (name == null || !String(name).trim()) return
+      await ipcRenderer.invoke('osd-profile-create', { name: String(name).trim().slice(0, 40) })
+    }
+    async function osdProfRename() {
+      if (!osdProfiles) return
+      const id = osdProfiles.aktiv
+      const name = await window.lumoraPrompt(window.tr('Profilname:'), osdProfName(id))
+      if (name == null || !String(name).trim()) return
+      await ipcRenderer.invoke('osd-profile-rename', id, String(name).trim().slice(0, 40))
+    }
+    async function osdProfDelete() {
+      if (!osdProfiles || osdProfIds().length <= 1) return
+      const id = osdProfiles.aktiv
+      const ok = await window.lumoraConfirm(window.tr('Dieses Profil löschen?') + ' „' + osdProfName(id) + '“\n' + window.tr('Verknüpfte Spiele und Programme nutzen danach das Grundprofil.'), { okText: window.tr('Löschen') })
+      if (!ok) return
+      await ipcRenderer.invoke('osd-profile-delete', id)
+    }
+    async function osdProfProgAdd() {
+      const inp = document.getElementById('osdProfProgInput'), v = inp.value.trim()
+      if (!v || !osdProfiles) return
+      const r = await ipcRenderer.invoke('osd-profile-program', v, osdProfiles.aktiv)
+      if (r) inp.value = ''
+    }
+    // Spiel-Details: Auswahl je Spiel (am Bibliothekseintrag gespeichert, wie die HDR-Automatik)
+    function detailOsdProfFill() {
+      const row = document.getElementById('detailOsdProfRow'), sel = document.getElementById('detailOsdProf')
+      if (!row || !sel) return
+      const g = (typeof selectedIndex !== 'undefined' && selectedIndex >= 0) ? games[selectedIndex] : null
+      const an = !!g && !!osdProfiles && (window.APP_MODULES || []).includes('osd')
+      row.style.display = an ? '' : 'none'
+      if (!an) return
+      sel.textContent = ''
+      const o0 = document.createElement('option'); o0.value = ''; o0.textContent = window.tr('Grundprofil (kein eigenes)'); sel.appendChild(o0)
+      for (const id of osdProfIds()) { const o = document.createElement('option'); o.value = id; o.textContent = osdProfName(id); sel.appendChild(o) }
+      sel.value = g.osdProfile && osdProfiles.profile[g.osdProfile] ? g.osdProfile : ''
+    }
+    function onDetailOsdProf() {
+      if (selectedIndex < 0) return
+      const v = document.getElementById('detailOsdProf').value
+      if (v) games[selectedIndex].osdProfile = v; else delete games[selectedIndex].osdProfile
+      saveGames()
+      osdProfRender()   // Zaehler "n Spiele verknuepft" nachziehen
+    }
     // --- OSD-Layout (live): jede Änderung wirkt sofort aufs Overlay ------------
     let osdCorner = 'tl', osdForm = 'rund'
     function limZahl(id, min, max, std) { const el = document.getElementById(id); let n = parseInt(el.value, 10); if (!Number.isFinite(n)) n = std; n = Math.max(min, Math.min(max, n)); el.value = n; return n }
@@ -6212,7 +6447,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // ======================================================================
     // Hotkey-Konfiguration (globaler Toggle-Shortcut)
     // ======================================================================
-    const appSettingsCache = { toggleHotkey: 'Alt+L', osdHotkey: 'Alt+O', osdEditHotkey: 'Alt+Shift+O', osdAbHotkey: 'Alt+B', streamHotkey: '', analyzeHotkey: 'Alt+A', gamepadHotkey: [], gamepadOsdHotkey: [], gamepadAnalyzeHotkey: [], gamepadAbHotkey: [] }
+    const appSettingsCache = { toggleHotkey: 'Alt+L', osdHotkey: 'Alt+O', osdEditHotkey: 'Alt+Shift+O', osdAbHotkey: 'Alt+B', osdProfHotkey: 'Alt+P', streamHotkey: '', analyzeHotkey: 'Alt+A', gamepadHotkey: [], gamepadOsdHotkey: [], gamepadAnalyzeHotkey: [], gamepadAbHotkey: [], gamepadOsdProfHotkey: [] }
     // Tastatur-Hotkeys nach gleichem Muster: 'main' (Oberfläche in den
     // Vordergrund), 'osd' (Overlay ein/aus), 'osdEdit' (OSD-Konfigurationsmodus),
     // 'osdAb' (natives Afterburner-OSD ein-/ausblenden).
@@ -6221,6 +6456,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       osd:     { key: 'osdHotkey',     which: 'osd',     disp: 'osdKbHotkeyDisplay',   btn: 'osdKbHotkeyBtn' },
       osdEdit: { key: 'osdEditHotkey', which: 'osdEdit', disp: 'osdEditHotkeyDisplay', btn: 'osdEditHotkeyBtn' },
       osdAb:   { key: 'osdAbHotkey',   which: 'osdAb',   disp: 'osdAbHotkeyDisplay',   btn: 'osdAbHotkeyBtn' },
+      osdProf: { key: 'osdProfHotkey', which: 'osdProf', disp: 'osdProfHotkeyDisplay', btn: 'osdProfHotkeyBtn' },   // naechstes PlainOSD-Profil
       stream:  { key: 'streamHotkey',  which: 'stream',  disp: 'streamHotkeyDisplay',  btn: 'streamHotkeyBtn' },
       analyze: { key: 'analyzeHotkey', which: 'analyze', disp: 'anHotkeyDisplay',      btn: 'anHotkeyBtn' },
     }
@@ -6295,6 +6531,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       osd:     { key: 'gamepadOsdHotkey',     disp: 'gpOsdHotkeyDisplay', btn: 'gpOsdHotkeyCaptureBtn', hint: 'gpOsdHotkeyHint' },
       analyze: { key: 'gamepadAnalyzeHotkey', disp: 'gpAnHotkeyDisplay',  btn: 'gpAnHotkeyCaptureBtn',  hint: 'gpAnHotkeyHint' },
       ab:      { key: 'gamepadAbHotkey',      disp: 'gpAbHotkeyDisplay',  btn: 'gpAbHotkeyCaptureBtn',  hint: 'gpAbHotkeyHint' },   // Afterburner-OSD (RTSS) ein/aus
+      prof:    { key: 'gamepadOsdProfHotkey', disp: 'gpProfHotkeyDisplay', btn: 'gpProfHotkeyCaptureBtn', hint: 'gpProfHotkeyHint' },   // naechstes PlainOSD-Profil
     }
     function refreshGpHotkeyDisplay(slot) {
       const s = GP_SLOTS[slot]; const d = document.getElementById(s.disp)

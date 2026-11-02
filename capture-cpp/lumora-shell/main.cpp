@@ -492,6 +492,205 @@ static void sendExternalRunning() {   // Start-Knopf zeigt "laeuft" fuer Fremd-S
     for (auto& [k, s] : g_extSessions) arr.push_back(s.gamePath);
     sendToUi("external-running", arr);
 }
+// --- PlainOSD-Profile (osd-profiles.json) ----------------------------------------------
+// Ein Profil ist eine benannte Kopie der OSD-Darstellungsschluessel. Die osd*-Schluessel in
+// app-settings.json bleiben die ARBEITSKOPIE: Overlay, Reiter-Vorschau, Live-Editor und
+// Website-Demo lesen sie unveraendert. Ein Wechsel kopiert die Werte des Profils hinein, jede
+// Aenderung an der Arbeitskopie wird ins aktive Profil zurueckgespiegelt (opSync). Eigene
+// Datei wie input-profiles.json, damit die merge-Semantik von set-app-settings sauber bleibt.
+// Reine Logik in osdprof:: (Selbsttest --test-osdprofile), Datei/IPC/Automatik drumherum.
+namespace osdprof {
+static const char* const KEYS[] = { "osdTheme", "osdFont", "osdLayout", "osdPalette", "osdColors", "osdAccent",
+                                    "osdCorner", "osdScale", "osdOpacity", "osdFields", "osdOrder", "osdLimits" };
+static bool istProfilSchluessel(const std::string& k) { for (auto x : KEYS) if (k == x) return true; return false; }
+static json werteAus(const json& s) {
+    json w = json::object();
+    if (s.is_object()) for (auto k : KEYS) if (s.contains(k) && !s[k].is_null()) w[k] = s[k];
+    return w;
+}
+// Fehlt ein Schluessel im Profil, gilt die Werkseinstellung - er wird deshalb aus der
+// Arbeitskopie ENTFERNT. Sonst bliebe der Wert des vorherigen Profils einfach stehen.
+static void werteAnwenden(json& s, const json& w) {
+    for (auto k : KEYS) { if (w.is_object() && w.contains(k) && !w[k].is_null()) s[k] = w[k]; else s.erase(k); }
+}
+static std::string str(const json& j, const char* k) { return j.is_object() && j.contains(k) && j[k].is_string() ? j[k].get<std::string>() : std::string(); }
+static bool hat(const json& p, const std::string& id) {
+    return !id.empty() && p.is_object() && p.contains("profile") && p["profile"].is_object() && p["profile"].contains(id);
+}
+// Struktur pruefen und reparieren. Beim allerersten Mal wird der heutige Satz zum Profil
+// "Standard" und Grundprofil - niemand verliert etwas, und ohne zweites Profil bleibt alles wie vorher.
+static bool normalisiere(json& p, const json& s) {
+    bool ch = false;
+    if (!p.is_object()) { p = json::object(); ch = true; }
+    if (!p.contains("profile") || !p["profile"].is_object() || p["profile"].empty()) {
+        p["profile"] = json::object(); p["profile"]["standard"] = { {"name", "Standard"}, {"werte", werteAus(s)} }; ch = true;
+    }
+    for (auto& [id, pr] : p["profile"].items()) {
+        if (!pr.is_object()) { pr = json::object(); ch = true; }
+        if (!pr.contains("name") || !pr["name"].is_string() || pr["name"].get<std::string>().empty()) { pr["name"] = id; ch = true; }
+        if (!pr.contains("werte") || !pr["werte"].is_object()) { pr["werte"] = json::object(); ch = true; }
+    }
+    json reihe = json::array(); std::set<std::string> drin;   // Reihenfolge: jede vorhandene id genau einmal
+    if (p.contains("reihe") && p["reihe"].is_array())
+        for (auto& x : p["reihe"]) if (x.is_string() && hat(p, x.get<std::string>()) && !drin.count(x.get<std::string>())) { reihe.push_back(x); drin.insert(x.get<std::string>()); }
+    for (auto& [id, pr] : p["profile"].items()) if (!drin.count(id)) { reihe.push_back(id); drin.insert(id); }
+    if (!p.contains("reihe") || p["reihe"] != reihe) { p["reihe"] = reihe; ch = true; }
+    if (!hat(p, str(p, "grund"))) { p["grund"] = hat(p, "standard") ? std::string("standard") : reihe[0].get<std::string>(); ch = true; }
+    if (!hat(p, str(p, "aktiv"))) { p["aktiv"] = p["grund"]; ch = true; }
+    if (!p.contains("programme") || !p["programme"].is_object()) { p["programme"] = json::object(); ch = true; }
+    for (auto it = p["programme"].begin(); it != p["programme"].end();) {   // Verknuepfung auf geloeschtes Profil: weg
+        if (!it.value().is_string() || !hat(p, it.value().get<std::string>())) { it = p["programme"].erase(it); ch = true; } else ++it;
+    }
+    return ch;
+}
+// Manuelle Wahl (Klick, Hotkey, Live-Editor). Waehrend einer Automatik-Sitzung gilt sie nur
+// bis Spielende; ausserhalb wird sie zugleich das Grundprofil, zu dem das OSD nach jedem Spiel zurueckkehrt.
+static bool manuell(json& p, const std::string& id, bool autoSitzung) {
+    if (!hat(p, id)) return false;
+    p["aktiv"] = id; if (!autoSitzung) p["grund"] = id;
+    return true;
+}
+static std::string schritt(const json& p, const std::string& von, int dir) {
+    if (!p.contains("reihe") || !p["reihe"].is_array() || p["reihe"].empty()) return von;
+    const json& r = p["reihe"]; int n = (int)r.size(), i = 0;
+    for (int k = 0; k < n; ++k) if (r[k] == von) { i = k; break; }
+    return r[((i + dir) % n + n) % n].get<std::string>();
+}
+static std::string neueId(const json& p, unsigned long long saat) {
+    for (;; ++saat) { char b[24]; sprintf_s(b, "p%llx", saat); if (!hat(p, b)) return b; }
+}
+static bool loeschen(json& p, const std::string& id, const json& s) {
+    if (!hat(p, id) || p["profile"].size() <= 1) return false;   // das letzte Profil bleibt immer
+    p["profile"].erase(id);
+    normalisiere(p, s);   // repariert Grund-/Aktivprofil, Reihenfolge und Programm-Verknuepfungen
+    return true;
+}
+// Programmname vereinheitlichen: Pfad weg, Kleinschreibung, ".exe" ergaenzen
+static std::string exeNorm(std::string e) {
+    const char* rand = " \t\"'";
+    size_t a = e.find_first_not_of(rand), b = e.find_last_not_of(rand);
+    if (a == std::string::npos) return "";
+    e = e.substr(a, b - a + 1);
+    size_t sl = e.find_last_of("\\/"); if (sl != std::string::npos) e = e.substr(sl + 1);
+    for (auto& c : e) c = (char)tolower((unsigned char)c);
+    if (e.empty()) return "";
+    if (e.size() < 4 || e.compare(e.size() - 4, 4, ".exe") != 0) e += ".exe";
+    return e;
+}
+static std::string spielProfil(const json& spiele, const std::string& pfad, const json& p) {
+    if (!spiele.is_array()) return "";
+    for (auto& g : spiele) if (g.is_object() && g.value("path", "") == pfad) { std::string id = str(g, "osdProfile"); return hat(p, id) ? id : ""; }
+    return "";
+}
+static std::string programmProfil(const json& p, const std::string& exe) {
+    if (exe.empty() || !p.contains("programme") || !p["programme"].is_object() || !p["programme"].contains(exe)) return "";
+    std::string id = p["programme"][exe].is_string() ? p["programme"][exe].get<std::string>() : "";
+    return hat(p, id) ? id : "";
+}
+}   // namespace osdprof
+
+static void applyOsdConfig();
+static void sendToOsd(const std::string& channel, const json& payload);
+static std::string foregroundExeNameLow(HWND fg);
+static void opOverlayKurzZeigen();
+static std::wstring osdProfilesPath() { return dataDir() + L"\\osd-profiles.json"; }
+static json g_opCache = nullptr;           // letzter guter Stand (Schutz wie loadSettings)
+static std::string g_opAuto;               // Automatik-Sitzung: "" | Spielpfad | "exe:<name>"
+static std::string g_opProgKandidat;       // Programm-Verknuepfung: Vordergrund-exe, die gerade "reift"
+static int g_opProgTreffer = 0;
+static json opLaden() {
+    std::string raw = readFile(osdProfilesPath());
+    json p = json::parse(raw, nullptr, false);
+    if (!p.is_object()) {
+        if (raw.empty()) p = json::object();                       // Erststart: Datei gibt es noch nicht
+        else if (g_opCache.is_object()) return g_opCache;          // Teil-Lesung waehrend eines Schreibvorgangs
+        else {   // defekt und nichts im Speicher: beiseitelegen statt still mit "Standard" zu ueberschreiben
+            MoveFileExW(osdProfilesPath().c_str(), (osdProfilesPath() + L".defekt").c_str(), MOVEFILE_REPLACE_EXISTING);
+            p = json::object();
+        }
+    }
+    if (osdprof::normalisiere(p, loadSettings())) writeFile(osdProfilesPath(), p.dump(2));
+    g_opCache = p;
+    return p;
+}
+static void opSpeichern(const json& p) { writeFile(osdProfilesPath(), p.dump(2)); g_opCache = p; }
+static json opFuerUi(const json& p) {
+    json u = p; u["auto"] = !g_opAuto.empty();
+    u["autoQuelle"] = g_opAuto.rfind("exe:", 0) == 0 ? g_opAuto.substr(4) : g_opAuto;
+    return u;
+}
+static void opMelden(const json& p) { sendToUi("osd-profiles", opFuerUi(p)); }
+static std::string opAktivName() {
+    json p = g_opCache.is_object() ? g_opCache : opLaden(); std::string a = osdprof::str(p, "aktiv");
+    return osdprof::hat(p, a) ? p["profile"][a].value("name", a) : std::string();
+}
+// Arbeitskopie -> aktives Profil. Nach JEDER Aenderung an den osd*-Darstellungsschluesseln.
+static void opSync() {
+    json p = opLaden(); std::string a = osdprof::str(p, "aktiv");
+    json w = osdprof::werteAus(loadSettings());
+    if (p["profile"][a]["werte"] == w) return;
+    p["profile"][a]["werte"] = w; opSpeichern(p); opMelden(p);
+}
+// Profil in die Arbeitskopie holen, Overlay und Reiter nachziehen.
+// sichern=false nur nach dem Loeschen des aktiven Profils: dann gehoert die Arbeitskopie zu
+// keinem Profil mehr und darf das neue nicht ueberschreiben.
+static void opWechsel(const std::string& id, bool vonHand, bool sichern, bool hinweis) {
+    json p = opLaden(); if (!osdprof::hat(p, id)) return;
+    json s = loadSettings();
+    std::string alt = osdprof::str(p, "aktiv");
+    if (sichern && osdprof::hat(p, alt)) p["profile"][alt]["werte"] = osdprof::werteAus(s);
+    if (vonHand) osdprof::manuell(p, id, !g_opAuto.empty()); else p["aktiv"] = id;
+    osdprof::werteAnwenden(s, p["profile"][id]["werte"]);
+    writeFile(settingsPath(), s.dump(2));
+    opSpeichern(p);
+    applyOsdConfig();
+    sendToUi("osd-settings-changed", nullptr);
+    opMelden(p);
+    if (hinweis) sendToOsd("osd-toast", p["profile"][id].value("name", id));
+}
+static void opNaechstes(int dir, bool perHotkey) {
+    json p = opLaden(); std::string a = osdprof::str(p, "aktiv");
+    std::string n = osdprof::schritt(p, a, dir);
+    if (n != a) opWechsel(n, true, true, perHotkey);
+    else if (perHotkey) sendToOsd("osd-toast", p["profile"][a].value("name", a));
+    if (perHotkey) opOverlayKurzZeigen();   // Overlay aus? Dann kurz zeigen - sonst sieht man nach dem Hotkey nichts
+}
+// Automatik: Bibliotheksspiel mit verknuepftem Profil laeuft NACHWEISLICH (nie beim Startaufruf).
+// Laeuft unter g_launchMx (launchTick/extWatchTick) - deshalb hier nichts, was diese Sperre nimmt.
+static void opSpielLaeuft(const std::string& gamePath) {
+    if (!moduleActive(loadSettings(), "osd")) return;
+    json p = opLaden();
+    std::string id = osdprof::spielProfil(readLibraryGames(), gamePath, p);
+    if (id.empty()) return;
+    g_opAuto = gamePath; g_opProgKandidat.clear(); g_opProgTreffer = 0;
+    opWechsel(id, false, true, true);
+}
+static void opSpielEnde(const std::string& gamePath) {
+    if (g_opAuto.empty() || g_opAuto != gamePath) return;
+    g_opAuto.clear();
+    json p = opLaden(); opWechsel(osdprof::str(p, "grund"), false, true, false);
+}
+// Programm-Verknuepfung (Spiele ausserhalb der Bibliothek): haengt am 2-s-Fremdstart-Takt, kein
+// eigener Takt. Die exe muss zwei Takte lang im Vordergrund sein und endet, wenn sie nicht mehr laeuft.
+static void opProgrammTick(const std::set<std::string>& running) {
+    if (g_opAuto.rfind("exe:", 0) == 0) {
+        if (!running.count(g_opAuto.substr(4))) { g_opAuto.clear(); json p = opLaden(); opWechsel(osdprof::str(p, "grund"), false, true, false); }
+        return;
+    }
+    if (!g_opAuto.empty()) return;   // Bibliotheksspiel hat Vorrang
+    json p = g_opCache.is_object() ? g_opCache : opLaden();
+    if (!p.contains("programme") || !p["programme"].is_object() || p["programme"].empty()) return;
+    if (!moduleActive(loadSettings(), "osd")) return;
+    std::string fg = foregroundExeNameLow(GetForegroundWindow());
+    std::string id = osdprof::programmProfil(p, fg);
+    if (id.empty()) { g_opProgKandidat.clear(); g_opProgTreffer = 0; return; }
+    if (fg != g_opProgKandidat) { g_opProgKandidat = fg; g_opProgTreffer = 1; return; }
+    if (++g_opProgTreffer < 2) return;
+    g_opProgKandidat.clear(); g_opProgTreffer = 0;
+    g_opAuto = "exe:" + fg;
+    opWechsel(id, false, true, true);
+}
+
 // --- Eingabe-Bruecke: Profile (input-profiles.json) + Auto-Aktivierung ---------------
 // Eigene Datei statt app-settings.json: Profile werden gross, und die merge-Semantik
 // von set-app-settings soll sauber bleiben. Die UI liest/schreibt das Objekt komplett.
@@ -580,6 +779,7 @@ static void extWatchTick() {
         g_extSessions[exe] = s;
         sendExternalRunning();
         inputBridgeOnRunning(p);   // Spiel laeuft nachweislich -> ggf. Eingabe-Bruecke (Profil-Link) an
+        opSpielLaeuft(p);          // ... und ggf. das verknuepfte PlainOSD-Profil
     }
     // 2) Laufende Fremd-Sessions pruefen / beenden
     bool suspectEnd = false;   // tote/fehlende Handles -> Takt kurz auf 1s (schnelle Bestaetigung)
@@ -597,11 +797,13 @@ static void extWatchTick() {
         lulaunch::playLog(dataDir(), "EXTERN beendet: " + s.gamePath + " Dauer " + std::to_string((GetTickCount64() - s.startTs) / 1000) + "s");
         if (s.hdrOn) { lulaunch::setHDR(false); g_hdrByLauncher = false; sendToUi("hdr-status", false); }
         inputBridgeOnEnd(s.gamePath);
+        opSpielEnde(s.gamePath);
         sendToUi("play-session", { {"gamePath", s.gamePath}, {"durationMs", (long long)(GetTickCount64() - s.startTs)} });
         netSessionFinish(s.gamePath);
     }
     // Takt dynamisch (wie launchTick): Ende-Verdacht schnell mit 1s bestaetigen (3 leere
     // Scans -> Ende in ~3s statt ~6s, Start der Zaehlung kommt per Exit-Wake sofort).
+    opProgrammTick(running);   // PlainOSD-Profil per Programmname (Spiele ausserhalb der Bibliothek)
     SetTimer(g_hwnd, TIMER_EXTWATCH, suspectEnd ? 1000 : 2000, nullptr);
 }
 
@@ -684,6 +886,7 @@ static void launchEndSession(lulaunch::LaunchSession& s, bool credit) {
     g_activeLaunchExes.erase(std::remove(g_activeLaunchExes.begin(), g_activeLaunchExes.end(), exeLow), g_activeLaunchExes.end());   // Watcher darf wieder uebernehmen
     if (s.useHdr) { lulaunch::setHDR(false); g_hdrByLauncher = false; sendToUi("hdr-status", false); }
     inputBridgeOnEnd(narrow(s.gamePath));
+    opSpielEnde(narrow(s.gamePath));
     if (credit && s.startTs) {
         sendToUi("play-session", { {"gamePath", narrow(s.gamePath)}, {"durationMs", (long long)(GetTickCount64() - s.startTs)} });
         netSessionFinish(narrow(s.gamePath));
@@ -705,6 +908,7 @@ static void launchTick() {
                 raiseGameWindow(s);
                 sendToUi("launch-status", "running");
                 inputBridgeOnRunning(narrow(s.gamePath));   // erst JETZT (laeuft nachweislich), nie beim Startaufruf
+                opSpielLaeuft(narrow(s.gamePath));          // PlainOSD-Profil des Spiels (gleiche Regel)
                 // HDR wurde bei der 30s-Freigabe geparkt? Spaetstarter doch noch da -> wieder an.
                 if (s.useHdr && !g_hdrByLauncher) { lulaunch::setHDR(true); g_hdrByLauncher = true; sendToUi("hdr-status", true); }
                 lulaunch::playLog(dataDir(), "STARTED nach +" + std::to_string((GetTickCount64() - s.launchTs) / 1000) + "s");
@@ -2537,7 +2741,7 @@ static void toggleMainWindow() {
 // verloren zu gehen. Genau das war die Ursache fuer "schnelles Toggeln kommt nicht an": Poll und
 // Toggle teilten sich den UI-Thread, der Toggle blockierte den Poll (nicht-deterministisch).
 #define WM_HOTKEY_CMD (WM_APP + 7)
-enum { HKC_MAIN = 1, HKC_OSD = 2, HKC_OSDEDIT = 3, HKC_AB = 4, HKC_STREAM = 5, HKC_ANALYZE = 6 };
+enum { HKC_MAIN = 1, HKC_OSD = 2, HKC_OSDEDIT = 3, HKC_AB = 4, HKC_STREAM = 5, HKC_ANALYZE = 6, HKC_PROF = 7 };
 static void toggleOsdSetting();   // (unten definiert)
 static void analyzeToggle();      // Ruckler-Blackbox: Messung an/aus (unten definiert)
 static void showAnalyzeOsd(bool on);                                   // Analyse-Overlay (unten)
@@ -2638,8 +2842,8 @@ static std::mutex g_kbMx;
 // als ein Mensch bewusst toggelt). Frueher 150/80 ms - das verschluckte zusammen mit dem groben 40-ms-Takt
 // schnelles Gamepad-Toggeln (Kombi nie im selben Abtastfenster beisammen -> gar keine Flanke).
 static const ULONGLONG GP_RELEASE_MS = 40;
-static bool g_gpMainWas = false, g_gpOsdWas = false, g_gpAnalyzeWas = false, g_gpAbWas = false;
-static ULONGLONG g_gpMainSeen = 0, g_gpOsdSeen = 0, g_gpAnalyzeSeen = 0, g_gpAbSeen = 0;
+static bool g_gpMainWas = false, g_gpOsdWas = false, g_gpAnalyzeWas = false, g_gpAbWas = false, g_gpProfWas = false;
+static ULONGLONG g_gpMainSeen = 0, g_gpOsdSeen = 0, g_gpAnalyzeSeen = 0, g_gpAbSeen = 0, g_gpProfSeen = 0;
 // --- Hotkeys je Vordergrund-Programm aussetzen (Einstellung "hotkeyPauseExes") -------
 // Anlass: Virtual Pinball (und aehnliche Spiele) belegen genau die Tasten, aus denen
 // Hotkey-Kombis meist bestehen - ein Tastendruck im Spiel loeste ungewollt Lumora-
@@ -2725,6 +2929,9 @@ static void xinputTick() {   // 125 Hz; Flanke = einmal ausloesen pro Druck
     bool rawB = gamepadComboDown(s.value("gamepadAbHotkey", json::array()));   // Afterburner-OSD (RTSS) ein/aus
     if (rawB) g_gpAbSeen = now;
     bool ab = rawB || (g_gpAbSeen && now - g_gpAbSeen < GP_RELEASE_MS);
+    bool rawP = gamepadComboDown(s.value("gamepadOsdProfHotkey", json::array()));   // naechstes PlainOSD-Profil
+    if (rawP) g_gpProfSeen = now;
+    bool pr = rawP || (g_gpProfSeen && now - g_gpProfSeen < GP_RELEASE_MS);
     // Zustand IMMER nachziehen, auch waehrend pausiert ist (g_gpMainWas etc.) - sonst
     // loest ein Tastendruck, der WAEHREND des Spielens gehalten wurde, beim Zurueckwechseln
     // zu Lumora eine nachtraegliche Flanke aus. Nur das AUSLOESEN wird unterdrueckt.
@@ -2732,7 +2939,8 @@ static void xinputTick() {   // 125 Hz; Flanke = einmal ausloesen pro Druck
     if (o && !g_gpOsdWas && !hkPaused) PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_OSD, 0);
     if (a && !g_gpAnalyzeWas && !hkPaused) PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_ANALYZE, 0);
     if (ab && !g_gpAbWas && !hkPaused) PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_AB, 0);
-    g_gpMainWas = m; g_gpOsdWas = o; g_gpAnalyzeWas = a; g_gpAbWas = ab;
+    if (pr && !g_gpProfWas && !hkPaused) PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_PROF, 0);
+    g_gpMainWas = m; g_gpOsdWas = o; g_gpAnalyzeWas = a; g_gpAbWas = ab; g_gpProfWas = pr;
     // 1b) Controller-Zustand an die UI pushen (~30 Hz, nur bei sichtbarem Fenster).
     // Die UI darf navigator.getGamepads NICHT mehr benutzen: allein die Registrierung
     // von gamepadconnected-Listenern startet Chromiums Gamepad-Monitor im Browser-
@@ -3096,6 +3304,7 @@ static void sendToOsd(const std::string& channel, const json& payload);
 #define TIMER_SRCWATCH 113 // Quellen-Watcher: Fenster-Fingerprint alle 3s -> sources-updated bei Aenderung
 #define TIMER_OSDPRELOAD 114 // one-shot ~3s nach Start: OSD-WebView2 vorwaermen -> Oeffnen ist sofort statt "Gedenksekunde"
 #define TIMER_OSDHIDE 115    // one-shot: Fenster erst NACH dem DComp-Ausblenden verstecken
+#define TIMER_OSDPROFZEIGEN 124 // Profil-Hotkey bei ausgeschaltetem Overlay: nach 2,5 s wieder ausblenden
 #define TIMER_OSDPREVIEWWD 123 // Watchdog: Vorschau (Regler/Menue/Farbwaehler) endet spaetestens 15 s nach dem letzten 'osd-preview true' -
                                // sonst blieb das OSD bei ausgeschalteter Einstellung sichtbar, wenn der Reiter das Ende nie schickte
 // --- OSD-Sensorik Teil 1 (treiberfrei): PDH-CPU/GPU-Last, RAM, DXGI-VRAM.
@@ -4260,7 +4469,8 @@ static void applyOsdConfig() {
                               // Paket 1 (Designvielfalt): Palette, eigene Farben, Grenzwerte, Layout-Baukasten
                               {"palette", s.value("osdPalette", "standard")}, {"colors", s.value("osdColors", json())},
                               {"limits", s.value("osdLimits", json())}, {"layout", s.value("osdLayout", json())},
-                              {"font", s.value("osdFont", "")} });   // Schriftart ('' = Standard)
+                              {"font", s.value("osdFont", "")},     // Schriftart ('' = Standard)
+                              {"profil", opAktivName()} });         // Name des aktiven PlainOSD-Profils (Editor-Leiste)
 }
 static ComPtr<IDCompositionDevice> g_dcompDev;
 static ComPtr<IDCompositionTarget> g_dcompTarget;
@@ -5041,6 +5251,12 @@ static void osdPreviewMode(bool on) {
     syncOsdVisibility();
     if (on) applyOsdConfig();
 }
+static void opOverlayKurzZeigen() {
+    json st = loadSettings();
+    if (!moduleActive(st, "osd") || st.value("osdEnabled", false) || g_osdEdit) return;
+    osdPreviewMode(true);
+    SetTimer(g_hwnd, TIMER_OSDPROFZEIGEN, 2500, nullptr);
+}
 // Live-Edit-Modus (Alt+Shift+O): laeuft in einem EIGENEN windowed WebView2-Fenster mit
 // Desktop-Schnappschuss als Hintergrund (createOsdEditWindow) - Klick/Drag/Rad nativ.
 // Das Anzeige-Overlay wird waehrenddessen versteckt und bleibt selbst IMMER click-through.
@@ -5096,6 +5312,7 @@ static void rebuildKbHotkeys() {
     add(s.value("osdAbHotkey", "Alt+B"), []() { PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_AB, 0); });
     add(s.value("streamHotkey", ""), []() { PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_STREAM, (LPARAM)GetForegroundWindow()); });
     add(s.value("analyzeHotkey", "Alt+A"), []() { PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_ANALYZE, 0); });   // Ruckler-Messung an/aus
+    add(s.value("osdProfHotkey", "Alt+P"), []() { PostMessageW(g_hwnd, WM_HOTKEY_CMD, HKC_PROF, 0); });       // naechstes PlainOSD-Profil
     std::lock_guard<std::mutex> lk(g_kbMx);
     g_kbHotkeys = std::move(list);
 }
@@ -5337,6 +5554,8 @@ static json handleChannel(const std::string& channel, const json& args) {
             }
             // OSD-Einstellung dabei? Overlay-Sichtbarkeit + Konfiguration live nachziehen (wie Electron)
             for (auto& [k, v] : args[0].items()) if (k.rfind("osd", 0) == 0) { syncOsdVisibility(); applyOsdConfig(); break; }
+            // Darstellung geaendert -> ins aktive PlainOSD-Profil zurueckspiegeln
+            for (auto& [k, v] : args[0].items()) if (osdprof::istProfilSchluessel(k)) { opSync(); break; }
             // Netzwerk-Statistik frisch eingeschaltet: Messdienst ggf. einmalig einrichten
             if (args[0].value("netStats", false)) netEnsureTask();
             // Analyse-Einstellungen live nachziehen: Regler wirken sofort (auch in der Vorschau)
@@ -5348,10 +5567,52 @@ static json handleChannel(const std::string& channel, const json& args) {
         }
         return true;
     }
+    // --- PlainOSD-Profile --------------------------------------------------------------
+    if (channel == "osd-profiles-get") return opFuerUi(opLaden());
+    if (channel == "osd-profile-activate" && args.size() >= 1 && args[0].is_string()) { opWechsel(args[0].get<std::string>(), true, true, false); return true; }
+    if (channel == "osd-edit-profile" && args.size() >= 1 && args[0].is_number()) { opNaechstes(args[0].get<double>() < 0 ? -1 : 1, false); return true; }   // Live-Editor
+    if (channel == "osd-profile-create" && args.size() >= 1 && args[0].is_object()) {
+        // {name, werte?}: ohne werte = Kopie des aktuellen Stands (Duplizieren), mit werte = Vorlage
+        json p = opLaden(); json st = loadSettings();
+        std::string alt = osdprof::str(p, "aktiv");
+        p["profile"][alt]["werte"] = osdprof::werteAus(st);
+        std::string id = osdprof::neueId(p, GetTickCount64());
+        json w = args[0].contains("werte") && args[0]["werte"].is_object() ? osdprof::werteAus(args[0]["werte"]) : osdprof::werteAus(st);
+        std::string name = args[0].contains("name") && args[0]["name"].is_string() ? args[0]["name"].get<std::string>() : std::string();
+        if (name.empty()) name = "Profil";
+        p["profile"][id] = { {"name", name}, {"werte", w} };
+        json r = json::array(); for (auto& x : p["reihe"]) { r.push_back(x); if (x == alt) r.push_back(id); }   // direkt hinter dem aktiven
+        p["reihe"] = r;
+        opSpeichern(p);
+        opWechsel(id, true, false, false);
+        return id;
+    }
+    if (channel == "osd-profile-rename" && args.size() >= 2 && args[0].is_string() && args[1].is_string()) {
+        json p = opLaden(); std::string id = args[0].get<std::string>(), n = args[1].get<std::string>();
+        if (!osdprof::hat(p, id) || n.empty()) return false;
+        p["profile"][id]["name"] = n; opSpeichern(p); opMelden(p); applyOsdConfig();
+        return true;
+    }
+    if (channel == "osd-profile-delete" && args.size() >= 1 && args[0].is_string()) {
+        json p = opLaden(); std::string vorher = osdprof::str(p, "aktiv");
+        if (!osdprof::loeschen(p, args[0].get<std::string>(), loadSettings())) return false;
+        opSpeichern(p);
+        if (vorher == args[0].get<std::string>()) opWechsel(osdprof::str(p, "aktiv"), false, false, false);   // Arbeitskopie gehoerte dem geloeschten
+        else opMelden(p);
+        return true;
+    }
+    if (channel == "osd-profile-program" && args.size() >= 2 && args[0].is_string()) {
+        // (exe, id|null): Programm mit Profil verknuepfen bzw. Verknuepfung loesen
+        json p = opLaden(); std::string exe = osdprof::exeNorm(args[0].get<std::string>());
+        if (exe.empty()) return false;
+        if (args[1].is_string() && osdprof::hat(p, args[1].get<std::string>())) p["programme"][exe] = args[1]; else p["programme"].erase(exe);
+        opSpeichern(p); opMelden(p);
+        return exe;
+    }
     if (channel == "set-hotkey") {   // (accelerator, which) wie Electron; Rueckgabe {ok}
         std::string acc = args.size() >= 1 && args[0].is_string() ? args[0].get<std::string>() : "";
         std::string which = args.size() >= 2 && args[1].is_string() ? args[1].get<std::string>() : "";
-        std::string key = which == "osd" ? "osdHotkey" : which == "osdEdit" ? "osdEditHotkey" : which == "osdAb" ? "osdAbHotkey" : which == "stream" ? "streamHotkey" : which == "analyze" ? "analyzeHotkey" : "toggleHotkey";
+        std::string key = which == "osd" ? "osdHotkey" : which == "osdEdit" ? "osdEditHotkey" : which == "osdAb" ? "osdAbHotkey" : which == "osdProf" ? "osdProfHotkey" : which == "stream" ? "streamHotkey" : which == "analyze" ? "analyzeHotkey" : "toggleHotkey";
         json s = loadSettings(); s[key] = acc; writeFile(settingsPath(), s.dump(2));
         return { {"ok", registerHotkeys()} };
     }
@@ -5840,6 +6101,7 @@ static json handleChannel(const std::string& channel, const json& args) {
         else if (channel == "osd-edit-palette" && args[0].is_string()) s["osdPalette"] = args[0];   // Paletten-Chip im Live-Editor (eigene Farben bleiben gespeichert)
         writeFile(settingsPath(), s.dump(2));
         applyOsdConfig();
+        opSync();   // Live-Edit gehoert zum aktiven PlainOSD-Profil
         // Einstellungsreiter nachziehen: der hielt sonst den Stand von VOR dem Live-Edit und
         // schickte ihn beim naechsten Klick komplett zurueck (Befund: Design sprang nach
         // 'Dicht' auf das zuvor in der App gewaehlte Tacho-Design). index.html laedt daraufhin
@@ -6203,6 +6465,11 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         if (w == TIMER_IPWATCH) { bcIpWatchTick(); return 0; }
         if (w == TIMER_COLDLINK) { KillTimer(h, TIMER_COLDLINK); if (!g_coldDeepLink.empty()) { handleDeepLink(g_coldDeepLink); g_coldDeepLink.clear(); } return 0; }
         if (w == TIMER_OSDPRELOAD) { KillTimer(h, TIMER_OSDPRELOAD); if (moduleActive(loadSettings(), "osd")) { createOsdWindow(); sensorsInit(); } return 0; }
+        if (w == TIMER_OSDPROFZEIGEN) {   // Profil-Hotkey-Einblendung vorbei
+            KillTimer(h, TIMER_OSDPROFZEIGEN);
+            if (g_osdPreview) { g_osdPreview = false; KillTimer(h, TIMER_OSDPREVIEWWD); syncOsdVisibility(); }
+            return 0;
+        }
         if (w == TIMER_OSDPREVIEWWD) {   // Vorschau haengt (Reiter hat das Ende nie geschickt) -> selbst beenden
             KillTimer(h, TIMER_OSDPREVIEWWD);
             if (g_osdPreview) { bcLogStream("osd-preview: Watchdog - Vorschau nach 15 s ohne Ende zurueckgenommen"); g_osdPreview = false; syncOsdVisibility(); }
@@ -6252,6 +6519,7 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
             case HKC_OSDEDIT: setOsdEditMode(!g_osdEdit); break;
             case HKC_AB:      lurtss::toggleAbOsd(); break;
             case HKC_STREAM:  doStreamHotkey((HWND)l); break;
+            case HKC_PROF:    if (moduleActive(loadSettings(), "osd")) opNaechstes(1, true); break;   // Modul aus = wirkungslos
             case HKC_ANALYZE: if (moduleActive(loadSettings(), "stutter")) analyzeToggle(); break;   // Modul aus = Hotkey wirkungslos
         }
         return 0;
@@ -6732,6 +7000,75 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
     // Eintraege) UND den echten WinAPI-Pfad (foregroundExeNameLow gegen das eigene,
     // gerade erzeugte Testfenster - dessen Prozess ist diese exe selbst, der erwartete
     // Name also bekannt).
+    // PlainOSD-Profile: reine Logik ohne Datei (osdprof::). Prueft die Uebernahme des heutigen
+    // Satzes, das Anwenden (fehlende Schluessel = Werkseinstellung), Grund-/Aktivprofil-Regeln,
+    // Loeschen mit Verknuepfungen und die Reparatur kaputter Dateien.
+    for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-osdprofile") == 0) {
+        wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
+        std::string res; int fehler = 0;
+        auto pruef = [&](const char* was, bool ok) { res += std::string(ok ? "OK   " : "FEHL ") + was + "\n"; if (!ok) ++fehler; };
+        json s = { {"osdTheme", "neon"}, {"osdScale", 1.2}, {"osdEnabled", true}, {"osdHotkey", "Alt+O"}, {"osdColors", nullptr} };
+        json p = json::object();
+        pruef("Erststart: Datei wird angelegt", osdprof::normalisiere(p, s));
+        pruef("Erststart: Profil Standard aus dem heutigen Satz", osdprof::hat(p, "standard") && p["profile"]["standard"]["werte"].value("osdTheme", "") == "neon" && p["profile"]["standard"]["werte"].value("osdScale", 0.0) == 1.2);
+        pruef("Erststart: globale Schluessel (an/aus, Hotkey) nicht im Profil", !p["profile"]["standard"]["werte"].contains("osdEnabled") && !p["profile"]["standard"]["werte"].contains("osdHotkey"));
+        pruef("Erststart: null-Werte werden nicht uebernommen", !p["profile"]["standard"]["werte"].contains("osdColors"));
+        pruef("Erststart: Standard ist aktiv und Grundprofil", osdprof::str(p, "aktiv") == "standard" && osdprof::str(p, "grund") == "standard");
+        pruef("zweiter Durchlauf aendert nichts", !osdprof::normalisiere(p, s));
+
+        json a = { {"osdTheme", "neon"}, {"osdCorner", "br"}, {"osdEnabled", true}, {"anderes", 7} };
+        osdprof::werteAnwenden(a, json{ {"osdTheme", "min"}, {"osdScale", 0.9} });
+        pruef("Anwenden setzt Profilwerte", a.value("osdTheme", "") == "min" && a.value("osdScale", 0.0) == 0.9);
+        pruef("Anwenden entfernt im Profil fehlende Schluessel (Werkseinstellung)", !a.contains("osdCorner"));
+        pruef("Anwenden laesst globale/fremde Schluessel stehen", a.value("osdEnabled", false) && a.value("anderes", 0) == 7);
+
+        p["profile"]["p1"] = { {"name", "Nur FPS"}, {"werte", json::object()} };
+        p["profile"]["p2"] = { {"name", "Benchmark"}, {"werte", json::object()} };
+        osdprof::normalisiere(p, s);
+        pruef("neue Profile landen in der Reihenfolge", p["reihe"].size() == 3);
+        pruef("Schritt vorwaerts", osdprof::schritt(p, "standard", 1) != "standard");
+        pruef("Schritt rueckwaerts vom ersten springt ans Ende", osdprof::schritt(p, p["reihe"][0].get<std::string>(), -1) == p["reihe"][2].get<std::string>());
+        pruef("Schritt vom letzten springt zum Anfang", osdprof::schritt(p, p["reihe"][2].get<std::string>(), 1) == p["reihe"][0].get<std::string>());
+        osdprof::manuell(p, "p1", false);
+        pruef("Wahl ausserhalb eines Spiels wird auch Grundprofil", osdprof::str(p, "aktiv") == "p1" && osdprof::str(p, "grund") == "p1");
+        osdprof::manuell(p, "p2", true);
+        pruef("Wahl waehrend Automatik aendert das Grundprofil nicht", osdprof::str(p, "aktiv") == "p2" && osdprof::str(p, "grund") == "p1");
+        pruef("Wahl eines unbekannten Profils wird abgelehnt", !osdprof::manuell(p, "gibtsnicht", false) && osdprof::str(p, "aktiv") == "p2");
+
+        p["programme"]["spiel.exe"] = "p2"; p["programme"]["alt.exe"] = "p1";
+        pruef("Programm-Verknuepfung wird gefunden", osdprof::programmProfil(p, "spiel.exe") == "p2");
+        pruef("unbekanntes Programm liefert nichts", osdprof::programmProfil(p, "notepad.exe").empty());
+        pruef("Loeschen des aktiven Profils klappt", osdprof::loeschen(p, "p2", s));
+        pruef("nach dem Loeschen: aktiv faellt aufs Grundprofil", osdprof::str(p, "aktiv") == "p1");
+        pruef("nach dem Loeschen: Programm-Verknuepfung entfernt", !p["programme"].contains("spiel.exe") && p["programme"].contains("alt.exe"));
+        pruef("nach dem Loeschen: Reihenfolge ohne das Profil", p["reihe"].size() == 2);
+        pruef("Loeschen des Grundprofils klappt", osdprof::loeschen(p, "p1", s));
+        pruef("Grundprofil faellt auf Standard zurueck", osdprof::str(p, "grund") == "standard" && osdprof::str(p, "aktiv") == "standard");
+        pruef("das letzte Profil laesst sich nicht loeschen", !osdprof::loeschen(p, "standard", s) && osdprof::hat(p, "standard"));
+
+        json spiele = json::array({ { {"path", "C:\\Spiele\\a.exe"}, {"osdProfile", "standard"} }, { {"path", "C:\\Spiele\\b.exe"}, {"osdProfile", "weg"} }, { {"path", "C:\\Spiele\\c.exe"} } });
+        pruef("Spiel mit Profil wird gefunden", osdprof::spielProfil(spiele, "C:\\Spiele\\a.exe", p) == "standard");
+        pruef("Spiel mit geloeschtem Profil faellt still zurueck", osdprof::spielProfil(spiele, "C:\\Spiele\\b.exe", p).empty());
+        pruef("Spiel ohne Profil liefert nichts", osdprof::spielProfil(spiele, "C:\\Spiele\\c.exe", p).empty());
+        pruef("unbekanntes Spiel liefert nichts", osdprof::spielProfil(spiele, "C:\\x.exe", p).empty());
+
+        pruef("Programmname: Pfad, Gross-/Kleinschreibung, Leerzeichen", osdprof::exeNorm("  C:\\Games\\Foo.EXE ") == "foo.exe");
+        pruef("Programmname: .exe wird ergaenzt", osdprof::exeNorm("bar") == "bar.exe");
+        pruef("Programmname: leer bleibt leer", osdprof::exeNorm("   ").empty());
+
+        json kaputt = { {"profile", { {"x", 5}, {"y", { {"name", "Y"}, {"werte", { {"osdTheme", "hud"} } } } } } }, {"reihe", json::array({ "gibtsnicht", "y", "y" })}, {"grund", "weg"}, {"aktiv", 3}, {"programme", { {"q.exe", "weg"} } } };
+        pruef("kaputte Datei wird repariert", osdprof::normalisiere(kaputt, s));
+        pruef("Reparatur: Eintrag ohne Objekt wird leeres Profil mit Namen", kaputt["profile"]["x"].value("name", "") == "x" && kaputt["profile"]["x"]["werte"].is_object());
+        pruef("Reparatur: Reihenfolge ohne Doppelte und Unbekannte", kaputt["reihe"].size() == 2);
+        pruef("Reparatur: Grund- und Aktivprofil gueltig", osdprof::hat(kaputt, osdprof::str(kaputt, "grund")) && osdprof::hat(kaputt, osdprof::str(kaputt, "aktiv")));
+        pruef("Reparatur: Verknuepfung auf fehlendes Profil entfernt", kaputt["programme"].empty());
+        pruef("neue id kollidiert nie", osdprof::neueId(kaputt, 0) != "x" && !osdprof::hat(kaputt, osdprof::neueId(kaputt, 0)));
+        pruef("istProfilSchluessel trennt Darstellung von Global", osdprof::istProfilSchluessel("osdTheme") && !osdprof::istProfilSchluessel("osdEnabled"));
+
+        res = "osdprofile-Selbsttest: " + std::string(fehler ? "FEHLER" : "ok") + "\n" + res;
+        writeFile(std::wstring(tmp) + L"\\k-toolz-test.txt", res);
+        return fehler ? 1 : 0;
+    }
     for (int i = 1; i < argc; ++i) if (wcscmp(argv[i], L"--test-hotkeypause") == 0) {
         wchar_t tmp[MAX_PATH] = {}; GetEnvironmentVariableW(L"TEMP", tmp, MAX_PATH);
         std::string res; int fehler = 0;
