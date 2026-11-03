@@ -158,13 +158,6 @@
               <span class="switch-slider"></span>
             </label>
           </div>
-          <div class="meta-row osd-prof-row" id="detailOsdProfRow" style="display:none">
-            <div class="meta-text">
-              <span class="meta-label-main">PlainOSD-Profil</span>
-              <span class="meta-sublabel">Wechselt beim Spielstart automatisch und nach dem Spiel zurück zum Grundprofil.</span>
-            </div>
-            <select id="detailOsdProf" class="sort-select" onchange="onDetailOsdProf()"></select>
-          </div>
         </div>
 
         <div class="detail-actions">
@@ -255,6 +248,14 @@
        Browsers (die zeigten "app.lumora sagt:" - der virtuelle Host-Name der UI). Ein
        einziger wiederverwendbarer Dialog im bestehenden Look (.overlay/.dialog), von
        lumoraAlert/lumoraConfirm/lumoraPrompt() bedient. -->
+  <div class="overlay" id="osdProfPickOverlay" style="display:none" onclick="if (event.target === this) osdProfPickClose()">
+    <div class="dialog osd-prof-pick">
+      <h2 id="osdProfPickTitle">Laufendes Programm wählen</h2>
+      <p class="settings-hint" id="osdProfPickHint"></p>
+      <div class="osd-prof-picklist" id="osdProfPickList"></div>
+      <div class="dialog-actions"><button class="btn-cancel" onclick="osdProfPickClose()">Abbrechen</button></div>
+    </div>
+  </div>
   <div class="overlay" id="lumoraModalOverlay" style="display:none">
     <div class="dialog modal-dialog" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.activeElement && document.activeElement.id==='lumoraModalCancel' ? _lumoraModalCancel() : _lumoraModalOk()}">
       <p id="lumoraModalMsg" class="modal-msg"></p>
@@ -421,13 +422,21 @@
                 <button class="btn-browse" onclick="osdProfRename()">Umbenennen</button>
                 <button class="btn-cancel" id="osdProfDelBtn" onclick="osdProfDelete()">Löschen</button>
               </div>
-              <span class="osd-hk-label">Programme außerhalb der Bibliothek</span>
-              <p class="settings-hint">Verknüpft mit dem gerade gewählten Profil. Läuft das Programm im Vordergrund, wechselt das OSD automatisch dorthin. Spiele aus der Bibliothek verknüpfst du in ihren Details.</p>
+              <span class="osd-hk-label">Gilt für</span>
+              <p class="settings-hint">Läuft eines dieser Programme, ist das gewählte Profil aktiv – egal ob aus der Bibliothek, aus Steam oder direkt gestartet. Danach geht es zurück zum Grundprofil.</p>
               <div class="osd-prof-progs" id="osdProfProgs"></div>
               <div class="osd-prof-progadd">
-                <input type="text" id="osdProfProgInput" placeholder="z. B. spiel.exe" autocomplete="off" spellcheck="false" maxlength="80" onkeydown="if (event.key === 'Enter') osdProfProgAdd()">
-                <button class="btn-browse" onclick="osdProfProgAdd()">Verknüpfen</button>
+                <button class="btn-primary osd-prof-addbtn" onclick="osdProfPickWindow()">Laufendes Programm …</button>
+                <button class="btn-browse" onclick="osdProfPickFile()">Datei wählen …</button>
+                <button class="btn-browse" id="osdProfLibBtn" onclick="osdProfPickLibrary()">Aus der Bibliothek …</button>
               </div>
+              <details class="osd-prof-tippen">
+                <summary>Namen eintippen</summary>
+                <div class="osd-prof-progadd">
+                  <input type="text" id="osdProfProgInput" placeholder="z. B. spiel.exe" autocomplete="off" spellcheck="false" maxlength="80" onkeydown="if (event.key === 'Enter') osdProfProgAdd()">
+                  <button class="btn-browse" onclick="osdProfProgAdd()">Verknüpfen</button>
+                </div>
+              </details>
             </div>
 
             <div class="osd-card">
@@ -2165,19 +2174,29 @@ const I18N_EN = {
   "Duplizieren": "Duplicate",
   "Umbenennen": "Rename",
   "Löschen": "Delete",
-  "Programme außerhalb der Bibliothek": "Programs outside the library",
-  "Verknüpft mit dem gerade gewählten Profil. Läuft das Programm im Vordergrund, wechselt das OSD automatisch dorthin. Spiele aus der Bibliothek verknüpfst du in ihren Details.": "Linked to the currently selected profile. When the program is in the foreground, the OSD switches to it automatically. Link games from the library in their details.",
+  "Gilt für": "Applies to",
+  "Läuft eines dieser Programme, ist das gewählte Profil aktiv – egal ob aus der Bibliothek, aus Steam oder direkt gestartet. Danach geht es zurück zum Grundprofil.": "While one of these programs is running, the selected profile is active – whether started from the library, from Steam or directly. Afterwards it returns to the default profile.",
+  "Laufendes Programm …": "Running program…",
+  "Datei wählen …": "Choose file…",
+  "Aus der Bibliothek …": "From the library…",
+  "Namen eintippen": "Type a name",
   "z. B. spiel.exe": "e.g. game.exe",
+  "Laufendes Programm wählen": "Choose a running program",
+  "Nur Programme mit eigenem Fenster. K-Toolz selbst erscheint nicht.": "Only programs with their own window. K-Toolz itself is not listed.",
+  "Gerade läuft kein Programm mit Fenster.": "No program with a window is running right now.",
+  "Spiel aus der Bibliothek wählen": "Choose a game from the library",
+  "Gespeichert wird der Programmname des Spiels.": "The game's program name is what gets saved.",
+  "Kein Spiel mit erkennbarem Programm in der Bibliothek.": "No game with a recognizable program in the library.",
+  "bereits verknüpft": "already linked",
   "Nächstes Profil": "Next profile",
-  "PlainOSD-Profil": "PlainOSD profile",
-  "Wechselt beim Spielstart automatisch und nach dem Spiel zurück zum Grundprofil.": "Switches automatically when the game starts and back to the default profile afterwards.",
   "Grundprofil": "Default profile",
-  "Grundprofil (kein eigenes)": "Default profile (none of its own)",
   "+ Neues Profil": "+ New profile",
   "Werkseinstellung": "Factory default",
-  "Kompetitiv": "Competitive",
-  "Benchmark": "Benchmark",
-  "Streamer": "Streamer",
+  "Nur FPS": "FPS only",
+  "Ruckler-Suche": "Stutter hunt",
+  "Hitze im Blick": "Heat watch",
+  "Alles": "Everything",
+  "Streaming": "Streaming",
   "Leiste": "Strip",
   "Kacheln": "Tiles",
   "Tacho": "Gauge",
@@ -2188,8 +2207,6 @@ const I18N_EN = {
   "unten links": "bottom left",
   "unten mittig": "bottom center",
   "unten rechts": "bottom right",
-  "Spiel verknüpft": "game linked",
-  "Spiele verknüpft": "games linked",
   "Programm verknüpft": "program linked",
   "Programme verknüpft": "programs linked",
   "Automatisch aktiv durch": "Active automatically because of",
@@ -3139,7 +3156,6 @@ function applyI18n() {
       const hdrOn = g.hdr === true
       document.getElementById('hdrToggle').checked = hdrOn
       updateHdrSubLabel(hdrOn)
-      detailOsdProfFill()
       updateDetailInfo(g)
       updateCoverHero(g)
       refreshLaunchBtn()   // Fremdstart-Status (external-running) gilt pro Spiel
@@ -4505,17 +4521,17 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
     // Vorlagen: erzeugen ein neues, frei aenderbares Profil. Nur Felder, die das OSD wirklich hat.
     const OSD_VORLAGEN = [
       { key: 'leer', name: 'Werkseinstellung', werte: {} },
-      { key: 'minimal', name: 'Minimal', werte: { osdTheme: 'min', osdFields: { gpu: [], cpu: [], fps: ['fps'], net: [] }, osdCorner: 'tr', osdScale: 0.9, osdOpacity: 0.45 } },
-      { key: 'kompetitiv', name: 'Kompetitiv', werte: { osdTheme: 'compact', osdPalette: 'dezent', osdFields: { gpu: ['load'], cpu: ['load'], fps: ['fps', 'frametime', 'graph'], net: [] }, osdOrder: ['fps', 'gpu', 'cpu', 'net'], osdCorner: 'tl', osdScale: 1, osdOpacity: 0.5 } },
-      { key: 'benchmark', name: 'Benchmark', werte: { osdTheme: 'tiles', osdFields: { gpu: ['load', 'temp', 'power', 'clock', 'vram'], cpu: ['load', 'temp', 'clock', 'power', 'ram'], fps: ['fps', 'frametime', 'graph'], net: [] }, osdCorner: 'tc', osdScale: 1, osdOpacity: 0.6, osdLimits: OSD_ALLE_LIMITS } },
-      { key: 'streamer', name: 'Streamer', werte: { osdTheme: 'bar', osdFields: { gpu: ['load'], cpu: ['load'], fps: ['fps'], net: ['rate', 'total'] }, osdCorner: 'tl', osdScale: 1.2, osdOpacity: 0.75 } },
+      { key: 'nurfps', name: 'Nur FPS', werte: { osdTheme: 'min', osdFields: { gpu: [], cpu: [], fps: ['fps'], net: [] }, osdCorner: 'tr', osdScale: 0.9, osdOpacity: 0.45 } },
+      { key: 'ruckler', name: 'Ruckler-Suche', werte: { osdTheme: 'compact', osdFields: { gpu: [], cpu: [], fps: ['fps', 'frametime', 'graph'], net: [] }, osdCorner: 'tl', osdScale: 1, osdOpacity: 0.5 } },
+      { key: 'hitze', name: 'Hitze im Blick', werte: { osdTheme: 'bar', osdFields: { gpu: ['temp', 'load'], cpu: ['temp', 'load'], fps: [], net: [] }, osdCorner: 'tr', osdScale: 1, osdOpacity: 0.55, osdLimits: OSD_ALLE_LIMITS } },
+      { key: 'alles', name: 'Alles', werte: { osdTheme: 'tiles', osdFields: { gpu: ['load', 'temp', 'power', 'clock', 'vram'], cpu: ['load', 'temp', 'clock', 'power', 'ram'], fps: ['fps', 'frametime', 'graph'], net: [] }, osdCorner: 'tc', osdScale: 1, osdOpacity: 0.6, osdLimits: OSD_ALLE_LIMITS } },
+      { key: 'streaming', name: 'Streaming', modul: 'stream', werte: { osdTheme: 'bar', osdFields: { gpu: ['load'], cpu: ['load'], fps: ['fps'], net: ['rate', 'total'] }, osdCorner: 'tl', osdScale: 1.2, osdOpacity: 0.75 } },
     ]
     async function osdProfLoad() {
       try { osdProfiles = await ipcRenderer.invoke('osd-profiles-get') } catch (e) {}
-      osdProfRender(); detailOsdProfFill()
+      osdProfRender()
     }
-    ipcRenderer.on('osd-profiles', (e, p) => { osdProfiles = p; osdProfRender(); detailOsdProfFill() })
-    setTimeout(osdProfLoad, 0)   // Spiel-Details brauchen die Liste auch ohne Besuch des PlainOSD-Reiters
+    ipcRenderer.on('osd-profiles', (e, p) => { osdProfiles = p; osdProfRender() })
     function osdProfIds() { return osdProfiles && Array.isArray(osdProfiles.reihe) ? osdProfiles.reihe.filter(id => osdProfiles.profile && osdProfiles.profile[id]) : [] }
     function osdProfName(id) { const p = osdProfiles && osdProfiles.profile && osdProfiles.profile[id]; return p ? (p.name || id) : '' }
     function osdProfFarben(w) {   // drei Gruppenfarben fuer die Mini-Vorschau (Palette oder eigene Farben)
@@ -4540,9 +4556,7 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
         const nm = document.createElement('b'); nm.textContent = osdProfName(id); txt.appendChild(nm)
         const sub = document.createElement('small')
         const teile = [window.tr(OSD_THEME_NAME[w.osdTheme || 'bar'] || 'Balken'), window.tr(OSD_CORNER_NAME[w.osdCorner || 'tl'] || 'oben links')]
-        const nSp = (typeof games !== 'undefined' ? games : []).filter(g => g && g.osdProfile === id).length
         const nPr = Object.values(osdProfiles.programme || {}).filter(x => x === id).length
-        if (nSp) teile.push(osdProfZahl(nSp, 'Spiel verknüpft', 'Spiele verknüpft'))
         if (nPr) teile.push(osdProfZahl(nPr, 'Programm verknüpft', 'Programme verknüpft'))
         sub.textContent = teile.join(' · '); txt.appendChild(sub)
         if (id === osdProfiles.grund) { const t = document.createElement('em'); t.textContent = window.tr('Grundprofil'); txt.appendChild(t) }
@@ -4554,16 +4568,17 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       box.appendChild(neu)
       // Vorlagen
       const tpl = document.getElementById('osdProfTpl')
-      if (tpl && !tpl.childElementCount) for (const v of OSD_VORLAGEN) {
+      if (tpl) { tpl.textContent = ''; for (const v of OSD_VORLAGEN) {
+        if (v.modul && !(window.APP_MODULES || []).includes(v.modul)) continue   // Streaming nur mit StreamToFriend
         const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-browse'; x.textContent = window.tr(v.name)
         x.onclick = () => osdProfFromTemplate(v); tpl.appendChild(x)
-      }
+      } }
+      const lib = document.getElementById('osdProfLibBtn'); if (lib) lib.style.display = (window.APP_MODULES || []).includes('launcher') ? '' : 'none'
       // Automatik-Hinweis
       const au = document.getElementById('osdProfAuto')
       if (au) {
         if (osdProfiles.auto) {
-          const q = String(osdProfiles.autoQuelle || ''), g = (typeof games !== 'undefined' ? games : []).find(x => x && x.path === q)
-          au.textContent = window.tr('Automatisch aktiv durch') + ' ' + (g ? g.name : q) + ' – ' + window.tr('nach dem Spiel zurück zu') + ' „' + osdProfName(osdProfiles.grund) + '“.'
+          au.textContent = window.tr('Automatisch aktiv durch') + ' ' + String(osdProfiles.autoQuelle || '') + ' – ' + window.tr('nach dem Spiel zurück zu') + ' „' + osdProfName(osdProfiles.grund) + '“.'
           au.style.display = ''
         } else au.style.display = 'none'
       }
@@ -4617,26 +4632,46 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       const r = await ipcRenderer.invoke('osd-profile-program', v, osdProfiles.aktiv)
       if (r) inp.value = ''
     }
-    // Spiel-Details: Auswahl je Spiel (am Bibliothekseintrag gespeichert, wie die HDR-Automatik)
-    function detailOsdProfFill() {
-      const row = document.getElementById('detailOsdProfRow'), sel = document.getElementById('detailOsdProf')
-      if (!row || !sel) return
-      const g = (typeof selectedIndex !== 'undefined' && selectedIndex >= 0) ? games[selectedIndex] : null
-      const an = !!g && !!osdProfiles && (window.APP_MODULES || []).includes('osd')
-      row.style.display = an ? '' : 'none'
-      if (!an) return
-      sel.textContent = ''
-      const o0 = document.createElement('option'); o0.value = ''; o0.textContent = window.tr('Grundprofil (kein eigenes)'); sel.appendChild(o0)
-      for (const id of osdProfIds()) { const o = document.createElement('option'); o.value = id; o.textContent = osdProfName(id); sel.appendChild(o) }
-      sel.value = g.osdProfile && osdProfiles.profile[g.osdProfile] ? g.osdProfile : ''
+    // --- "Gilt fuer": Programme per Auswahl (Fensterliste, Dateidialog, Bibliothek); Tippfeld nur als Notnagel
+    async function osdProfPickWindow() {
+      let list = []
+      try { list = await ipcRenderer.invoke('osd-profile-windows') || [] } catch (e) {}
+      osdProfPickShow(window.tr('Laufendes Programm wählen'), window.tr('Nur Programme mit eigenem Fenster. K-Toolz selbst erscheint nicht.'),
+        list.map(x => ({ label: x.label, sub: x.exe, exe: x.exe, icon: x.icon })), window.tr('Gerade läuft kein Programm mit Fenster.'))
     }
-    function onDetailOsdProf() {
-      if (selectedIndex < 0) return
-      const v = document.getElementById('detailOsdProf').value
-      if (v) games[selectedIndex].osdProfile = v; else delete games[selectedIndex].osdProfile
-      saveGames()
-      osdProfRender()   // Zaehler "n Spiele verknuepft" nachziehen
+    async function osdProfPickLibrary() {
+      let list = []
+      try { list = await ipcRenderer.invoke('osd-profile-library') || [] } catch (e) {}
+      osdProfPickShow(window.tr('Spiel aus der Bibliothek wählen'), window.tr('Gespeichert wird der Programmname des Spiels.'),
+        list.map(x => ({ label: x.name, sub: x.exe, exe: x.exe, icon: x.icon })), window.tr('Kein Spiel mit erkennbarem Programm in der Bibliothek.'))
     }
+    async function osdProfPickFile() {
+      const p = await ipcRenderer.invoke('browse-game'); if (!p) return
+      const exe = await ipcRenderer.invoke('osd-profile-exe-of', p)
+      if (exe) osdProfProgLink(exe)
+    }
+    async function osdProfProgLink(exe) { if (osdProfiles && exe) await ipcRenderer.invoke('osd-profile-program', exe, osdProfiles.aktiv) }
+    function osdProfPickShow(titel, hinweis, eintraege, leer) {
+      const ov = document.getElementById('osdProfPickOverlay'), box = document.getElementById('osdProfPickList')
+      document.getElementById('osdProfPickTitle').textContent = titel
+      document.getElementById('osdProfPickHint').textContent = hinweis
+      box.textContent = ''
+      const schon = new Set(Object.keys((osdProfiles && osdProfiles.programme) || {}))
+      if (!eintraege.length) { const e = document.createElement('p'); e.className = 'osd-prof-leer'; e.textContent = leer; box.appendChild(e) }
+      for (const x of eintraege) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'osd-prof-pickrow'
+        const ic = document.createElement('span'); ic.className = 'ic'
+        if (x.icon) { const im = document.createElement('img'); im.src = x.icon; im.alt = ''; ic.appendChild(im) }
+        const tx = document.createElement('span'); tx.className = 'tx'
+        const l = document.createElement('b'); l.textContent = x.label || x.exe; tx.appendChild(l)
+        const sm = document.createElement('small'); sm.textContent = x.sub + (schon.has(x.exe) ? ' · ' + window.tr('bereits verknüpft') : ''); tx.appendChild(sm)
+        b.appendChild(ic); b.appendChild(tx)
+        b.onclick = async () => { osdProfPickClose(); await osdProfProgLink(x.exe) }
+        box.appendChild(b)
+      }
+      ov.style.display = 'flex'
+    }
+    function osdProfPickClose() { document.getElementById('osdProfPickOverlay').style.display = 'none' }
     // --- OSD-Layout (live): jede Änderung wirkt sofort aufs Overlay ------------
     let osdCorner = 'tl', osdForm = 'rund'
     function limZahl(id, min, max, std) { const el = document.getElementById(id); let n = parseInt(el.value, 10); if (!Number.isFinite(n)) n = std; n = Math.max(min, Math.min(max, n)); el.value = n; return n }

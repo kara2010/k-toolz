@@ -613,7 +613,23 @@ body::before {
 .osd-prof-prog button { background: none; border: 0; color: #9a9aa6; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 999px; }
 .osd-prof-prog button:hover { color: #fff; background: #3a3a42; }
 .osd-prof-leer { font-size: 12.5px; color: #77777f; }
-.osd-prof-progadd { display: flex; gap: 8px; align-items: center; max-width: 420px; }
+.osd-prof-progadd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.osd-prof-addbtn { padding: 7px 14px; font-size: 13px; }
+.osd-prof-tippen { margin-top: 8px; }
+.osd-prof-tippen summary { cursor: pointer; font-size: 12.5px; color: #8a8a90; list-style: none; }
+.osd-prof-tippen summary::before { content: '› '; }
+.osd-prof-tippen[open] summary::before { content: '⌄ '; }
+.osd-prof-tippen .osd-prof-progadd { margin-top: 6px; max-width: 420px; flex-wrap: nowrap; }
+.osd-prof-pick { width: 520px; gap: 12px; }
+.osd-prof-pick h2 { margin: 0; }
+.osd-prof-picklist { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; }
+.osd-prof-pickrow { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: #202024; border: 1px solid #2a2a2e; border-radius: 8px; padding: 8px 10px; color: #ddd; font: inherit; cursor: pointer; }
+.osd-prof-pickrow:hover { border-color: var(--accent); background: var(--accent-active-bg); }
+.osd-prof-pickrow .ic { width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.osd-prof-pickrow .ic img { width: 24px; height: 24px; border-radius: 5px; }
+.osd-prof-pickrow .tx { display: flex; flex-direction: column; min-width: 0; }
+.osd-prof-pickrow .tx b { font-size: 13.5px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.osd-prof-pickrow .tx small { font-size: 11.5px; color: #8a8a90; }
 .osd-prof-progadd input { flex: 1; min-width: 0; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 8px 12px; color: #ddd; font: inherit; font-size: 13px; outline: none; }
 .osd-prof-progadd input:focus { border-color: var(--accent); }
 .osd-prof-card .osd-prof-actions + .osd-hk-label { margin-top: 16px; }

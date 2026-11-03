@@ -577,15 +577,28 @@ static std::string exeNorm(std::string e) {
     if (e.size() < 4 || e.compare(e.size() - 4, 4, ".exe") != 0) e += ".exe";
     return e;
 }
-static std::string spielProfil(const json& spiele, const std::string& pfad, const json& p) {
-    if (!spiele.is_array()) return "";
-    for (auto& g : spiele) if (g.is_object() && g.value("path", "") == pfad) { std::string id = str(g, "osdProfile"); return hat(p, id) ? id : ""; }
-    return "";
-}
 static std::string programmProfil(const json& p, const std::string& exe) {
     if (exe.empty() || !p.contains("programme") || !p["programme"].is_object() || !p["programme"].contains(exe)) return "";
     std::string id = p["programme"][exe].is_string() ? p["programme"][exe].get<std::string>() : "";
     return hat(p, id) ? id : "";
+}
+// Automatik-Entscheid je Takt. running = alle laufenden exe-Namen (lower), vorher = Stand des letzten
+// Takts, aktivExe = Programm, das die laufende Automatik ausgeloest hat ("" = keine).
+// Rueckgabe: null = nichts tun; {exe, id} = dieses Profil wegen dieses Programms; {exe:"", id:""} = Grundprofil.
+// Regeln: ein NEU erschienenes verknuepftes Programm gewinnt immer (zuletzt gestartet); endet das
+// ausloesende Programm, uebernimmt ein anderes noch laufendes verknuepftes, sonst das Grundprofil.
+static json automatik(const json& p, const std::set<std::string>& running, const std::set<std::string>& vorher, const std::string& aktivExe) {
+    std::string neu, neuId, laufend, laufendId;
+    for (auto& e : running) {
+        std::string id = programmProfil(p, e); if (id.empty()) continue;
+        if (!vorher.count(e) && neu.empty()) { neu = e; neuId = id; }
+        if (laufend.empty() && e != aktivExe) { laufend = e; laufendId = id; }
+    }
+    if (!neu.empty() && neu != aktivExe) return json{ {"exe", neu}, {"id", neuId} };
+    if (aktivExe.empty()) return nullptr;
+    if (running.count(aktivExe) && !programmProfil(p, aktivExe).empty()) return nullptr;   // laeuft weiter, Verknuepfung besteht
+    if (!laufend.empty()) return json{ {"exe", laufend}, {"id", laufendId} };
+    return json{ {"exe", ""}, {"id", ""} };
 }
 }   // namespace osdprof
 
@@ -595,9 +608,7 @@ static std::string foregroundExeNameLow(HWND fg);
 static void opOverlayKurzZeigen();
 static std::wstring osdProfilesPath() { return dataDir() + L"\\osd-profiles.json"; }
 static json g_opCache = nullptr;           // letzter guter Stand (Schutz wie loadSettings)
-static std::string g_opAuto;               // Automatik-Sitzung: "" | Spielpfad | "exe:<name>"
-static std::string g_opProgKandidat;       // Programm-Verknuepfung: Vordergrund-exe, die gerade "reift"
-static int g_opProgTreffer = 0;
+static std::string g_opAuto;               // Automatik: "" | "exe:<name>" (Programm, das das Profil ausgeloest hat)
 static json opLaden() {
     std::string raw = readFile(osdProfilesPath());
     json p = json::parse(raw, nullptr, false);
@@ -655,40 +666,20 @@ static void opNaechstes(int dir, bool perHotkey) {
     else if (perHotkey) sendToOsd("osd-toast", p["profile"][a].value("name", a));
     if (perHotkey) opOverlayKurzZeigen();   // Overlay aus? Dann kurz zeigen - sonst sieht man nach dem Hotkey nichts
 }
-// Automatik: Bibliotheksspiel mit verknuepftem Profil laeuft NACHWEISLICH (nie beim Startaufruf).
-// Laeuft unter g_launchMx (launchTick/extWatchTick) - deshalb hier nichts, was diese Sperre nimmt.
-static void opSpielLaeuft(const std::string& gamePath) {
-    if (!moduleActive(loadSettings(), "osd")) return;
-    json p = opLaden();
-    std::string id = osdprof::spielProfil(readLibraryGames(), gamePath, p);
-    if (id.empty()) return;
-    g_opAuto = gamePath; g_opProgKandidat.clear(); g_opProgTreffer = 0;
-    opWechsel(id, false, true, true);
-}
-static void opSpielEnde(const std::string& gamePath) {
-    if (g_opAuto.empty() || g_opAuto != gamePath) return;
-    g_opAuto.clear();
-    json p = opLaden(); opWechsel(osdprof::str(p, "grund"), false, true, false);
-}
-// Programm-Verknuepfung (Spiele ausserhalb der Bibliothek): haengt am 2-s-Fremdstart-Takt, kein
-// eigener Takt. Die exe muss zwei Takte lang im Vordergrund sein und endet, wenn sie nicht mehr laeuft.
-static void opProgrammTick(const std::set<std::string>& running) {
-    if (g_opAuto.rfind("exe:", 0) == 0) {
-        if (!running.count(g_opAuto.substr(4))) { g_opAuto.clear(); json p = opLaden(); opWechsel(osdprof::str(p, "grund"), false, true, false); }
-        return;
-    }
-    if (!g_opAuto.empty()) return;   // Bibliotheksspiel hat Vorrang
+// Automatik: haengt am 2-s-Fremdstart-Takt (extWatchTick), kein eigener Takt. Ein verknuepftes
+// Programm LAEUFT (Prozess da) -> sein Profil; endet es -> Grundprofil bzw. ein anderes laufendes.
+// Keine Bibliothek noetig: Bibliotheksspiele sind auch nur Prozesse. Laeuft unter g_launchMx -
+// deshalb hier nichts, was diese Sperre nimmt.
+static std::set<std::string> g_opVorher;
+static void opAutomatikTick(const std::set<std::string>& running) {
     json p = g_opCache.is_object() ? g_opCache : opLaden();
-    if (!p.contains("programme") || !p["programme"].is_object() || p["programme"].empty()) return;
-    if (!moduleActive(loadSettings(), "osd")) return;
-    std::string fg = foregroundExeNameLow(GetForegroundWindow());
-    std::string id = osdprof::programmProfil(p, fg);
-    if (id.empty()) { g_opProgKandidat.clear(); g_opProgTreffer = 0; return; }
-    if (fg != g_opProgKandidat) { g_opProgKandidat = fg; g_opProgTreffer = 1; return; }
-    if (++g_opProgTreffer < 2) return;
-    g_opProgKandidat.clear(); g_opProgTreffer = 0;
-    g_opAuto = "exe:" + fg;
-    opWechsel(id, false, true, true);
+    std::string aktivExe = g_opAuto.rfind("exe:", 0) == 0 ? g_opAuto.substr(4) : "";
+    json e = osdprof::automatik(p, running, g_opVorher, aktivExe);
+    g_opVorher = running;
+    if (e.is_null() || !moduleActive(loadSettings(), "osd")) return;
+    std::string exe = e.value("exe", ""), id = e.value("id", "");
+    if (exe.empty()) { g_opAuto.clear(); opWechsel(osdprof::str(p, "grund"), false, true, false); }
+    else { g_opAuto = "exe:" + exe; opWechsel(id, false, true, true); }
 }
 
 // --- Eingabe-Bruecke: Profile (input-profiles.json) + Auto-Aktivierung ---------------
@@ -779,7 +770,6 @@ static void extWatchTick() {
         g_extSessions[exe] = s;
         sendExternalRunning();
         inputBridgeOnRunning(p);   // Spiel laeuft nachweislich -> ggf. Eingabe-Bruecke (Profil-Link) an
-        opSpielLaeuft(p);          // ... und ggf. das verknuepfte PlainOSD-Profil
     }
     // 2) Laufende Fremd-Sessions pruefen / beenden
     bool suspectEnd = false;   // tote/fehlende Handles -> Takt kurz auf 1s (schnelle Bestaetigung)
@@ -797,13 +787,12 @@ static void extWatchTick() {
         lulaunch::playLog(dataDir(), "EXTERN beendet: " + s.gamePath + " Dauer " + std::to_string((GetTickCount64() - s.startTs) / 1000) + "s");
         if (s.hdrOn) { lulaunch::setHDR(false); g_hdrByLauncher = false; sendToUi("hdr-status", false); }
         inputBridgeOnEnd(s.gamePath);
-        opSpielEnde(s.gamePath);
         sendToUi("play-session", { {"gamePath", s.gamePath}, {"durationMs", (long long)(GetTickCount64() - s.startTs)} });
         netSessionFinish(s.gamePath);
     }
     // Takt dynamisch (wie launchTick): Ende-Verdacht schnell mit 1s bestaetigen (3 leere
     // Scans -> Ende in ~3s statt ~6s, Start der Zaehlung kommt per Exit-Wake sofort).
-    opProgrammTick(running);   // PlainOSD-Profil per Programmname (Spiele ausserhalb der Bibliothek)
+    opAutomatikTick(running);   // PlainOSD-Profil per Programmname
     SetTimer(g_hwnd, TIMER_EXTWATCH, suspectEnd ? 1000 : 2000, nullptr);
 }
 
@@ -886,7 +875,6 @@ static void launchEndSession(lulaunch::LaunchSession& s, bool credit) {
     g_activeLaunchExes.erase(std::remove(g_activeLaunchExes.begin(), g_activeLaunchExes.end(), exeLow), g_activeLaunchExes.end());   // Watcher darf wieder uebernehmen
     if (s.useHdr) { lulaunch::setHDR(false); g_hdrByLauncher = false; sendToUi("hdr-status", false); }
     inputBridgeOnEnd(narrow(s.gamePath));
-    opSpielEnde(narrow(s.gamePath));
     if (credit && s.startTs) {
         sendToUi("play-session", { {"gamePath", narrow(s.gamePath)}, {"durationMs", (long long)(GetTickCount64() - s.startTs)} });
         netSessionFinish(narrow(s.gamePath));
@@ -908,7 +896,6 @@ static void launchTick() {
                 raiseGameWindow(s);
                 sendToUi("launch-status", "running");
                 inputBridgeOnRunning(narrow(s.gamePath));   // erst JETZT (laeuft nachweislich), nie beim Startaufruf
-                opSpielLaeuft(narrow(s.gamePath));          // PlainOSD-Profil des Spiels (gleiche Regel)
                 // HDR wurde bei der 30s-Freigabe geparkt? Spaetstarter doch noch da -> wieder an.
                 if (s.useHdr && !g_hdrByLauncher) { lulaunch::setHDR(true); g_hdrByLauncher = true; sendToUi("hdr-status", true); }
                 lulaunch::playLog(dataDir(), "STARTED nach +" + std::to_string((GetTickCount64() - s.launchTs) / 1000) + "s");
@@ -5601,6 +5588,30 @@ static json handleChannel(const std::string& channel, const json& args) {
         else opMelden(p);
         return true;
     }
+    if (channel == "osd-profile-windows") {   // laufende Programme mit Fenster: {label, icon, exe} (Fensterliste wie die Stream-Quellen)
+        json out = json::array(); std::set<std::string> gesehen;
+        for (auto& q : enumSources()) {
+            if (q.value("kind", "") != "window") continue;
+            std::string v = q.value("value", ""); if (v.rfind("window:", 0) != 0) continue;
+            DWORD pid = 0; GetWindowThreadProcessId((HWND)(intptr_t)_strtoi64(v.c_str() + 7, nullptr, 10), &pid);
+            std::string exe = osdprof::exeNorm(pid ? luetw::pidExeName(pid) : ""); if (exe.empty()) continue;
+            if (exe == "explorer.exe" || exe == "applicationframehost.exe" || exe == "textinputhost.exe") continue;   // Windows-Huellen, keine Programme
+            out.push_back({ {"label", q.value("label", "")}, {"icon", q.value("icon", "")}, {"exe", exe} });
+        }
+        return out;
+    }
+    if (channel == "osd-profile-exe-of" && args.size() >= 1 && args[0].is_string())   // Pfad (exe/lnk) -> Programmname
+        return osdprof::exeNorm(narrow(lulaunch::resolveProcessName(widen(args[0].get<std::string>()))));
+    if (channel == "osd-profile-library") {   // Bibliothek: {name, exe} - nur Eintraege mit aufloesbarer exe
+        json out = json::array();
+        for (auto& g : readLibraryGames()) {
+            std::string p = g.value("path", ""); std::string pl = p; for (auto& c : pl) c = (char)tolower((unsigned char)c);
+            bool ok = pl.size() > 4 && (pl.rfind(".exe") == pl.size() - 4 || pl.rfind(".lnk") == pl.size() - 4);
+            std::string exe = ok ? osdprof::exeNorm(narrow(lulaunch::resolveProcessName(widen(p)))) : "";
+            if (!exe.empty()) out.push_back({ {"name", g.value("name", "")}, {"exe", exe}, {"icon", g.value("icon", "")} });
+        }
+        return out;
+    }
     if (channel == "osd-profile-program" && args.size() >= 2 && args[0].is_string()) {
         // (exe, id|null): Programm mit Profil verknuepfen bzw. Verknuepfung loesen
         json p = opLaden(); std::string exe = osdprof::exeNorm(args[0].get<std::string>());
@@ -7046,11 +7057,25 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int nShow) {
         pruef("Grundprofil faellt auf Standard zurueck", osdprof::str(p, "grund") == "standard" && osdprof::str(p, "aktiv") == "standard");
         pruef("das letzte Profil laesst sich nicht loeschen", !osdprof::loeschen(p, "standard", s) && osdprof::hat(p, "standard"));
 
-        json spiele = json::array({ { {"path", "C:\\Spiele\\a.exe"}, {"osdProfile", "standard"} }, { {"path", "C:\\Spiele\\b.exe"}, {"osdProfile", "weg"} }, { {"path", "C:\\Spiele\\c.exe"} } });
-        pruef("Spiel mit Profil wird gefunden", osdprof::spielProfil(spiele, "C:\\Spiele\\a.exe", p) == "standard");
-        pruef("Spiel mit geloeschtem Profil faellt still zurueck", osdprof::spielProfil(spiele, "C:\\Spiele\\b.exe", p).empty());
-        pruef("Spiel ohne Profil liefert nichts", osdprof::spielProfil(spiele, "C:\\Spiele\\c.exe", p).empty());
-        pruef("unbekanntes Spiel liefert nichts", osdprof::spielProfil(spiele, "C:\\x.exe", p).empty());
+        {   // Automatik ueber laufende Prozesse
+            json q = p; q["profile"]["p9"] = { {"name", "Neun"}, {"werte", json::object()} }; osdprof::normalisiere(q, s);
+            q["programme"]["a.exe"] = "standard"; q["programme"]["b.exe"] = "p9";
+            using S = std::set<std::string>;
+            pruef("Automatik: nichts verknuepft laeuft -> nichts tun", osdprof::automatik(q, S{ "x.exe" }, S{}, "").is_null());
+            json e1 = osdprof::automatik(q, S{ "x.exe", "a.exe" }, S{ "x.exe" }, "");
+            pruef("Automatik: verknuepftes Programm erscheint -> sein Profil", e1.is_object() && e1["exe"] == "a.exe" && e1["id"] == "standard");
+            pruef("Automatik: laeuft weiter -> nichts tun", osdprof::automatik(q, S{ "a.exe" }, S{ "a.exe" }, "a.exe").is_null());
+            json e2 = osdprof::automatik(q, S{ "a.exe", "b.exe" }, S{ "a.exe" }, "a.exe");
+            pruef("Automatik: zweites erscheint -> zuletzt gestartetes gewinnt", e2.is_object() && e2["exe"] == "b.exe" && e2["id"] == "p9");
+            json e3 = osdprof::automatik(q, S{ "a.exe" }, S{ "a.exe", "b.exe" }, "b.exe");
+            pruef("Automatik: ausloesendes endet, anderes laeuft -> dessen Profil", e3.is_object() && e3["exe"] == "a.exe" && e3["id"] == "standard");
+            json e4 = osdprof::automatik(q, S{ "x.exe" }, S{ "a.exe" }, "a.exe");
+            pruef("Automatik: letztes endet -> Grundprofil", e4.is_object() && e4["exe"] == "" && e4["id"] == "");
+            pruef("Automatik: Erststart mit schon laufendem Spiel -> Profil", osdprof::automatik(q, S{ "b.exe" }, S{}, "").is_object());
+            q["programme"].erase("a.exe");
+            json e5 = osdprof::automatik(q, S{ "a.exe" }, S{ "a.exe" }, "a.exe");
+            pruef("Automatik: Verknuepfung waehrend des Laufs geloest -> Grundprofil", e5.is_object() && e5["exe"] == "");
+        }
 
         pruef("Programmname: Pfad, Gross-/Kleinschreibung, Leerzeichen", osdprof::exeNorm("  C:\\Games\\Foo.EXE ") == "foo.exe");
         pruef("Programmname: .exe wird ergaenzt", osdprof::exeNorm("bar") == "bar.exe");
