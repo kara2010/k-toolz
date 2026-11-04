@@ -4661,7 +4661,8 @@ ipcRenderer.on('external-running', (event, paths) => { externalRunning = new Set
       for (const x of eintraege) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'osd-prof-pickrow'
         const ic = document.createElement('span'); ic.className = 'ic'
-        if (x.icon) { const im = document.createElement('img'); im.src = x.icon; im.alt = ''; ic.appendChild(im) }
+        const src = x.icon ? (x.icon.startsWith('data:') ? x.icon : mediaSrc(x.icon)) : ''   // Bibliothek: Medienpfad -> media-Mapping der Shell (wie die Spieleliste)
+        if (src) { const im = document.createElement('img'); im.src = src; im.alt = ''; im.onerror = () => im.remove(); ic.appendChild(im) }
         const tx = document.createElement('span'); tx.className = 'tx'
         const l = document.createElement('b'); l.textContent = x.label || x.exe; tx.appendChild(l)
         const sm = document.createElement('small'); sm.textContent = x.sub + (schon.has(x.exe) ? ' · ' + window.tr('bereits verknüpft') : ''); tx.appendChild(sm)
