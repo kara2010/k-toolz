@@ -62,7 +62,7 @@
         "@type": "SoftwareApplication",
         "@id": "https://lumora-streaming.de/en/#app",
         "name": "Lumora",
-        "softwareVersion": "4.0.5",
+        "softwareVersion": "4.1.0",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
         "license": "https://www.gnu.org/licenses/agpl-3.0.html",
@@ -1041,8 +1041,17 @@
     <div class="changelog">
       <div class="release">
         <div class="release-head">
-          <span class="release-ver">4.0.5</span>
+          <span class="release-ver">4.1.0</span>
           <span class="release-tag">current</span>
+        </div>
+        <ul>
+          <li><strong>PlainOSD profiles</strong> – save several OSD setups with their own design, colors, position and values – from templates such as “FPS only”, “Stutter hunt”, “Heat watch” or “Everything” – and switch with a click, a hotkey (Alt+P, also as a gamepad combo) or in the live editor on the overlay.</li>
+          <li><strong>Profiles per game</strong> – each profile knows which programs it applies to – picked from the programs currently running, via file picker or from the library. While one of them is running, the OSD switches automatically and returns to your default profile afterwards.</li>
+        </ul>
+      </div>
+      <div class="release">
+        <div class="release-head">
+          <span class="release-ver">4.0.5</span>
         </div>
         <ul>
           <li><strong>AMD GPU load as in Task Manager</strong> – on AMD graphics the overlay now shows the same value as Task Manager. Previously, especially on processors with integrated graphics, it used a driver snapshot that jumped between 0, 66 and 99 percent.</li>
@@ -1079,6 +1088,7 @@
           <li><strong>Faster connection setup</strong> – viewers are only offered addresses they can actually reach.</li>
         </ul>
       </div>
+      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">4.0.1</span>
@@ -1089,7 +1099,6 @@
           <li><strong>Faster connection setup</strong> – unreachable addresses are no longer offered at all. The connection test in the settings also detects carrier-grade NAT.</li>
         </ul>
       </div>
-      <div class="changelog-rest" id="changelogRest">
       <div class="release">
         <div class="release-head">
           <span class="release-ver">4.0.0</span>
@@ -1543,7 +1552,7 @@
       </div>
       </div><!-- /#changelogRest -->
     </div>
-    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (42)</button>
+    <button class="more-toggle" id="changelogToggle" onclick="toggleChangelog()" aria-expanded="false">Show older versions (43)</button>
   </div>
 </section>
 
@@ -1944,7 +1953,7 @@
     if (!rest || !btn) return;
     var open = rest.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Show less' : 'Show older versions (42)';
+    btn.textContent = open ? 'Show less' : 'Show older versions (43)';
   }
 
   function toggleFeatures() {
